@@ -172,6 +172,11 @@ class Admin_Settings {
 		if ( ! empty( $approve ) ) {
 			$all['access']['approved'] = array_values( array_unique( array_merge( $all['access']['approved'], $approve ) ) );
 			$pending                   = array_values( array_diff( $pending, $approve ) );
+			if ( isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] ) ) {
+				foreach ( $approve as $a_email ) {
+					unset( $all['access']['pending_meta'][ $a_email ] );
+				}
+			}
 		}
 		$all['access']['pending'] = $pending;
 
@@ -1077,13 +1082,38 @@ class Admin_Settings {
 							<p class="description"><?php esc_html_e( 'Always denied, regardless of any other setting.', 'autorizenter' ); ?></p>
 						</td>
 					</tr>
-					<?php $pending = isset( $access['pending'] ) ? (array) $access['pending'] : array(); ?>
+					<?php
+					$pending      = isset( $access['pending'] ) ? (array) $access['pending'] : array();
+					$pending_meta = isset( $access['pending_meta'] ) && is_array( $access['pending_meta'] ) ? $access['pending_meta'] : array();
+					?>
 					<?php if ( ! empty( $pending ) ) : ?>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Pending approval', 'autorizenter' ); ?></th>
 						<td>
-							<?php foreach ( $pending as $p_email ) : ?>
-								<label style="display:block;"><input type="checkbox" name="approve_pending[]" value="<?php echo esc_attr( $p_email ); ?>" /> <?php echo esc_html( $p_email ); ?></label>
+							<?php foreach ( $pending as $p_email ) :
+								$pmeta    = isset( $pending_meta[ $p_email ] ) ? (array) $pending_meta[ $p_email ] : array();
+								$p_name   = isset( $pmeta['name'] ) && '' !== $pmeta['name'] ? $pmeta['name'] : '';
+								$p_prov   = isset( $pmeta['provider'] ) && '' !== $pmeta['provider'] ? $pmeta['provider'] : '';
+								$p_ans    = isset( $pmeta['answers'] ) && is_array( $pmeta['answers'] ) ? $pmeta['answers'] : array();
+								$p_detail = array_filter( array( $p_name, $p_prov ) );
+							?>
+								<div style="margin-bottom:10px;border-left:3px solid #dcdcde;padding-left:10px;">
+									<label>
+										<input type="checkbox" name="approve_pending[]" value="<?php echo esc_attr( $p_email ); ?>" />
+										<strong><?php echo esc_html( $p_email ); ?></strong>
+										<?php if ( ! empty( $p_detail ) ) : ?>
+											<span style="color:#666;font-size:12px;"> &mdash; <?php echo esc_html( implode( ' · ', $p_detail ) ); ?></span>
+										<?php endif; ?>
+									</label>
+									<?php if ( ! empty( $p_ans ) ) : ?>
+										<dl style="margin:4px 0 0 22px;font-size:12px;color:#3c434a;">
+											<?php foreach ( $p_ans as $q_id => $q_val ) : ?>
+												<dt style="font-weight:600;display:inline;"><?php echo esc_html( $q_id ); ?>:</dt>
+												<dd style="display:inline;margin:0 0 0 4px;"><?php echo esc_html( is_array( $q_val ) ? implode( ', ', $q_val ) : (string) $q_val ); ?></dd><br />
+											<?php endforeach; ?>
+										</dl>
+									<?php endif; ?>
+								</div>
 							<?php endforeach; ?>
 							<p class="description"><?php esc_html_e( 'Tick to approve and save. Unticked entries remain pending.', 'autorizenter' ); ?></p>
 						</td>

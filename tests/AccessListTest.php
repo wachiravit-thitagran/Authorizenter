@@ -143,4 +143,65 @@ class AccessListTest extends TestCase {
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'autorizenter_blocked', $result->get_error_code() );
 	}
+
+	public function test_add_pending_returns_token(): void {
+		$list  = $this->list_with( array( 'enabled' => true ) );
+		$token = $list->add_pending( 'wait@example.com', array( 'provider' => 'google', 'name' => 'Jane' ) );
+		$this->assertIsString( $token );
+		$this->assertNotEmpty( $token );
+	}
+
+	public function test_evaluate_not_approved_error_contains_pending_token(): void {
+		$list   = $this->list_with( array( 'enabled' => true, 'approved' => array( 'psu.ac.th' ) ) );
+		$id     = new Identity( 'google', array( 'email' => 'outsider@gmail.com', 'email_verified' => true ) );
+		$result = $list->evaluate( $id );
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$data = (array) $result->get_error_data();
+		$this->assertArrayHasKey( 'pending_token', $data );
+		$this->assertNotEmpty( $data['pending_token'] );
+	}
+
+	public function test_save_pending_answers_stores_and_retrieves(): void {
+		$list  = $this->list_with( array( 'enabled' => true ) );
+		$token = $list->add_pending( 'student@example.com', array( 'provider' => 'oidc', 'name' => 'Bob' ) );
+
+		$result = $list->save_pending_answers( $token, array( 'role' => 'student', 'dept' => 'Engineering' ) );
+		$this->assertTrue( $result );
+
+		$meta = $list->get_pending_meta();
+		$this->assertArrayHasKey( 'student@example.com', $meta );
+		$this->assertSame( 'student', $meta['student@example.com']['answers']['role'] );
+		$this->assertSame( 'Engineering', $meta['student@example.com']['answers']['dept'] );
+		$this->assertSame( 'oidc', $meta['student@example.com']['provider'] );
+		$this->assertSame( 'Bob', $meta['student@example.com']['name'] );
+	}
+
+	public function test_save_pending_answers_invalid_token_returns_error(): void {
+		$list   = $this->list_with( array( 'enabled' => true ) );
+		$result = $list->save_pending_answers( 'totally-invalid-token', array( 'role' => 'x' ) );
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'autorizenter_invalid_token', $result->get_error_code() );
+	}
+
+	public function test_approve_clears_pending_meta(): void {
+		$list = $this->list_with(
+			array(
+				'enabled' => true,
+				'pending' => array( 'wait@example.com' ),
+				'pending_meta' => array(
+					'wait@example.com' => array(
+						'provider' => 'google',
+						'name'     => 'Alice',
+						'answers'  => array( 'role' => 'staff' ),
+					),
+				),
+			)
+		);
+
+		$list->approve( array( 'wait@example.com' ) );
+
+		$meta = $list->get_pending_meta();
+		$this->assertArrayNotHasKey( 'wait@example.com', $meta );
+		$this->assertContains( 'wait@example.com', $list->entries( 'approved' ) );
+	}
 }

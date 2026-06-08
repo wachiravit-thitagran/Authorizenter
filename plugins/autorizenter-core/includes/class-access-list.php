@@ -82,10 +82,25 @@ class Access_List {
 
 		if ( ! $is_trusted && $this->is_enforced() ) {
 			if ( '' === $email || ! $this->matches( $email, $this->entries( 'approved' ) ) ) {
+				$token = '';
 				if ( '' !== $email ) {
-					$this->add_pending( $email );
+					$name  = trim( $identity->first_name . ' ' . $identity->last_name );
+					$token = $this->add_pending(
+						$email,
+						array(
+							'provider' => $identity->provider,
+							'name'     => $name,
+						)
+					);
 				}
-				return new \WP_Error( 'autorizenter_not_approved', __( 'Your account is awaiting approval to access this site.', 'autorizenter' ), array( 'status' => 403 ) );
+				return new \WP_Error(
+					'autorizenter_not_approved',
+					__( 'Your account is awaiting approval to access this site.', 'autorizenter' ),
+					array(
+						'status'        => 403,
+						'pending_token' => $token,
+					)
+				);
 			}
 		}
 
@@ -95,13 +110,16 @@ class Access_List {
 	/**
 	 * Add an email to the pending list (deduplicated).
 	 *
+	 * Stores a short-lived token so the user can submit pre-approval answers.
+	 *
 	 * @param string $email Email.
-	 * @return void
+	 * @param array  $meta  Optional metadata: provider, name.
+	 * @return string One-time token (empty string when email is blank).
 	 */
-	public function add_pending( $email ) {
+	public function add_pending( $email, array $meta = array() ) {
 		$email = $this->normalize( $email );
 		if ( '' === $email ) {
-			return;
+			return '';
 		}
 		$all     = $this->settings->all();
 		$pending = isset( $all['access']['pending'] ) ? (array) $all['access']['pending'] : array();
@@ -111,6 +129,59 @@ class Access_List {
 			$all['access']['pending'] = array_values( array_unique( array_filter( $pending ) ) );
 			$this->settings->save( $all );
 		}
+
+		// Generate a token so the user can reach the pre-approval form.
+		$token = wp_generate_password( 24, false );
+		set_transient(
+			'azr_pending_' . hash( 'sha256', $token ),
+			array_merge( $meta, array( 'email' => $email ) ),
+			HOUR_IN_SECONDS
+		);
+		return $token;
+	}
+
+	/**
+	 * Save pre-approval answers for a pending identity.
+	 *
+	 * @param string $token   Pending token from add_pending().
+	 * @param array  $answers Map of question_id => answer.
+	 * @return true|\WP_Error
+	 */
+	public function save_pending_answers( $token, array $answers ) {
+		$key  = 'azr_pending_' . hash( 'sha256', (string) $token );
+		$data = get_transient( $key );
+		if ( ! is_array( $data ) || ! isset( $data['email'] ) ) {
+			return new \WP_Error( 'autorizenter_invalid_token', __( 'Invalid or expired token.', 'autorizenter' ), array( 'status' => 400 ) );
+		}
+		$email = $data['email'];
+		$all   = $this->settings->all();
+
+		$meta = isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] )
+			? $all['access']['pending_meta']
+			: array();
+		if ( ! isset( $meta[ $email ] ) ) {
+			$meta[ $email ] = array();
+		}
+		// Preserve provider/name, update answers.
+		$meta[ $email ]['provider'] = isset( $data['provider'] ) ? (string) $data['provider'] : '';
+		$meta[ $email ]['name']     = isset( $data['name'] ) ? (string) $data['name'] : '';
+		$meta[ $email ]['answers']  = $answers;
+
+		$all['access']['pending_meta'] = $meta;
+		$this->settings->save( $all );
+		return true;
+	}
+
+	/**
+	 * Get metadata for all pending identities.
+	 *
+	 * @return array Keyed by normalized email.
+	 */
+	public function get_pending_meta() {
+		$all = $this->settings->all();
+		return isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] )
+			? $all['access']['pending_meta']
+			: array();
 	}
 
 	/**
@@ -133,6 +204,14 @@ class Access_List {
 
 		$all['access']['approved'] = array_values( array_unique( array_filter( $approved ) ) );
 		$all['access']['pending']  = array_values( $pending );
+
+		// Clear stored metadata for approved identities.
+		if ( isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] ) ) {
+			foreach ( $emails as $email ) {
+				unset( $all['access']['pending_meta'][ $email ] );
+			}
+		}
+
 		$this->settings->save( $all );
 	}
 

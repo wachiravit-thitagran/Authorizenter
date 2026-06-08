@@ -133,4 +133,22 @@ class OAuthEngineTest extends TestCase {
 		$data   = $result->get_error_data();
 		$this->assertSame( 'https://example.test/denied/', $data['redirect'] );
 	}
+
+	public function test_pending_redirect_appends_token_when_present(): void {
+		$context = array(
+			'id'               => 'default',
+			'deny_redirect'    => '',
+			'pending_redirect' => 'https://example.test/waiting/',
+		);
+		$error = new \WP_Error(
+			'autorizenter_not_approved',
+			'Awaiting approval.',
+			array( 'status' => 403, 'pending_token' => 'abc123' )
+		);
+
+		$result = $this->invoke( $this->engine(), 'attach_deny_redirect', array( $error, $context ) );
+		$data   = $result->get_error_data();
+		$this->assertStringContainsString( 'azr_pending_token=', $data['redirect'] );
+		$this->assertStringContainsString( 'abc123', $data['redirect'] );
+	}
 }

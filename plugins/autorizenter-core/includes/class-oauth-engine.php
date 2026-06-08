@@ -255,8 +255,12 @@ class OAuth_Engine {
 	private function attach_deny_redirect( \WP_Error $error, array $context ) {
 		$pending = isset( $context['pending_redirect'] ) ? (string) $context['pending_redirect'] : '';
 		if ( '' !== $pending && 'autorizenter_not_approved' === $error->get_error_code() ) {
-			$data             = (array) $error->get_error_data();
-			$data['redirect'] = $pending;
+			$data  = (array) $error->get_error_data();
+			$token = isset( $data['pending_token'] ) ? (string) $data['pending_token'] : '';
+			$url   = '' !== $token
+				? add_query_arg( 'azr_pending_token', rawurlencode( $token ), $pending )
+				: $pending;
+			$data['redirect'] = $url;
 			$error->add_data( $data );
 			return $error;
 		}
