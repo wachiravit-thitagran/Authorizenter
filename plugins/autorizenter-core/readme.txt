@@ -39,5 +39,34 @@ Features:
 
 == Changelog ==
 
+= Unreleased =
+* Login contexts — named login profiles with per-context providers, a capability
+  gate (`user_can()`), policy overrides, redirects, and questions.
+* Deny-redirect fallback chain (context → global → context login page).
+* Organization policy is now an explicit opt-in toggle (global + per-context
+  override); off by default, any authenticated user is allowed.
+* Access control parity with Authorizer: approved/blocked/pending access lists
+  (per email or domain), role mapping (`domain:` / `provider:` / `email:` / `*`),
+  failed-login throttling with progressive lockout, and private-site mode.
+* Option to disable WordPress username/password sign-in (force SSO), with an
+  administrator bypass to prevent lockout and a login-form notice.
+* HTTPS enforcement for generic OIDC discovery URLs.
+* Answer reporting: indexed per-question mirror meta, a Reports aggregator,
+  Settings → Autorizenter Report (counts, drill-down, CSV export), and
+  `GET /answers/report`.
+* Logout: `/logout` REST route and optional RP-initiated (single) logout at the IdP.
+* Self-hosted updates from GitHub Releases via `Github_Updater`, configurable with
+  `AUTORIZENTER_GITHUB_REPO` / `autorizenter_github_repo`. The plugin details
+  screen now shows this changelog and full description.
+* Structured admin editors for contexts and questions (replacing raw JSON).
+* Translation template (`languages/autorizenter.pot`).
+* PHPUnit unit test suite runnable without a full WordPress install.
+
 = 0.1.0 =
-* Initial release.
+* OAuth2 Authorization Code engine with PKCE, `state`, and `nonce`.
+* Provider base class and adapters: Generic OIDC, Google, LINE, Facebook.
+* Organization policy: email-domain allowlist, Google `hd` claim, trust-by-IdP.
+* User mapper with auto-provisioning and account linking by verified email.
+* Customizable post-login question system stored in user meta.
+* REST API (`autorizenter/v1`) and action/filter hooks.
+* Admin settings page.

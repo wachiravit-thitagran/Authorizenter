@@ -112,4 +112,50 @@ class GithubUpdaterTest extends TestCase {
 		$res = $this->updater( '0.1.0' )->plugin_info( false, 'plugin_information', (object) array( 'slug' => 'other' ) );
 		$this->assertFalse( $res );
 	}
+
+	public function test_parse_readme_splits_headers_and_sections(): void {
+		$raw = "=== Autorizenter Core ===\n"
+			. "Contributors: autorizenter\n"
+			. "Tags: oauth2, oidc\n"
+			. "Tested up to: 6.5\n"
+			. "Requires PHP: 8.0\n"
+			. "Stable tag: 0.1.0\n"
+			. "\n"
+			. "Short description, ignored.\n"
+			. "\n"
+			. "== Description ==\n"
+			. "\n"
+			. "Body text.\n"
+			. "\n"
+			. "== Changelog ==\n"
+			. "\n"
+			. "= 0.1.0 =\n"
+			. "* Initial release.\n";
+
+		$parsed = $this->invoke( $this->updater( '0.1.0' ), 'parse_readme', array( $raw ) );
+
+		$this->assertSame( 'autorizenter', $parsed['headers']['contributors'] );
+		$this->assertSame( 'oauth2, oidc', $parsed['headers']['tags'] );
+		$this->assertSame( '6.5', $parsed['headers']['tested up to'] );
+		$this->assertSame( '8.0', $parsed['headers']['requires php'] );
+		$this->assertSame( 'Body text.', $parsed['sections']['description'] );
+		$this->assertStringContainsString( '0.1.0', $parsed['sections']['changelog'] );
+	}
+
+	public function test_readme_html_renders_headings_and_lists(): void {
+		$html = $this->invoke(
+			$this->updater( '0.1.0' ),
+			'readme_html',
+			array( "= 0.1.0 =\n* First item.\n* Second item.\n" )
+		);
+
+		$this->assertStringContainsString( '<h4>0.1.0</h4>', $html );
+		$this->assertStringContainsString( '<li>First item.</li>', $html );
+		$this->assertStringContainsString( '<li>Second item.</li>', $html );
+	}
+
+	public function test_csv_list_builds_keyed_array(): void {
+		$out = $this->invoke( $this->updater( '0.1.0' ), 'csv_list', array( 'oauth2, oidc , , sso' ) );
+		$this->assertSame( array( 'oauth2' => 'oauth2', 'oidc' => 'oidc', 'sso' => 'sso' ), $out );
+	}
 }
