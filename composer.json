@@ -16,6 +16,9 @@
         "phpunit/phpunit": "^9.6"
     },
     "config": {
+        "platform": {
+            "php": "8.0"
+        },
         "allow-plugins": {
             "dealerdirect/phpcodesniffer-composer-installer": true
         }
