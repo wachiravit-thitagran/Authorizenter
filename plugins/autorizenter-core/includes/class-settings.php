@@ -82,6 +82,7 @@ class Settings {
 					'required_capability' => 'read',  // every logged-in user has this.
 					'redirect'            => '',       // empty = use return_to / home.
 					'deny_redirect'       => '',
+					'pending_redirect'    => '',
 					'questions'           => array(),  // empty = all questions; or list of ids.
 					// These keys override the global policy/users values when set (null = inherit global).
 					'policy_enabled'      => null,
@@ -176,6 +177,7 @@ class Settings {
 			'deny_redirect'          => isset( $ctx['deny_redirect'] ) && '' !== $ctx['deny_redirect']
 				? $ctx['deny_redirect']
 				: ( isset( $advanced['deny_redirect'] ) ? $advanced['deny_redirect'] : '' ),
+			'pending_redirect'       => isset( $ctx['pending_redirect'] ) ? $ctx['pending_redirect'] : '',
 			'questions'              => isset( $ctx['questions'] ) && is_array( $ctx['questions'] ) ? array_map( 'sanitize_key', $ctx['questions'] ) : array(),
 			// Policy values: context override (when not null) else global.
 			'policy_enabled'         => (bool) $this->ctx_override( $ctx, 'policy_enabled', ! empty( $policy['enabled'] ) ),

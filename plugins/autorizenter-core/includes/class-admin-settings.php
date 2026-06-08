@@ -318,6 +318,7 @@ class Admin_Settings {
 				'required_capability' => '' !== $cap ? $cap : 'read',
 				'redirect'            => isset( $row['redirect'] ) ? esc_url_raw( $row['redirect'] ) : '',
 				'deny_redirect'       => isset( $row['deny_redirect'] ) ? esc_url_raw( $row['deny_redirect'] ) : '',
+				'pending_redirect'    => isset( $row['pending_redirect'] ) ? esc_url_raw( $row['pending_redirect'] ) : '',
 				'questions'           => $questions,
 				'policy_enabled'      => $policy_enabled,
 				'allowed_domains'     => $allowed_domains,
@@ -536,6 +537,7 @@ class Admin_Settings {
 		$cap          = isset( $ctx['required_capability'] ) ? $ctx['required_capability'] : 'read';
 		$redirect     = isset( $ctx['redirect'] ) ? $ctx['redirect'] : '';
 		$deny         = isset( $ctx['deny_redirect'] ) ? $ctx['deny_redirect'] : '';
+		$pending      = isset( $ctx['pending_redirect'] ) ? $ctx['pending_redirect'] : '';
 		$providers    = isset( $ctx['providers'] ) && is_array( $ctx['providers'] ) ? $ctx['providers'] : array();
 		$questions    = isset( $ctx['questions'] ) && is_array( $ctx['questions'] ) ? implode( ', ', $ctx['questions'] ) : '';
 		$domains_null = ! array_key_exists( 'allowed_domains', $ctx ) || null === $ctx['allowed_domains'];
@@ -594,6 +596,13 @@ class Admin_Settings {
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Deny redirect', 'autorizenter' ); ?></th>
 					<td><input type="text" class="regular-text" name="<?php echo esc_attr( $name ); ?>[deny_redirect]" value="<?php echo esc_attr( $deny ); ?>" placeholder="<?php esc_attr_e( '(inherit global)', 'autorizenter' ); ?>" /></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Pending redirect', 'autorizenter' ); ?></th>
+					<td>
+						<input type="text" class="regular-text" name="<?php echo esc_attr( $name ); ?>[pending_redirect]" value="<?php echo esc_attr( $pending ); ?>" placeholder="<?php esc_attr_e( '/waiting-for-approval/', 'autorizenter' ); ?>" />
+						<p class="description"><?php esc_html_e( 'Where to send users who are waiting for admin approval. Leave blank to fall back to the deny redirect.', 'autorizenter' ); ?></p>
+					</td>
 				</tr>
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Enforce policy', 'autorizenter' ); ?></th>
