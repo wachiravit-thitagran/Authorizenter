@@ -891,6 +891,10 @@ class Admin_Settings {
 								<input type="password" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][client_secret]" placeholder="<?php echo $has_secret ? esc_attr__( '•••••• (stored — leave blank to keep)', 'autorizenter' ) : ''; ?>" autocomplete="new-password" />
 							</td>
 						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Label', 'autorizenter' ); ?></th>
+							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][label]" value="<?php echo esc_attr( isset( $p['label'] ) ? $p['label'] : '' ); ?>" placeholder="<?php echo esc_attr( $is_generic ? __( 'SSO', 'autorizenter' ) : ucfirst( $id ) ); ?>" /></td>
+						</tr>
 						<?php if ( $is_generic ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Discovery URL', 'autorizenter' ); ?></th>
@@ -898,10 +902,6 @@ class Admin_Settings {
 								<input type="url" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][discovery_url]" value="<?php echo esc_attr( isset( $p['discovery_url'] ) ? $p['discovery_url'] : '' ); ?>" placeholder="https://idp.example.org/.well-known/openid-configuration" />
 								<p class="description"><?php esc_html_e( 'Your organization IdP (Azure AD, Keycloak, Okta, university SSO, ...).', 'autorizenter' ); ?></p>
 							</td>
-						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Label', 'autorizenter' ); ?></th>
-							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][label]" value="<?php echo esc_attr( isset( $p['label'] ) ? $p['label'] : '' ); ?>" placeholder="<?php esc_attr_e( 'SSO', 'autorizenter' ); ?>" /></td>
 						</tr>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Scopes', 'autorizenter' ); ?></th>

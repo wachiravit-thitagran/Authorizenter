@@ -29,7 +29,9 @@ class Line extends OIDC {
 	 * {@inheritDoc}
 	 */
 	public function label() {
-		return __( 'LINE', 'autorizenter' );
+		return isset( $this->config['label'] ) && '' !== $this->config['label']
+			? (string) $this->config['label']
+			: __( 'LINE', 'autorizenter' );
 	}
 
 	/**
