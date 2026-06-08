@@ -22,6 +22,7 @@ class Frontend {
 	 */
 	public function hooks() {
 		add_shortcode( 'autorizenter_login', array( $this, 'render_login' ) );
+		add_shortcode( 'autorizenter_button', array( $this, 'render_button' ) );
 		add_shortcode( 'autorizenter_logout', array( $this, 'render_logout' ) );
 		add_shortcode( 'autorizenter_questions', array( $this, 'render_questions' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'assets' ) );
@@ -168,6 +169,66 @@ class Frontend {
 		ob_start();
 		include AUTORIZENTER_UI_DIR . 'templates/login.php';
 		return ob_get_clean();
+	}
+
+	/**
+	 * Render a single provider login button.
+	 *
+	 * ใช้เมื่อต้องการวางปุ่ม login ของ provider เดียว และจัดเรียงเองในหน้า
+	 * [autorizenter_button provider="google" context="default" return_to=""]
+	 *
+	 * @param array $atts Shortcode attributes.
+	 * @return string
+	 */
+	public function render_button( $atts ) {
+		$atts = shortcode_atts(
+			array(
+				'provider'  => '',
+				'context'   => 'default',
+				'return_to' => '',
+			),
+			$atts,
+			'autorizenter_button'
+		);
+
+		if ( is_user_logged_in() || '' === $atts['provider'] ) {
+			return '';
+		}
+
+		$core        = \Autorizenter\Core\autorizenter_core();
+		$context_id  = sanitize_key( $atts['context'] );
+		$provider_id = sanitize_key( $atts['provider'] );
+		$context     = $core->settings->get_context( $context_id );
+		$providers   = $core->providers->enabled_for_context( $context );
+
+		if ( ! isset( $providers[ $provider_id ] ) ) {
+			return '';
+		}
+
+		$provider  = $providers[ $provider_id ];
+		$return_to = '' !== $atts['return_to'] ? $atts['return_to'] : $this->current_url();
+		$url       = add_query_arg(
+			array(
+				'context'   => $context_id,
+				'return_to' => rawurlencode( $return_to ),
+			),
+			rest_url( 'autorizenter/v1/authorize/' . $provider_id )
+		);
+
+		wp_enqueue_style( 'autorizenter-ui' );
+
+		$logo = $provider->logo_url();
+		$icon = '' !== $logo
+			? '<img src="' . esc_url( $logo ) . '" alt="" width="20" height="20" loading="lazy" />'
+			: \Autorizenter\UI\Logos::svg( $provider_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+
+		return '<a class="autorizenter-btn autorizenter-btn--' . esc_attr( $provider_id ) . '" href="' . esc_url( $url ) . '">' .
+			'<span class="autorizenter-btn__icon">' . $icon . '</span>' .
+			'<span class="autorizenter-btn__label">' .
+				/* translators: %s: provider label */
+				sprintf( esc_html__( 'Continue with %s', 'autorizenter' ), esc_html( $provider->label() ) ) .
+			'</span>' .
+			'</a>';
 	}
 
 	/**
