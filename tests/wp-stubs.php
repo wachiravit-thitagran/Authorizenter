@@ -259,6 +259,8 @@ function current_user_can( $cap ) { return true; }
 
 // --- i18n / escaping / sanitizers (passthrough-ish) -------------------------
 
+function wp_json_encode( $data, $options = 0, $depth = 512 ) { return json_encode( $data, $options, $depth ); }
+
 function __( $text, $domain = null ) { return $text; }
 function esc_attr__( $text, $domain = null ) { return $text; }
 function esc_html__( $text, $domain = null ) { return $text; }
