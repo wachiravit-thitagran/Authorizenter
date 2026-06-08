@@ -92,4 +92,115 @@ class UserMapperTest extends TestCase {
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 	}
+
+	public function test_link_by_username_finds_existing_user(): void {
+		update_option( Settings::OPTION, array(
+			'users'     => array( 'auto_provision' => false, 'link_by_email' => false ),
+			'providers' => array( 'oidc' => array( 'link_by_username' => true ) ),
+		) );
+		azr_test_make_user( 20, array( 'read' => true ), 'u@example.test' );
+
+		$identity = new Identity( 'oidc', array(
+			'sub'            => 'OIDC-SUB-1',
+			'email'          => 'u@example.test',
+			'email_verified' => true,
+			'username'       => 'user20',
+		) );
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		$user     = $mapper->resolve( $identity );
+
+		$this->assertInstanceOf( \WP_User::class, $user );
+		$this->assertSame( 20, $user->ID );
+		$this->assertSame( 'OIDC-SUB-1', get_user_meta( 20, 'autorizenter_link_oidc', true ) );
+	}
+
+	public function test_provision_stores_first_and_last_name(): void {
+		update_option( Settings::OPTION, array(
+			'users' => array( 'auto_provision' => true, 'link_by_email' => false, 'default_role' => 'subscriber' ),
+		) );
+		$identity = new Identity( 'oidc', array(
+			'sub'            => 'SUB-NEW',
+			'email'          => 'new@example.test',
+			'first_name'     => 'Somchai',
+			'last_name'      => 'Jaidee',
+			'email_verified' => true,
+		) );
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		$user     = $mapper->resolve( $identity );
+
+		$this->assertInstanceOf( \WP_User::class, $user );
+		$this->assertSame( 'Somchai', get_user_meta( $user->ID, 'first_name', true ) );
+		$this->assertSame( 'Jaidee', get_user_meta( $user->ID, 'last_name', true ) );
+	}
+
+	public function test_name_update_always_overwrites(): void {
+		update_option( Settings::OPTION, array(
+			'users'     => array( 'auto_provision' => false, 'link_by_email' => false ),
+			'providers' => array( 'oidc' => array( 'name_update' => 'always' ) ),
+		) );
+		azr_test_make_user( 30, array( 'read' => true ), 'u30@example.test' );
+		update_user_meta( 30, 'autorizenter_link_oidc', 'SUB-30' );
+		update_user_meta( 30, 'first_name', 'OldFirst' );
+		update_user_meta( 30, 'last_name', 'OldLast' );
+
+		$identity = new Identity( 'oidc', array(
+			'sub'        => 'SUB-30',
+			'first_name' => 'NewFirst',
+			'last_name'  => 'NewLast',
+		) );
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		$mapper->resolve( $identity );
+
+		$this->assertSame( 'NewFirst', get_user_meta( 30, 'first_name', true ) );
+		$this->assertSame( 'NewLast', get_user_meta( 30, 'last_name', true ) );
+	}
+
+	public function test_name_update_if_empty_does_not_overwrite(): void {
+		update_option( Settings::OPTION, array(
+			'users'     => array( 'auto_provision' => false, 'link_by_email' => false ),
+			'providers' => array( 'oidc' => array( 'name_update' => 'if_empty' ) ),
+		) );
+		azr_test_make_user( 31, array( 'read' => true ), 'u31@example.test' );
+		update_user_meta( 31, 'autorizenter_link_oidc', 'SUB-31' );
+		update_user_meta( 31, 'first_name', 'KeepThis' );
+		update_user_meta( 31, 'last_name', '' );
+
+		$identity = new Identity( 'oidc', array(
+			'sub'        => 'SUB-31',
+			'first_name' => 'ShouldNotChange',
+			'last_name'  => 'ShouldSet',
+		) );
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		$mapper->resolve( $identity );
+
+		$this->assertSame( 'KeepThis', get_user_meta( 31, 'first_name', true ) );
+		$this->assertSame( 'ShouldSet', get_user_meta( 31, 'last_name', true ) );
+	}
+
+	public function test_name_update_none_does_not_change(): void {
+		update_option( Settings::OPTION, array(
+			'users'     => array( 'auto_provision' => false, 'link_by_email' => false ),
+			'providers' => array( 'oidc' => array( 'name_update' => 'none' ) ),
+		) );
+		azr_test_make_user( 32, array( 'read' => true ), 'u32@example.test' );
+		update_user_meta( 32, 'autorizenter_link_oidc', 'SUB-32' );
+		update_user_meta( 32, 'first_name', 'Stay' );
+		update_user_meta( 32, 'last_name', 'Same' );
+
+		$identity = new Identity( 'oidc', array(
+			'sub'        => 'SUB-32',
+			'first_name' => 'Changed',
+			'last_name'  => 'Changed',
+		) );
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		$mapper->resolve( $identity );
+
+		$this->assertSame( 'Stay', get_user_meta( 32, 'first_name', true ) );
+		$this->assertSame( 'Same', get_user_meta( 32, 'last_name', true ) );
+	}
 }

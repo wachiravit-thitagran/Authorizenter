@@ -56,10 +56,23 @@ class User_Mapper {
 			$cfg['auto_provision'] = (bool) $context['auto_provision'];
 		}
 
+		$provider_cfg = $this->provider_config( $identity->provider );
+
 		// 1. Existing link by provider + subject id.
 		$user = $this->find_by_link( $identity->provider, $identity->sub );
 		if ( $user ) {
+			$this->maybe_update_name( $user, $identity, $provider_cfg );
 			return $user;
+		}
+
+		// 1b. Link by username (when enabled in provider config).
+		if ( ! empty( $provider_cfg['link_by_username'] ) && '' !== $identity->username ) {
+			$by_login = get_user_by( 'login', $identity->username );
+			if ( $by_login ) {
+				$this->store_link( $by_login->ID, $identity );
+				$this->maybe_update_name( $by_login, $identity, $provider_cfg );
+				return $by_login;
+			}
 		}
 
 		// 2. Link by verified email.
@@ -67,6 +80,7 @@ class User_Mapper {
 			$existing = get_user_by( 'email', $identity->email );
 			if ( $existing ) {
 				$this->store_link( $existing->ID, $identity );
+				$this->maybe_update_name( $existing, $identity, $provider_cfg );
 				return $existing;
 			}
 		}
@@ -119,6 +133,14 @@ class User_Mapper {
 
 		$user = get_user_by( 'id', $user_id );
 		$this->store_link( $user_id, $identity );
+
+		if ( '' !== $identity->first_name || '' !== $identity->last_name ) {
+			wp_update_user( array(
+				'ID'         => $user_id,
+				'first_name' => $identity->first_name,
+				'last_name'  => $identity->last_name,
+			) );
+		}
 
 		/**
 		 * Fires when a new user is provisioned via Autorizenter.
@@ -243,5 +265,48 @@ class User_Mapper {
 		$base  = sanitize_user( $local ? $local : ( $identity->provider . '_' . $identity->sub ), true );
 		$base  = $base ? $base : 'user_' . substr( md5( $identity->sub . $identity->provider ), 0, 8 );
 		return $base;
+	}
+
+	/**
+	 * Read raw provider config by provider id.
+	 *
+	 * @param string $provider Provider id.
+	 * @return array
+	 */
+	private function provider_config( $provider ) {
+		$providers = $this->settings->get( 'providers' );
+		return isset( $providers[ $provider ] ) && is_array( $providers[ $provider ] )
+			? $providers[ $provider ]
+			: array();
+	}
+
+	/**
+	 * Update first/last name of an existing user based on provider name_update policy.
+	 *
+	 * @param \WP_User $user         Resolved user.
+	 * @param Identity $identity     Identity.
+	 * @param array    $provider_cfg Provider config.
+	 * @return void
+	 */
+	private function maybe_update_name( \WP_User $user, Identity $identity, array $provider_cfg ) {
+		$mode = isset( $provider_cfg['name_update'] ) ? $provider_cfg['name_update'] : 'none';
+		if ( 'none' === $mode || ( '' === $identity->first_name && '' === $identity->last_name ) ) {
+			return;
+		}
+		$update = array( 'ID' => $user->ID );
+		if ( 'always' === $mode ) {
+			$update['first_name'] = $identity->first_name;
+			$update['last_name']  = $identity->last_name;
+		} elseif ( 'if_empty' === $mode ) {
+			if ( '' === get_user_meta( $user->ID, 'first_name', true ) ) {
+				$update['first_name'] = $identity->first_name;
+			}
+			if ( '' === get_user_meta( $user->ID, 'last_name', true ) ) {
+				$update['last_name'] = $identity->last_name;
+			}
+		}
+		if ( count( $update ) > 1 ) {
+			wp_update_user( $update );
+		}
 	}
 }
