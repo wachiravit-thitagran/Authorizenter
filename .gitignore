@@ -1,0 +1,27 @@
+# Dependencies
+/vendor/
+node_modules/
+
+# Per-plugin composer vendors
+plugins/*/vendor/
+
+# Env / secrets — never commit
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets.php
+
+# Build / OS / editor
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.zip
+
+# PHPUnit / tooling
+.phpunit.result.cache
+/build/
+/coverage/

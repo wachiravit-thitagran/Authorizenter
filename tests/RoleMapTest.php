@@ -1,0 +1,132 @@
+<?php
+/**
+ * Tests for role mapping during provisioning, and private-site decisions.
+ *
+ * @package Autorizenter\Core\Tests
+ */
+
+namespace Autorizenter\Core\Tests;
+
+use Autorizenter\Core\Settings;
+use Autorizenter\Core\Org_Policy;
+use Autorizenter\Core\User_Mapper;
+use Autorizenter\Core\Private_Site;
+use Autorizenter\Core\Identity;
+use PHPUnit\Framework\TestCase;
+
+class RoleMapTest extends TestCase {
+
+	/** @var User_Mapper */
+	private $mapper;
+
+	protected function setUp(): void {
+		azr_test_reset();
+		$settings     = new Settings();
+		$this->mapper = new User_Mapper( $settings, new Org_Policy( $settings ) );
+	}
+
+	private function id( string $provider, string $email ): Identity {
+		return new Identity( $provider, array( 'email' => $email, 'email_verified' => true ) );
+	}
+
+	public function test_default_role_when_no_map(): void {
+		$cfg  = array( 'default_role' => 'subscriber', 'role_map' => array() );
+		$role = $this->mapper->resolve_role( $this->id( 'google', 'a@psu.ac.th' ), $cfg );
+		$this->assertSame( 'subscriber', $role );
+	}
+
+	public function test_domain_match_wins(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array(
+				array( 'match' => 'domain:staff.psu.ac.th', 'role' => 'editor' ),
+			),
+		);
+		$this->assertSame( 'editor', $this->mapper->resolve_role( $this->id( 'google', 'p@staff.psu.ac.th' ), $cfg ) );
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'google', 'p@student.psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_provider_match(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array( array( 'match' => 'provider:oidc', 'role' => 'author' ) ),
+		);
+		$this->assertSame( 'author', $this->mapper->resolve_role( $this->id( 'oidc', 'x@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_first_match_wins(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array(
+				array( 'match' => 'email:boss@psu.ac.th', 'role' => 'administrator' ),
+				array( 'match' => 'domain:psu.ac.th', 'role' => 'editor' ),
+			),
+		);
+		$this->assertSame( 'administrator', $this->mapper->resolve_role( $this->id( 'google', 'boss@psu.ac.th' ), $cfg ) );
+		$this->assertSame( 'editor', $this->mapper->resolve_role( $this->id( 'google', 'other@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_email_matcher(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array( array( 'match' => 'email:vip@psu.ac.th', 'role' => 'editor' ) ),
+		);
+		$this->assertSame( 'editor', $this->mapper->resolve_role( $this->id( 'google', 'vip@psu.ac.th' ), $cfg ) );
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'google', 'other@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_malformed_rules_are_ignored(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array(
+				array( 'match' => '', 'role' => 'editor' ),        // empty match.
+				array( 'match' => 'domain:psu.ac.th' ),            // missing role.
+				array( 'match' => 'nocolon', 'role' => 'author' ), // invalid matcher.
+			),
+		);
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'google', 'a@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_provision_applies_mapped_role(): void {
+		update_option(
+			Settings::OPTION,
+			array(
+				'users' => array(
+					'auto_provision' => true,
+					'default_role'   => 'subscriber',
+					'role_map'       => array( array( 'match' => 'domain:psu.ac.th', 'role' => 'editor' ) ),
+				),
+			)
+		);
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+
+		$user = $mapper->resolve( $this->id( 'google', 'new@psu.ac.th' ) );
+		$this->assertInstanceOf( \WP_User::class, $user );
+		$this->assertSame( 'editor', $user->role );
+	}
+
+	public function test_wildcard_catch_all(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array( array( 'match' => '*', 'role' => 'contributor' ) ),
+		);
+		$this->assertSame( 'contributor', $this->mapper->resolve_role( $this->id( 'facebook', 'z@any.com' ), $cfg ) );
+	}
+
+	public function test_private_site_decision(): void {
+		update_option( Settings::OPTION, array( 'private_site' => array( 'enabled' => true ) ) );
+		$ps = new Private_Site( new Settings() );
+
+		$this->assertTrue( $ps->should_block( false, false, false ) );  // anon, normal page.
+		$this->assertFalse( $ps->should_block( true, false, false ) );  // logged in.
+		$this->assertFalse( $ps->should_block( false, true, false ) );  // login page.
+		$this->assertFalse( $ps->should_block( false, false, true ) );  // explicitly allowed.
+	}
+
+	public function test_private_site_disabled_never_blocks(): void {
+		update_option( Settings::OPTION, array( 'private_site' => array( 'enabled' => false ) ) );
+		$ps = new Private_Site( new Settings() );
+		$this->assertFalse( $ps->should_block( false, false, false ) );
+	}
+}
