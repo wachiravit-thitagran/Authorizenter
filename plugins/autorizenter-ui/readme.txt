@@ -33,5 +33,16 @@ hooks, so you can replace it with your own front-end at any time.
 
 == Changelog ==
 
+= Unreleased =
+* `[autorizenter_login]` supports named login contexts (`context="…"`) with
+  per-context providers, redirects, and questions.
+* `[autorizenter_logout]` shortcode and the Gutenberg **Autorizenter Login** and
+  **Autorizenter Logout** blocks (server-rendered, with live editor preview).
+* Auto-creates a "A few questions" page and redirects users with pending required
+  questions to the form automatically.
+* Translation template (`languages/autorizenter.pot`).
+
 = 0.1.0 =
-* Initial release.
+* `[autorizenter_login]` and `[autorizenter_questions]` shortcodes.
+* Auto-created login page on activation.
+* Default templates and assets consuming Core.

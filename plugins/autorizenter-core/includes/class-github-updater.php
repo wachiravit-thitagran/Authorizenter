@@ -176,6 +176,112 @@ class Github_Updater {
 	}
 
 	/**
+	 * Read the plugin's bundled readme.txt (sits next to the main file).
+	 *
+	 * @return string Raw contents, or '' if absent/unreadable.
+	 */
+	private function read_readme() {
+		$path = dirname( $this->file ) . '/readme.txt';
+		if ( ! is_readable( $path ) ) {
+			return '';
+		}
+		return (string) file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a bundled plugin file, not a remote resource.
+	}
+
+	/**
+	 * Parse a WordPress-format readme.txt into its header fields and sections.
+	 *
+	 * Header keys and section names are lowercased so callers can read them
+	 * case-insensitively (e.g. $parsed['headers']['tested up to'],
+	 * $parsed['sections']['changelog']).
+	 *
+	 * @param string $raw Raw readme.txt contents.
+	 * @return array{headers:array<string,string>,sections:array<string,string>}
+	 */
+	private function parse_readme( $raw ) {
+		$raw      = str_replace( "\r\n", "\n", (string) $raw );
+		$headers  = array();
+		$sections = array();
+
+		// Split off the header block (everything before the first "== Section ==").
+		// The space requirement keeps the "=== Title ===" line out of the matches.
+		$parts = preg_split( '/^==[ \t]+(.+?)[ \t]+==[ \t]*$/m', $raw, -1, PREG_SPLIT_DELIM_CAPTURE );
+		$head  = (string) array_shift( $parts );
+
+		foreach ( explode( "\n", $head ) as $line ) {
+			if ( preg_match( '/^([A-Za-z][A-Za-z .]+?):\s*(.*)$/', trim( $line ), $m ) ) {
+				$headers[ strtolower( $m[1] ) ] = trim( $m[2] );
+			}
+		}
+
+		$count = count( $parts );
+		for ( $i = 0; $i + 1 < $count; $i += 2 ) {
+			$sections[ strtolower( trim( $parts[ $i ] ) ) ] = trim( $parts[ $i + 1 ] );
+		}
+
+		return array(
+			'headers'  => $headers,
+			'sections' => $sections,
+		);
+	}
+
+	/**
+	 * Convert a readme section's WordPress markup to HTML for the details modal:
+	 * "= Subheading =" becomes an <h4>, runs of "* item" lines become a <ul>, and
+	 * remaining prose is wrapped into paragraphs.
+	 *
+	 * @param string $text Section body.
+	 * @return string Sanitized HTML.
+	 */
+	private function readme_html( $text ) {
+		$lines = explode( "\n", str_replace( "\r\n", "\n", (string) $text ) );
+		$html  = '';
+		$items = array();
+
+		foreach ( $lines as $line ) {
+			$trimmed = trim( $line );
+
+			if ( preg_match( '/^\*\s+(.*)$/', $trimmed, $m ) ) {
+				$items[] = $m[1]; // Start of a new bullet.
+				continue;
+			}
+			if ( $items && '' !== $trimmed && ! preg_match( '/^=.*=$/', $trimmed ) ) {
+				$items[ count( $items ) - 1 ] .= ' ' . $trimmed; // Wrapped continuation of the current bullet.
+				continue;
+			}
+			if ( $items ) { // Any other line closes an open list.
+				$html .= '<ul><li>' . implode( '</li><li>', $items ) . "</li></ul>\n";
+				$items = array();
+			}
+			if ( preg_match( '/^=\s*(.+?)\s*=$/', $trimmed, $m ) ) {
+				$html .= '<h4>' . $m[1] . "</h4>\n";
+				continue;
+			}
+			$html .= $line . "\n";
+		}
+		if ( $items ) {
+			$html .= '<ul><li>' . implode( '</li><li>', $items ) . "</li></ul>\n";
+		}
+
+		return wp_kses_post( wpautop( $html ) );
+	}
+
+	/**
+	 * Turn a comma-separated header value into a key=>value array, as the modal
+	 * expects for contributors and tags.
+	 *
+	 * @param string $csv Comma-separated list.
+	 * @return array<string,string>
+	 */
+	private function csv_list( $csv ) {
+		$out = array();
+		foreach ( array_filter( array_map( 'trim', explode( ',', (string) $csv ) ) ) as $item ) {
+			$out[ $item ] = $item;
+		}
+		return $out;
+	}
+
+	/**
 	 * Inject an available update into the update_plugins transient.
 	 *
 	 * @param mixed $transient Update transient (object) or empty.
@@ -243,27 +349,54 @@ class Github_Updater {
 			return $result;
 		}
 
+		$data     = get_plugin_data( $this->file, false, false );
+		$readme   = $this->parse_readme( $this->read_readme() );
+		$headers  = $readme['headers'];
+		$sections = $readme['sections'];
+
+		// A GitHub release is optional — it only enriches version/date/download.
 		$release = $this->latest_release();
-		if ( null === $release ) {
-			return $result;
+
+		$version = ! empty( $headers['stable tag'] ) ? $headers['stable tag'] : $this->normalize( $this->version );
+		if ( null !== $release && ! empty( $release['tag_name'] ) ) {
+			$version = $this->normalize( $release['tag_name'] );
 		}
 
-		$data = get_plugin_data( $this->file, false, false );
+		$description = ! empty( $sections['description'] )
+			? $this->readme_html( $sections['description'] )
+			: ( isset( $data['Description'] ) ? $data['Description'] : '' );
 
-		return (object) array(
+		$changelog = ! empty( $sections['changelog'] )
+			? $this->readme_html( $sections['changelog'] )
+			: ( ( null !== $release && ! empty( $release['body'] ) ) ? wp_kses_post( wpautop( $release['body'] ) ) : '' );
+
+		$info = array(
 			'name'          => isset( $data['Name'] ) ? $data['Name'] : $this->slug,
 			'slug'          => $this->slug,
-			'version'       => $this->normalize( $release['tag_name'] ),
+			'version'       => $version,
 			'author'        => isset( $data['Author'] ) ? $data['Author'] : '',
 			'homepage'      => 'https://github.com/' . $this->repo,
-			'download_link' => $this->package_url( $release ),
-			'requires'      => '6.0',
-			'requires_php'  => '8.0',
+			'download_link' => null !== $release ? $this->package_url( $release ) : '',
+			'requires'      => ! empty( $headers['requires at least'] ) ? $headers['requires at least'] : '6.0',
+			'requires_php'  => ! empty( $headers['requires php'] ) ? $headers['requires php'] : '8.0',
+			'tested'        => ! empty( $headers['tested up to'] ) ? $headers['tested up to'] : '',
 			'sections'      => array(
-				'description' => isset( $data['Description'] ) ? $data['Description'] : '',
-				'changelog'   => isset( $release['body'] ) ? wp_kses_post( wpautop( $release['body'] ) ) : '',
+				'description' => $description,
+				'changelog'   => $changelog,
 			),
 		);
+
+		if ( ! empty( $headers['contributors'] ) ) {
+			$info['contributors'] = $this->csv_list( $headers['contributors'] );
+		}
+		if ( ! empty( $headers['tags'] ) ) {
+			$info['tags'] = $this->csv_list( $headers['tags'] );
+		}
+		if ( null !== $release && ! empty( $release['published_at'] ) ) {
+			$info['last_updated'] = $release['published_at'];
+		}
+
+		return (object) $info;
 	}
 
 	/**
