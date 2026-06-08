@@ -82,3 +82,4 @@ class ProvidersTest extends TestCase {
 		$this->assertFalse( ( new Google( $settings, array( 'enabled' => false, 'client_id' => 'abc' ) ) )->is_enabled() );
 	}
 }
+
