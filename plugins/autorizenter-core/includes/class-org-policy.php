@@ -76,19 +76,21 @@ class Org_Policy {
 	 * @return true|\WP_Error True if allowed, WP_Error otherwise.
 	 */
 	public function is_allowed( Identity $identity, $context = null ) {
-		// Access lists (blocked / approved) apply regardless of the org-policy
-		// toggle, so a blocked user is denied even when policy enforcement is off.
-		$access = $this->access->evaluate( $identity );
-		if ( is_wp_error( $access ) ) {
-			return $access;
-		}
-
 		if ( is_array( $context ) ) {
 			$policy  = $context;
 			$enabled = ! empty( $context['policy_enabled'] );
 		} else {
 			$policy  = $this->settings->get( 'policy' );
 			$enabled = ! empty( $policy['enabled'] );
+		}
+
+		// Trusted providers bypass both domain checks and the approved-list gate,
+		// but blocked entries are always enforced regardless of trust.
+		$trusted = isset( $policy['trusted_providers'] ) ? (array) $policy['trusted_providers'] : array();
+
+		$access = $this->access->evaluate( $identity, $trusted );
+		if ( is_wp_error( $access ) ) {
+			return $access;
 		}
 
 		// Organization policy is opt-in. When disabled, allow any authenticated
@@ -99,7 +101,6 @@ class Org_Policy {
 		}
 
 		// 1. Trusted providers bypass domain checks (e.g. your own org IdP).
-		$trusted    = isset( $policy['trusted_providers'] ) ? (array) $policy['trusted_providers'] : array();
 		$trusted_ok = in_array( $identity->provider, $trusted, true );
 
 		if ( ! $trusted_ok ) {

@@ -64,17 +64,23 @@ class Access_List {
 	/**
 	 * Evaluate an identity against the lists.
 	 *
-	 * @param Identity $identity Identity.
+	 * Blocked entries are always enforced. Approved-list enforcement is skipped for
+	 * providers listed in $trusted_providers (they are allowed without needing approval).
+	 *
+	 * @param Identity $identity          Identity.
+	 * @param string[] $trusted_providers Provider IDs whose users bypass approval enforcement.
 	 * @return true|\WP_Error
 	 */
-	public function evaluate( Identity $identity ) {
+	public function evaluate( Identity $identity, array $trusted_providers = array() ) {
 		$email = $identity->email;
 
 		if ( '' !== $email && $this->matches( $email, $this->entries( 'blocked' ) ) ) {
 			return new \WP_Error( 'autorizenter_blocked', __( 'Your account has been blocked from this site.', 'autorizenter' ), array( 'status' => 403 ) );
 		}
 
-		if ( $this->is_enforced() ) {
+		$is_trusted = in_array( $identity->provider, $trusted_providers, true );
+
+		if ( ! $is_trusted && $this->is_enforced() ) {
 			if ( '' === $email || ! $this->matches( $email, $this->entries( 'approved' ) ) ) {
 				if ( '' !== $email ) {
 					$this->add_pending( $email );
