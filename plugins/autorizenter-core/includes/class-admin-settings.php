@@ -114,6 +114,27 @@ class Admin_Settings {
 				$entry['client_secret'] = '';
 			}
 
+			// OIDC-only extended fields.
+			if ( 'oidc' === $id ) {
+				$entry['issuer_url']                  = isset( $p['issuer_url'] ) ? esc_url_raw( $p['issuer_url'] ) : '';
+				$entry['attr_username']               = isset( $p['attr_username'] ) ? sanitize_key( $p['attr_username'] ) : '';
+				$entry['attr_email']                  = isset( $p['attr_email'] ) ? sanitize_key( $p['attr_email'] ) : '';
+				$entry['attr_first_name']             = isset( $p['attr_first_name'] ) ? sanitize_key( $p['attr_first_name'] ) : '';
+				$entry['attr_last_name']              = isset( $p['attr_last_name'] ) ? sanitize_key( $p['attr_last_name'] ) : '';
+				$entry['name_update']                 = isset( $p['name_update'] ) && in_array( $p['name_update'], array( 'none', 'always', 'if_empty' ), true ) ? $p['name_update'] : 'none';
+				$entry['auth_method']                 = isset( $p['auth_method'] ) && in_array( $p['auth_method'], array( 'auto', 'post', 'basic', 'secret_jwt', 'private_key_jwt' ), true ) ? $p['auth_method'] : 'auto';
+				$entry['oidc_require_verified_email'] = ! empty( $p['oidc_require_verified_email'] );
+				$entry['link_by_username']            = ! empty( $p['link_by_username'] );
+
+				if ( isset( $p['private_key'] ) && '' !== trim( $p['private_key'] ) ) {
+					$entry['private_key'] = $this->settings->encrypt( sanitize_textarea_field( $p['private_key'] ) );
+				} elseif ( isset( $cur['private_key'] ) ) {
+					$entry['private_key'] = $cur['private_key'];
+				} else {
+					$entry['private_key'] = '';
+				}
+			}
+
 			$all['providers'][ $id ] = $entry;
 		}
 
@@ -892,6 +913,66 @@ class Admin_Settings {
 								<input type="url" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][logo_url]" value="<?php echo esc_attr( isset( $p['logo_url'] ) ? $p['logo_url'] : '' ); ?>" placeholder="https://example.org/logo.svg" />
 								<p class="description"><?php esc_html_e( 'Optional. Shown on the SSO button instead of the default lock icon (square image, e.g. 20×20 SVG or PNG).', 'autorizenter' ); ?></p>
 							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Issuer URL', 'autorizenter' ); ?></th>
+							<td>
+								<input type="url" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][issuer_url]" value="<?php echo esc_attr( isset( $p['issuer_url'] ) ? $p['issuer_url'] : '' ); ?>" placeholder="https://idp.example.org" />
+								<p class="description"><?php esc_html_e( 'Override the issuer from the discovery document. Leave blank to use the discovery value.', 'autorizenter' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Username attribute', 'autorizenter' ); ?></th>
+							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][attr_username]" value="<?php echo esc_attr( isset( $p['attr_username'] ) ? $p['attr_username'] : '' ); ?>" placeholder="sub" /></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Email attribute', 'autorizenter' ); ?></th>
+							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][attr_email]" value="<?php echo esc_attr( isset( $p['attr_email'] ) ? $p['attr_email'] : '' ); ?>" placeholder="email" /></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'First name attribute', 'autorizenter' ); ?></th>
+							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][attr_first_name]" value="<?php echo esc_attr( isset( $p['attr_first_name'] ) ? $p['attr_first_name'] : '' ); ?>" placeholder="given_name" /></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Last name attribute', 'autorizenter' ); ?></th>
+							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][attr_last_name]" value="<?php echo esc_attr( isset( $p['attr_last_name'] ) ? $p['attr_last_name'] : '' ); ?>" placeholder="family_name" /></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Name attribute update', 'autorizenter' ); ?></th>
+							<td>
+								<select name="providers[<?php echo esc_attr( $id ); ?>][name_update]">
+									<option value="none" <?php selected( isset( $p['name_update'] ) ? $p['name_update'] : 'none', 'none' ); ?>><?php esc_html_e( 'Do not update first and last name fields on login', 'autorizenter' ); ?></option>
+									<option value="always" <?php selected( isset( $p['name_update'] ) ? $p['name_update'] : '', 'always' ); ?>><?php esc_html_e( 'Update first and last name fields on login', 'autorizenter' ); ?></option>
+									<option value="if_empty" <?php selected( isset( $p['name_update'] ) ? $p['name_update'] : '', 'if_empty' ); ?>><?php esc_html_e( 'Update first and last name fields on login only if they are empty', 'autorizenter' ); ?></option>
+								</select>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Force auth method', 'autorizenter' ); ?></th>
+							<td>
+								<select name="providers[<?php echo esc_attr( $id ); ?>][auth_method]">
+									<option value="auto" <?php selected( isset( $p['auth_method'] ) ? $p['auth_method'] : 'auto', 'auto' ); ?>><?php esc_html_e( 'Autodetect (default)', 'autorizenter' ); ?></option>
+									<option value="post" <?php selected( isset( $p['auth_method'] ) ? $p['auth_method'] : '', 'post' ); ?>><?php esc_html_e( 'Post body (client_secret_post)', 'autorizenter' ); ?></option>
+									<option value="basic" <?php selected( isset( $p['auth_method'] ) ? $p['auth_method'] : '', 'basic' ); ?>><?php esc_html_e( 'Authorization header (client_secret_basic)', 'autorizenter' ); ?></option>
+									<option value="secret_jwt" <?php selected( isset( $p['auth_method'] ) ? $p['auth_method'] : '', 'secret_jwt' ); ?>><?php esc_html_e( 'JWT assertion (client_secret_jwt)', 'autorizenter' ); ?></option>
+									<option value="private_key_jwt" <?php selected( isset( $p['auth_method'] ) ? $p['auth_method'] : '', 'private_key_jwt' ); ?>><?php esc_html_e( 'JWT assertion with private key (private_key_jwt)', 'autorizenter' ); ?></option>
+								</select>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Private key (PEM)', 'autorizenter' ); ?></th>
+							<td>
+								<textarea name="providers[<?php echo esc_attr( $id ); ?>][private_key]" rows="6" class="large-text code" placeholder="<?php esc_attr_e( '-----BEGIN RSA PRIVATE KEY----- (used only for private_key_jwt)', 'autorizenter' ); ?>"></textarea>
+								<p class="description"><?php esc_html_e( 'Stored encrypted. Leave blank to keep the existing key.', 'autorizenter' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Require verified email', 'autorizenter' ); ?></th>
+							<td><label><input type="checkbox" name="providers[<?php echo esc_attr( $id ); ?>][oidc_require_verified_email]" value="1" <?php checked( ! empty( $p['oidc_require_verified_email'] ) ); ?> /> <?php esc_html_e( 'User must have a verified email address (email_verified claim) to sign in.', 'autorizenter' ); ?></label></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Link users by username', 'autorizenter' ); ?></th>
+							<td><label><input type="checkbox" name="providers[<?php echo esc_attr( $id ); ?>][link_by_username]" value="1" <?php checked( ! empty( $p['link_by_username'] ) ); ?> /> <?php esc_html_e( 'Match OIDC users to existing WordPress accounts by username before trying email.', 'autorizenter' ); ?></label></td>
 						</tr>
 						<?php endif; ?>
 					</table>
