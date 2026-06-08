@@ -129,4 +129,25 @@ class RoleMapTest extends TestCase {
 		$ps = new Private_Site( new Settings() );
 		$this->assertFalse( $ps->should_block( false, false, false ) );
 	}
+
+	public function test_email_regex_matches_digit_local_part(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array(
+				array( 'match' => 'email_regex:^\d+@abc\.co\.th$', 'role' => 'student' ),
+				array( 'match' => 'email_regex:^[a-z]+\.[a-z]+@abc\.co\.th$', 'role' => 'staff' ),
+			),
+		);
+		$this->assertSame( 'student', $this->mapper->resolve_role( $this->id( 'oidc', '6401234@abc.co.th' ), $cfg ) );
+		$this->assertSame( 'staff', $this->mapper->resolve_role( $this->id( 'oidc', 'john.doe@abc.co.th' ), $cfg ) );
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'oidc', 'other@gmail.com' ), $cfg ) );
+	}
+
+	public function test_email_regex_invalid_pattern_does_not_crash(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array( array( 'match' => 'email_regex:[invalid', 'role' => 'editor' ) ),
+		);
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'google', 'a@b.com' ), $cfg ) );
+	}
 }

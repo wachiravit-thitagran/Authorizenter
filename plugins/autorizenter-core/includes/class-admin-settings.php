@@ -1042,7 +1042,7 @@ class Admin_Settings {
 						<th scope="row"><?php esc_html_e( 'Role mapping', 'autorizenter' ); ?></th>
 						<td>
 							<textarea name="role_map" rows="3" class="large-text code" placeholder="domain:example.com = editor&#10;provider:oidc = author"><?php echo esc_textarea( $role_map_text ); ?></textarea>
-							<p class="description"><?php esc_html_e( 'One rule per line: "matcher = role". Matchers: domain:, provider:, email:, or *. First match wins; otherwise the default role applies (new users only).', 'autorizenter' ); ?></p>
+							<p class="description"><?php esc_html_e( 'One rule per line: "matcher = role". Matchers: domain:, provider:, email:, email_regex: (full-email regex, e.g. email_regex:^\d+@abc\.co\.th$), or *. First match wins; otherwise the default role applies (new users only).', 'autorizenter' ); ?></p>
 						</td>
 					</tr>
 				</table>
