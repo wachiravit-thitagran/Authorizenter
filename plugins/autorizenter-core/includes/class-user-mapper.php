@@ -217,6 +217,11 @@ class User_Mapper {
 			case 'domain':
 				$domain = $identity->email_domain();
 				return '' !== $domain && ( $domain === $value || substr( $domain, - ( strlen( $value ) + 1 ) ) === '.' . $value );
+			case 'email_regex':
+				if ( '' === $identity->email || '' === $value ) {
+					return false;
+				}
+				return 1 === @preg_match( '/' . $value . '/i', $identity->email ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			default:
 				return false;
 		}
