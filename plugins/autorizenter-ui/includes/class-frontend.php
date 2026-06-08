@@ -25,6 +25,7 @@ class Frontend {
 		add_shortcode( 'autorizenter_button', array( $this, 'render_button' ) );
 		add_shortcode( 'autorizenter_logout', array( $this, 'render_logout' ) );
 		add_shortcode( 'autorizenter_questions', array( $this, 'render_questions' ) );
+		add_shortcode( 'autorizenter_pending_form', array( $this, 'render_pending_form' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'assets' ) );
 
 		// Tell Core where the questions page lives, so it can redirect there.
@@ -284,6 +285,40 @@ class Frontend {
 
 		ob_start();
 		include AUTORIZENTER_UI_DIR . 'templates/questions.php';
+		return ob_get_clean();
+	}
+
+	/**
+	 * Render the pre-approval form shortcode.
+	 *
+	 * Shown on the pending_redirect page. Reads the one-time token from the URL,
+	 * displays all configured questions, and submits answers to POST /pending/answers.
+	 *
+	 * @param array $atts Shortcode attributes (unused).
+	 * @return string
+	 */
+	public function render_pending_form( $atts ) {
+		$token = isset( $_GET['azr_pending_token'] ) ? sanitize_text_field( wp_unslash( $_GET['azr_pending_token'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( '' === $token ) {
+			return '<div class="autorizenter-pending-form">' .
+				esc_html__( 'Invalid or missing access token.', 'autorizenter' ) .
+				'</div>';
+		}
+
+		$core      = \Autorizenter\Core\autorizenter_core();
+		$questions = $core->questions->all();
+
+		if ( empty( $questions ) ) {
+			return '<div class="autorizenter-pending-form">' .
+				esc_html__( 'Your request is pending approval. An administrator will review it shortly.', 'autorizenter' ) .
+				'</div>';
+		}
+
+		wp_enqueue_style( 'autorizenter-ui' );
+		wp_enqueue_script( 'autorizenter-ui' );
+
+		ob_start();
+		include AUTORIZENTER_UI_DIR . 'templates/pending-form.php';
 		return ob_get_clean();
 	}
 

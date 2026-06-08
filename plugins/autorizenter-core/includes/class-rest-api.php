@@ -158,6 +158,20 @@ class Rest_Api {
 
 		register_rest_route(
 			$ns,
+			'/pending/answers',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'pending_answers' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'token'   => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
+					'answers' => array(),
+				),
+			)
+		);
+
+		register_rest_route(
+			$ns,
 			'/answers/report',
 			array(
 				'methods'             => 'GET',
@@ -167,6 +181,29 @@ class Rest_Api {
 				},
 			)
 		);
+	}
+
+	/**
+	 * POST /pending/answers — store pre-approval answers for a not-yet-logged-in user.
+	 *
+	 * No authentication required; the one-time token from the pending redirect URL
+	 * proves the user was legitimately placed in pending state.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response
+	 */
+	public function pending_answers( \WP_REST_Request $request ) {
+		$token   = (string) $request->get_param( 'token' );
+		$answers = $request->get_param( 'answers' );
+		$answers = is_array( $answers ) ? $answers : array();
+
+		$access = new Access_List( $this->settings );
+		$result = $access->save_pending_answers( $token, $answers );
+		if ( is_wp_error( $result ) ) {
+			return $this->error_response( $result );
+		}
+
+		return new \WP_REST_Response( array( 'saved' => true ), 200 );
 	}
 
 	/**
