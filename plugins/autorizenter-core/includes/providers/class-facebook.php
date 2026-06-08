@@ -34,7 +34,9 @@ class Facebook extends Provider_Base {
 	 * {@inheritDoc}
 	 */
 	public function label() {
-		return __( 'Facebook', 'autorizenter' );
+		return isset( $this->config['label'] ) && '' !== $this->config['label']
+			? (string) $this->config['label']
+			: __( 'Facebook', 'autorizenter' );
 	}
 
 	/**

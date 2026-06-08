@@ -37,6 +37,15 @@ class ProvidersTest extends TestCase {
 		$this->assertSame( 'line', ( new Line( $settings, array() ) )->id() );
 		$this->assertSame( 'facebook', ( new Facebook( $settings, array() ) )->id() );
 		$this->assertSame( 'Google', ( new Google( $settings, array() ) )->label() );
+		$this->assertSame( 'LINE', ( new Line( $settings, array() ) )->label() );
+		$this->assertSame( 'Facebook', ( new Facebook( $settings, array() ) )->label() );
+	}
+
+	public function test_preset_label_override(): void {
+		$settings = new Settings();
+		$this->assertSame( 'PSU Login', ( new Google( $settings, array( 'label' => 'PSU Login' ) ) )->label() );
+		$this->assertSame( 'My LINE', ( new Line( $settings, array( 'label' => 'My LINE' ) ) )->label() );
+		$this->assertSame( 'My Facebook', ( new Facebook( $settings, array( 'label' => 'My Facebook' ) ) )->label() );
 	}
 
 	public function test_secure_url_guard(): void {
