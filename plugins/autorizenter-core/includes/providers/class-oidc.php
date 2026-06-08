@@ -157,7 +157,7 @@ class OIDC extends Provider_Base {
 			'redirect_uri'  => $redirect_uri,
 			'code_verifier' => $code_verifier,
 		);
-		$req = $this->build_token_request( $base, $endpoint );
+		$req      = $this->build_token_request( $base, $endpoint );
 		if ( isset( $req['_error'] ) ) {
 			return $req['_error'];
 		}
@@ -258,7 +258,12 @@ class OIDC extends Provider_Base {
 		);
 	}
 
-	/** Public wrapper for tests. */
+	/**
+	 * Public wrapper for tests.
+	 *
+	 * @param array $claims Claim set.
+	 * @return Identity|\WP_Error
+	 */
 	public function identity_from_claims_public( array $claims ) {
 		return $this->identity_from_claims( $claims );
 	}
@@ -282,14 +287,14 @@ class OIDC extends Provider_Base {
 			$supported = ( ! is_wp_error( $doc ) && isset( $doc['token_endpoint_auth_methods_supported'] ) )
 				? (array) $doc['token_endpoint_auth_methods_supported']
 				: array();
-			$order  = array( 'private_key_jwt', 'client_secret_jwt', 'client_secret_basic', 'client_secret_post' );
-			$map    = array(
+			$order     = array( 'private_key_jwt', 'client_secret_jwt', 'client_secret_basic', 'client_secret_post' );
+			$map       = array(
 				'client_secret_post'  => 'post',
 				'client_secret_basic' => 'basic',
 				'client_secret_jwt'   => 'secret_jwt',
 				'private_key_jwt'     => 'private_key_jwt',
 			);
-			$method = 'post';
+			$method    = 'post';
 			foreach ( $order as $m ) {
 				if ( in_array( $m, $supported, true ) ) {
 					$method = $map[ $m ];
@@ -299,48 +304,70 @@ class OIDC extends Provider_Base {
 		}
 
 		if ( 'basic' === $method ) {
-			$headers['Authorization'] = 'Basic ' . base64_encode( $this->client_id() . ':' . $this->client_secret() );
-			return array( 'headers' => $headers, 'body' => $base_body );
+			$headers['Authorization'] = 'Basic ' . base64_encode( $this->client_id() . ':' . $this->client_secret() ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+			return array(
+				'headers' => $headers,
+				'body'    => $base_body,
+			);
 		}
 
 		if ( 'secret_jwt' === $method ) {
 			$assertion = $this->build_client_assertion_hs256( $endpoint );
 			return array(
 				'headers' => $headers,
-				'body'    => array_merge( $base_body, array(
-					'client_id'             => $this->client_id(),
-					'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
-					'client_assertion'      => $assertion,
-				) ),
+				'body'    => array_merge(
+					$base_body,
+					array(
+						'client_id'             => $this->client_id(),
+						'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+						'client_assertion'      => $assertion,
+					)
+				),
 			);
 		}
 
 		if ( 'private_key_jwt' === $method ) {
 			$assertion = $this->build_client_assertion_rs256( $endpoint );
 			if ( is_wp_error( $assertion ) ) {
-				return array( 'headers' => $headers, 'body' => $base_body, '_error' => $assertion );
+				return array(
+					'headers' => $headers,
+					'body'    => $base_body,
+					'_error'  => $assertion,
+				);
 			}
 			return array(
 				'headers' => $headers,
-				'body'    => array_merge( $base_body, array(
-					'client_id'             => $this->client_id(),
-					'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
-					'client_assertion'      => $assertion,
-				) ),
+				'body'    => array_merge(
+					$base_body,
+					array(
+						'client_id'             => $this->client_id(),
+						'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+						'client_assertion'      => $assertion,
+					)
+				),
 			);
 		}
 
 		// Default: client_secret_post.
 		return array(
 			'headers' => $headers,
-			'body'    => array_merge( $base_body, array(
-				'client_id'     => $this->client_id(),
-				'client_secret' => $this->client_secret(),
-			) ),
+			'body'    => array_merge(
+				$base_body,
+				array(
+					'client_id'     => $this->client_id(),
+					'client_secret' => $this->client_secret(),
+				)
+			),
 		);
 	}
 
-	/** Public wrapper for tests. */
+	/**
+	 * Public wrapper for tests.
+	 *
+	 * @param array  $body     Base POST params.
+	 * @param string $endpoint Token endpoint URL.
+	 * @return array
+	 */
 	public function build_token_request_public( array $body, $endpoint ) {
 		return $this->build_token_request( $body, $endpoint );
 	}
@@ -362,7 +389,8 @@ class OIDC extends Provider_Base {
 		if ( $code < 200 || $code >= 300 || ! is_array( $data ) ) {
 			return new \WP_Error(
 				'autorizenter_token_error',
-				sprintf( __( 'Token exchange failed for provider %s.', 'autorizenter' ), $this->id() ),
+				// translators: %1$s is the provider ID.
+				sprintf( __( 'Token exchange failed for provider %1$s.', 'autorizenter' ), $this->id() ),
 				array( 'status' => 502 )
 			);
 		}
@@ -377,16 +405,23 @@ class OIDC extends Provider_Base {
 	 */
 	private function build_client_assertion_hs256( $audience ) {
 		$now    = time();
-		$header = $this->jwt_encode( array( 'alg' => 'HS256', 'typ' => 'JWT' ) );
-		$claims = $this->jwt_encode( array(
-			'iss' => $this->client_id(),
-			'sub' => $this->client_id(),
-			'aud' => $audience,
-			'jti' => bin2hex( random_bytes( 16 ) ),
-			'iat' => $now,
-			'exp' => $now + 60,
-		) );
-		$sig = hash_hmac( 'sha256', $header . '.' . $claims, $this->client_secret(), true );
+		$header = $this->jwt_encode(
+			array(
+				'alg' => 'HS256',
+				'typ' => 'JWT',
+			)
+		);
+		$claims = $this->jwt_encode(
+			array(
+				'iss' => $this->client_id(),
+				'sub' => $this->client_id(),
+				'aud' => $audience,
+				'jti' => bin2hex( random_bytes( 16 ) ),
+				'iat' => $now,
+				'exp' => $now + 60,
+			)
+		);
+		$sig    = hash_hmac( 'sha256', $header . '.' . $claims, $this->client_secret(), true );
 		return $header . '.' . $claims . '.' . $this->base64url( $sig );
 	}
 
@@ -408,16 +443,23 @@ class OIDC extends Provider_Base {
 			return new \WP_Error( 'autorizenter_oidc_bad_private_key', __( 'Could not load OIDC private key.', 'autorizenter' ) );
 		}
 		$now    = time();
-		$header = $this->jwt_encode( array( 'alg' => 'RS256', 'typ' => 'JWT' ) );
-		$claims = $this->jwt_encode( array(
-			'iss' => $this->client_id(),
-			'sub' => $this->client_id(),
-			'aud' => $audience,
-			'jti' => bin2hex( random_bytes( 16 ) ),
-			'iat' => $now,
-			'exp' => $now + 60,
-		) );
-		$sig = '';
+		$header = $this->jwt_encode(
+			array(
+				'alg' => 'RS256',
+				'typ' => 'JWT',
+			)
+		);
+		$claims = $this->jwt_encode(
+			array(
+				'iss' => $this->client_id(),
+				'sub' => $this->client_id(),
+				'aud' => $audience,
+				'jti' => bin2hex( random_bytes( 16 ) ),
+				'iat' => $now,
+				'exp' => $now + 60,
+			)
+		);
+		$sig    = '';
 		openssl_sign( $header . '.' . $claims, $sig, $key, OPENSSL_ALGO_SHA256 );
 		return $header . '.' . $claims . '.' . $this->base64url( $sig );
 	}
@@ -429,7 +471,7 @@ class OIDC extends Provider_Base {
 	 * @return string
 	 */
 	private function jwt_encode( array $data ) {
-		return $this->base64url( json_encode( $data ) );
+		return $this->base64url( wp_json_encode( $data ) );
 	}
 
 	/**
@@ -439,6 +481,6 @@ class OIDC extends Provider_Base {
 	 * @return string
 	 */
 	private function base64url( $data ) {
-		return rtrim( strtr( base64_encode( $data ), '+/', '-_' ), '=' );
+		return rtrim( strtr( base64_encode( $data ), '+/', '-_' ), '=' ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 	}
 }
