@@ -236,10 +236,17 @@ function do_action() {}
 function add_filter() { return true; }
 function add_action() { return true; }
 
+function current_user_can( $cap ) { return true; }
+
 // --- i18n / escaping / sanitizers (passthrough-ish) -------------------------
 
 function __( $text, $domain = null ) { return $text; }
+function esc_attr__( $text, $domain = null ) { return $text; }
 function esc_html__( $text, $domain = null ) { return $text; }
+function esc_html_e( $text, $domain = null ) { echo $text; }
+function esc_attr_e( $text, $domain = null ) { echo $text; }
+function esc_html( $s ) { return $s; }
+function esc_textarea( $s ) { return $s; }
 function esc_url_raw( $url ) { return $url; }
 function esc_url( $url ) { return $url; }
 function esc_attr( $s ) { return $s; }
@@ -300,6 +307,41 @@ function wp_validate_redirect( $location, $fallback = '' ) {
 function add_query_arg( $args, $url = '' ) {
 	$query = http_build_query( is_array( $args ) ? $args : array( $args => '' ) );
 	return $url . ( false === strpos( $url, '?' ) ? '?' : '&' ) . $query;
+}
+
+function admin_url( $path = '' ) { return 'https://example.test/wp-admin/' . ltrim( (string) $path, '/' ); }
+function wp_nonce_field( $action = -1, $name = '_wpnonce', $referer = true, $echo = true ) {
+	$field = '<input type="hidden" name="' . esc_attr( $name ) . '" value="nonce" />';
+	if ( $echo ) {
+		echo $field;
+	}
+	return $field;
+}
+function submit_button( $text = null ) {
+	echo '<p class="submit"><input type="submit" class="button button-primary" value="' . esc_attr( null === $text ? 'Save Changes' : $text ) . '" /></p>';
+}
+function checked( $checked, $current = true, $echo = true ) {
+	$out = ( $checked == $current ) ? ' checked="checked"' : '';
+	if ( $echo ) {
+		echo $out;
+	}
+	return $out;
+}
+function selected( $selected, $current = true, $echo = true ) {
+	$out = ( $selected == $current ) ? ' selected="selected"' : '';
+	if ( $echo ) {
+		echo $out;
+	}
+	return $out;
+}
+function get_editable_roles() {
+	return array(
+		'subscriber'    => array( 'name' => 'Subscriber' ),
+		'contributor'   => array( 'name' => 'Contributor' ),
+		'author'        => array( 'name' => 'Author' ),
+		'editor'        => array( 'name' => 'Editor' ),
+		'administrator' => array( 'name' => 'Administrator' ),
+	);
 }
 
 // phpcs:enable

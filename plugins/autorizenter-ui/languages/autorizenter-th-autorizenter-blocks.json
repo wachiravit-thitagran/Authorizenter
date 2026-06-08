@@ -1,0 +1,41 @@
+{
+	"translation-revision-date": "2026-06-08 00:00+0700",
+	"generator": "Autorizenter",
+	"domain": "messages",
+	"locale_data": {
+		"messages": {
+			"": {
+				"domain": "messages",
+				"lang": "th",
+				"plural-forms": "nplurals=1; plural=0;"
+			},
+			"Autorizenter Login": [
+				"เข้าสู่ระบบด้วย Autorizenter"
+			],
+			"SSO sign-in buttons for a login context.": [
+				"ปุ่มเข้าสู่ระบบ SSO สำหรับบริบทการเข้าสู่ระบบ"
+			],
+			"Login settings": [
+				"การตั้งค่าการเข้าสู่ระบบ"
+			],
+			"Context": [
+				"บริบท"
+			],
+			"Login context id, e.g. default or admin.": [
+				"รหัสบริบทเข้าสู่ระบบ เช่น default หรือ admin"
+			],
+			"Autorizenter Logout": [
+				"ออกจากระบบด้วย Autorizenter"
+			],
+			"Sign-out link (supports SSO logout).": [
+				"ลิงก์ออกจากระบบ (รองรับการออกจากระบบ SSO)"
+			],
+			"Logout settings": [
+				"การตั้งค่าการออกจากระบบ"
+			],
+			"Button label": [
+				"ป้ายกำกับปุ่ม"
+			]
+		}
+	}
+}
