@@ -183,6 +183,25 @@ function wp_insert_user( $data ) {
 	return $id;
 }
 
+function wp_update_user( $data ) {
+	$id = isset( $data['ID'] ) ? (int) $data['ID'] : 0;
+	if ( ! isset( $GLOBALS['__users'][ $id ] ) ) {
+		return new WP_Error( 'invalid_user_id', 'Invalid user ID.' );
+	}
+	$u = $GLOBALS['__users'][ $id ];
+	if ( isset( $data['first_name'] ) ) {
+		$GLOBALS['__usermeta'][ $id ]['first_name'] = $data['first_name'];
+	}
+	if ( isset( $data['last_name'] ) ) {
+		$GLOBALS['__usermeta'][ $id ]['last_name'] = $data['last_name'];
+	}
+	if ( isset( $data['display_name'] ) ) {
+		$u->display_name = $data['display_name'];
+	}
+	$GLOBALS['__users'][ $id ] = $u;
+	return $id;
+}
+
 function wp_generate_password( $len = 12, $special = true, $extra = false ) {
 	return substr( str_repeat( 'aA1!', (int) ceil( $len / 4 ) ), 0, $len );
 }
