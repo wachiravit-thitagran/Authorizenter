@@ -110,11 +110,14 @@ class OIDC extends Provider_Base {
 	}
 
 	/**
-	 * Issuer from discovery.
+	 * Issuer — config override takes precedence over discovery.
 	 *
 	 * @return string
 	 */
 	protected function issuer() {
+		if ( ! empty( $this->config['issuer_url'] ) ) {
+			return (string) $this->config['issuer_url'];
+		}
 		return $this->disc( 'issuer' );
 	}
 
@@ -147,16 +150,18 @@ class OIDC extends Provider_Base {
 	 * @return Identity|\WP_Error
 	 */
 	public function exchange( $code, $redirect_uri, $code_verifier, $nonce ) {
-		$token = $this->request_token(
-			array(
-				'grant_type'    => 'authorization_code',
-				'code'          => $code,
-				'redirect_uri'  => $redirect_uri,
-				'client_id'     => $this->client_id(),
-				'client_secret' => $this->client_secret(),
-				'code_verifier' => $code_verifier,
-			)
+		$endpoint = $this->token_endpoint();
+		$base     = array(
+			'grant_type'    => 'authorization_code',
+			'code'          => $code,
+			'redirect_uri'  => $redirect_uri,
+			'code_verifier' => $code_verifier,
 		);
+		$req = $this->build_token_request( $base, $endpoint );
+		if ( isset( $req['_error'] ) ) {
+			return $req['_error'];
+		}
+		$token = $this->request_token_with_args( $endpoint, $req );
 
 		if ( is_wp_error( $token ) ) {
 			return $token;
@@ -211,22 +216,229 @@ class OIDC extends Provider_Base {
 	}
 
 	/**
-	 * Map OIDC claims to an Identity.
+	 * Map OIDC claims to an Identity, using configured attribute names.
 	 *
 	 * @param array $claims Claim set.
-	 * @return Identity
+	 * @return Identity|\WP_Error
 	 */
 	protected function identity_from_claims( array $claims ) {
+		if ( ! empty( $this->config['oidc_require_verified_email'] ) ) {
+			$verified = isset( $claims['email_verified'] ) ? $claims['email_verified'] : false;
+			if ( ! $verified ) {
+				return new \WP_Error(
+					'autorizenter_oidc_email_unverified',
+					__( 'Your email address must be verified to sign in.', 'autorizenter' ),
+					array( 'status' => 403 )
+				);
+			}
+		}
+
+		$attr_username   = ! empty( $this->config['attr_username'] ) ? $this->config['attr_username'] : '';
+		$attr_email      = ! empty( $this->config['attr_email'] ) ? $this->config['attr_email'] : 'email';
+		$attr_first_name = ! empty( $this->config['attr_first_name'] ) ? $this->config['attr_first_name'] : 'given_name';
+		$attr_last_name  = ! empty( $this->config['attr_last_name'] ) ? $this->config['attr_last_name'] : 'family_name';
+
+		$username = '' !== $attr_username && isset( $claims[ $attr_username ] )
+			? (string) $claims[ $attr_username ]
+			: ( isset( $claims['sub'] ) ? (string) $claims['sub'] : '' );
+
 		return new Identity(
 			$this->id(),
 			array(
 				'sub'            => isset( $claims['sub'] ) ? $claims['sub'] : '',
-				'email'          => isset( $claims['email'] ) ? $claims['email'] : '',
+				'email'          => isset( $claims[ $attr_email ] ) ? $claims[ $attr_email ] : '',
 				'email_verified' => isset( $claims['email_verified'] ) ? $claims['email_verified'] : false,
 				'name'           => isset( $claims['name'] ) ? $claims['name'] : '',
+				'first_name'     => isset( $claims[ $attr_first_name ] ) ? $claims[ $attr_first_name ] : '',
+				'last_name'      => isset( $claims[ $attr_last_name ] ) ? $claims[ $attr_last_name ] : '',
+				'username'       => $username,
 				'hd'             => isset( $claims['hd'] ) ? $claims['hd'] : '',
 				'raw'            => $claims,
 			)
 		);
+	}
+
+	/** Public wrapper for tests. */
+	public function identity_from_claims_public( array $claims ) {
+		return $this->identity_from_claims( $claims );
+	}
+
+	/**
+	 * Build HTTP request args for the token endpoint with the configured auth method.
+	 *
+	 * @param array  $base_body Base POST params.
+	 * @param string $endpoint  Token endpoint URL.
+	 * @return array Args for wp_remote_post (headers + body).
+	 */
+	protected function build_token_request( array $base_body, $endpoint ) {
+		$method  = isset( $this->config['auth_method'] ) ? $this->config['auth_method'] : 'auto';
+		$headers = array(
+			'Accept'       => 'application/json',
+			'Content-Type' => 'application/x-www-form-urlencoded',
+		);
+
+		if ( 'auto' === $method ) {
+			$doc       = $this->discovery();
+			$supported = ( ! is_wp_error( $doc ) && isset( $doc['token_endpoint_auth_methods_supported'] ) )
+				? (array) $doc['token_endpoint_auth_methods_supported']
+				: array();
+			$order  = array( 'private_key_jwt', 'client_secret_jwt', 'client_secret_basic', 'client_secret_post' );
+			$map    = array(
+				'client_secret_post'  => 'post',
+				'client_secret_basic' => 'basic',
+				'client_secret_jwt'   => 'secret_jwt',
+				'private_key_jwt'     => 'private_key_jwt',
+			);
+			$method = 'post';
+			foreach ( $order as $m ) {
+				if ( in_array( $m, $supported, true ) ) {
+					$method = $map[ $m ];
+					break;
+				}
+			}
+		}
+
+		if ( 'basic' === $method ) {
+			$headers['Authorization'] = 'Basic ' . base64_encode( $this->client_id() . ':' . $this->client_secret() );
+			return array( 'headers' => $headers, 'body' => $base_body );
+		}
+
+		if ( 'secret_jwt' === $method ) {
+			$assertion = $this->build_client_assertion_hs256( $endpoint );
+			return array(
+				'headers' => $headers,
+				'body'    => array_merge( $base_body, array(
+					'client_id'             => $this->client_id(),
+					'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+					'client_assertion'      => $assertion,
+				) ),
+			);
+		}
+
+		if ( 'private_key_jwt' === $method ) {
+			$assertion = $this->build_client_assertion_rs256( $endpoint );
+			if ( is_wp_error( $assertion ) ) {
+				return array( 'headers' => $headers, 'body' => $base_body, '_error' => $assertion );
+			}
+			return array(
+				'headers' => $headers,
+				'body'    => array_merge( $base_body, array(
+					'client_id'             => $this->client_id(),
+					'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+					'client_assertion'      => $assertion,
+				) ),
+			);
+		}
+
+		// Default: client_secret_post.
+		return array(
+			'headers' => $headers,
+			'body'    => array_merge( $base_body, array(
+				'client_id'     => $this->client_id(),
+				'client_secret' => $this->client_secret(),
+			) ),
+		);
+	}
+
+	/** Public wrapper for tests. */
+	public function build_token_request_public( array $body, $endpoint ) {
+		return $this->build_token_request( $body, $endpoint );
+	}
+
+	/**
+	 * POST to the token endpoint using pre-built request args.
+	 *
+	 * @param string $endpoint Token endpoint URL.
+	 * @param array  $args     Request args (headers + body).
+	 * @return array|\WP_Error
+	 */
+	protected function request_token_with_args( $endpoint, array $args ) {
+		$response = wp_remote_post( $endpoint, array_merge( array( 'timeout' => 15 ), $args ) );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		$code = wp_remote_retrieve_response_code( $response );
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( $code < 200 || $code >= 300 || ! is_array( $data ) ) {
+			return new \WP_Error(
+				'autorizenter_token_error',
+				sprintf( __( 'Token exchange failed for provider %s.', 'autorizenter' ), $this->id() ),
+				array( 'status' => 502 )
+			);
+		}
+		return $data;
+	}
+
+	/**
+	 * Build a client assertion JWT signed with client_secret (HS256).
+	 *
+	 * @param string $audience Token endpoint URL.
+	 * @return string JWT.
+	 */
+	private function build_client_assertion_hs256( $audience ) {
+		$now    = time();
+		$header = $this->jwt_encode( array( 'alg' => 'HS256', 'typ' => 'JWT' ) );
+		$claims = $this->jwt_encode( array(
+			'iss' => $this->client_id(),
+			'sub' => $this->client_id(),
+			'aud' => $audience,
+			'jti' => bin2hex( random_bytes( 16 ) ),
+			'iat' => $now,
+			'exp' => $now + 60,
+		) );
+		$sig = hash_hmac( 'sha256', $header . '.' . $claims, $this->client_secret(), true );
+		return $header . '.' . $claims . '.' . $this->base64url( $sig );
+	}
+
+	/**
+	 * Build a client assertion JWT signed with a private key (RS256).
+	 *
+	 * @param string $audience Token endpoint URL.
+	 * @return string|\WP_Error
+	 */
+	private function build_client_assertion_rs256( $audience ) {
+		$pem = $this->settings->decrypt(
+			isset( $this->config['private_key'] ) ? $this->config['private_key'] : ''
+		);
+		if ( '' === $pem ) {
+			return new \WP_Error( 'autorizenter_oidc_no_private_key', __( 'No private key configured for private_key_jwt.', 'autorizenter' ) );
+		}
+		$key = openssl_pkey_get_private( $pem );
+		if ( false === $key ) {
+			return new \WP_Error( 'autorizenter_oidc_bad_private_key', __( 'Could not load OIDC private key.', 'autorizenter' ) );
+		}
+		$now    = time();
+		$header = $this->jwt_encode( array( 'alg' => 'RS256', 'typ' => 'JWT' ) );
+		$claims = $this->jwt_encode( array(
+			'iss' => $this->client_id(),
+			'sub' => $this->client_id(),
+			'aud' => $audience,
+			'jti' => bin2hex( random_bytes( 16 ) ),
+			'iat' => $now,
+			'exp' => $now + 60,
+		) );
+		$sig = '';
+		openssl_sign( $header . '.' . $claims, $sig, $key, OPENSSL_ALGO_SHA256 );
+		return $header . '.' . $claims . '.' . $this->base64url( $sig );
+	}
+
+	/**
+	 * JSON-encode and base64url-encode a payload for JWT.
+	 *
+	 * @param array $data Payload.
+	 * @return string
+	 */
+	private function jwt_encode( array $data ) {
+		return $this->base64url( json_encode( $data ) );
+	}
+
+	/**
+	 * Base64url encode without padding.
+	 *
+	 * @param string $data Binary or JSON string.
+	 * @return string
+	 */
+	private function base64url( $data ) {
+		return rtrim( strtr( base64_encode( $data ), '+/', '-_' ), '=' );
 	}
 }
