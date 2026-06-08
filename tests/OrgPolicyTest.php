@@ -93,6 +93,24 @@ class OrgPolicyTest extends TestCase {
 		$this->assertTrue( $this->policy->is_allowed( $id, $ctx ) );
 	}
 
+	public function test_trusted_provider_bypasses_access_list_approval(): void {
+		// Access list enforcement ON, OIDC is trusted → oidc bypasses, google goes to pending.
+		update_option(
+			\Autorizenter\Core\Settings::OPTION,
+			array( 'access' => array( 'enabled' => true, 'approved' => array( 'psu.ac.th' ) ) )
+		);
+		$ctx = $this->context( array( 'trusted_providers' => array( 'oidc' ) ) );
+
+		$oidc_id   = $this->identity( array( 'provider' => 'oidc', 'email' => 'user@gmail.com', 'email_verified' => true ) );
+		$google_id = $this->identity( array( 'provider' => 'google', 'email' => 'user@gmail.com', 'email_verified' => true ) );
+
+		$this->assertTrue( $this->policy->is_allowed( $oidc_id, $ctx ) );
+
+		$result = $this->policy->is_allowed( $google_id, $ctx );
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+	}
+
 	public function test_google_hd_required_and_matching(): void {
 		$ctx = $this->context(
 			array(

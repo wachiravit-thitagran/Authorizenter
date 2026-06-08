@@ -113,4 +113,34 @@ class AccessListTest extends TestCase {
 		);
 		$this->assertInstanceOf( \WP_Error::class, $list->evaluate( $this->id( 'banned@psu.ac.th' ) ) );
 	}
+
+	public function test_trusted_provider_bypasses_approval_enforcement(): void {
+		$list = $this->list_with( array( 'enabled' => true, 'approved' => array( 'psu.ac.th' ) ) );
+		$id   = new Identity( 'oidc', array( 'email' => 'user@gmail.com', 'email_verified' => true ) );
+
+		// Without trust: denied and added to pending.
+		$result = $list->evaluate( $id );
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+
+		// With trust: allowed outright, not added to pending again.
+		azr_test_reset();
+		$list   = $this->list_with( array( 'enabled' => true, 'approved' => array( 'psu.ac.th' ) ) );
+		$result = $list->evaluate( $id, array( 'oidc' ) );
+		$this->assertTrue( $result );
+		$this->assertSame( array(), $list->entries( 'pending' ) );
+	}
+
+	public function test_trusted_provider_still_blocked_by_blocked_list(): void {
+		$list = $this->list_with(
+			array(
+				'enabled' => true,
+				'blocked' => array( 'banned@gmail.com' ),
+			)
+		);
+		$id     = new Identity( 'oidc', array( 'email' => 'banned@gmail.com', 'email_verified' => true ) );
+		$result = $list->evaluate( $id, array( 'oidc' ) );
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'autorizenter_blocked', $result->get_error_code() );
+	}
 }
