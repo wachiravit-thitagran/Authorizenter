@@ -135,11 +135,13 @@ class User_Mapper {
 		$this->store_link( $user_id, $identity );
 
 		if ( '' !== $identity->first_name || '' !== $identity->last_name ) {
-			wp_update_user( array(
-				'ID'         => $user_id,
-				'first_name' => $identity->first_name,
-				'last_name'  => $identity->last_name,
-			) );
+			wp_update_user(
+				array(
+					'ID'         => $user_id,
+					'first_name' => $identity->first_name,
+					'last_name'  => $identity->last_name,
+				)
+			);
 		}
 
 		/**
