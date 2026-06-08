@@ -94,4 +94,43 @@ class OAuthEngineTest extends TestCase {
 		$this->assertSame( '', $this->invoke( $engine, 'sanitize_return_to', array( 'https://evil.example/x' ) ) );
 		$this->assertSame( '', $this->invoke( $engine, 'sanitize_return_to', array( '' ) ) );
 	}
+
+	public function test_pending_redirect_used_for_not_approved_error(): void {
+		$context = array(
+			'id'               => 'default',
+			'deny_redirect'    => 'https://example.test/denied/',
+			'pending_redirect' => 'https://example.test/waiting/',
+		);
+		$error   = new \WP_Error( 'autorizenter_not_approved', 'Awaiting approval.', array( 'status' => 403 ) );
+
+		$result = $this->invoke( $this->engine(), 'attach_deny_redirect', array( $error, $context ) );
+		$data   = $result->get_error_data();
+		$this->assertSame( 'https://example.test/waiting/', $data['redirect'] );
+	}
+
+	public function test_pending_redirect_not_used_for_other_denial(): void {
+		$context = array(
+			'id'               => 'default',
+			'deny_redirect'    => 'https://example.test/denied/',
+			'pending_redirect' => 'https://example.test/waiting/',
+		);
+		$error   = new \WP_Error( 'autorizenter_denied', 'Domain not allowed.', array( 'status' => 403 ) );
+
+		$result = $this->invoke( $this->engine(), 'attach_deny_redirect', array( $error, $context ) );
+		$data   = $result->get_error_data();
+		$this->assertSame( 'https://example.test/denied/', $data['redirect'] );
+	}
+
+	public function test_pending_redirect_empty_falls_back_to_deny_redirect(): void {
+		$context = array(
+			'id'               => 'default',
+			'deny_redirect'    => 'https://example.test/denied/',
+			'pending_redirect' => '',
+		);
+		$error   = new \WP_Error( 'autorizenter_not_approved', 'Awaiting approval.', array( 'status' => 403 ) );
+
+		$result = $this->invoke( $this->engine(), 'attach_deny_redirect', array( $error, $context ) );
+		$data   = $result->get_error_data();
+		$this->assertSame( 'https://example.test/denied/', $data['redirect'] );
+	}
 }
