@@ -424,8 +424,8 @@ class Admin_Settings {
 		$options   = isset( $q['options'] ) && is_array( $q['options'] ) ? implode( "\n", $q['options'] ) : '';
 		$providers = isset( $q['providers'] ) && is_array( $q['providers'] ) ? $q['providers'] : array();
 		?>
-		<fieldset style="border:1px solid #c3c4c7;padding:0 1rem 1rem;margin:0 0 1rem;">
-			<legend style="padding:0 .5rem;font-weight:600;">
+		<fieldset class="autorizenter-fieldset">
+			<legend>
 				<?php echo $id ? esc_html( $id ) : esc_html__( 'New question', 'autorizenter' ); ?>
 			</legend>
 			<table class="form-table" role="presentation">
@@ -527,8 +527,8 @@ class Admin_Settings {
 		$pe_sel       = ( null === $pe ) ? 'inherit' : ( $pe ? '1' : '0' );
 		$list_id      = 'azr-caps-' . (int) $index;
 		?>
-		<fieldset style="border:1px solid #c3c4c7;padding:0 1rem 1rem;margin:0 0 1rem;">
-			<legend style="padding:0 .5rem;font-weight:600;">
+		<fieldset class="autorizenter-fieldset">
+			<legend>
 				<?php echo $id ? esc_html( $id ) : esc_html__( 'New context', 'autorizenter' ); ?>
 			</legend>
 			<table class="form-table" role="presentation">
@@ -588,7 +588,7 @@ class Admin_Settings {
 					<th scope="row"><?php esc_html_e( 'Allowed domains', 'autorizenter' ); ?></th>
 					<td>
 						<label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[inherit_domains]" value="1" <?php checked( $domains_null ); ?> /> <?php esc_html_e( 'Inherit global policy', 'autorizenter' ); ?></label>
-						<textarea name="<?php echo esc_attr( $name ); ?>[allowed_domains]" rows="2" class="large-text" placeholder="psu.ac.th"><?php echo esc_textarea( $domains_val ); ?></textarea>
+						<textarea name="<?php echo esc_attr( $name ); ?>[allowed_domains]" rows="2" class="large-text" placeholder="example.com"><?php echo esc_textarea( $domains_val ); ?></textarea>
 						<p class="description"><?php esc_html_e( 'Uncheck inherit to set domains specific to this context.', 'autorizenter' ); ?></p>
 					</td>
 				</tr>
@@ -622,6 +622,185 @@ class Admin_Settings {
 	}
 
 	/**
+	 * Settings tabs used to group the long admin form.
+	 *
+	 * @return array<string,string> Tab id => label.
+	 */
+	private function settings_tabs() {
+		return array(
+			'providers' => __( 'Providers', 'autorizenter' ),
+			'policy'    => __( 'Organization policy', 'autorizenter' ),
+			'users'     => __( 'User provisioning', 'autorizenter' ),
+			'access'    => __( 'Access control', 'autorizenter' ),
+			'security'  => __( 'Login security', 'autorizenter' ),
+			'questions' => __( 'Questions', 'autorizenter' ),
+			'contexts'  => __( 'Login contexts', 'autorizenter' ),
+		);
+	}
+
+	/**
+	 * Render small, dependency-free admin styles and tab behavior.
+	 *
+	 * @return void
+	 */
+	private function render_tab_assets() {
+		?>
+		<style>
+			.autorizenter-admin .autorizenter-callback {
+				margin: 12px 0 16px;
+				max-width: 1180px;
+			}
+			.autorizenter-tabs {
+				margin-top: 12px;
+				max-width: 1180px;
+			}
+			.autorizenter-tabs .nav-tab {
+				margin-bottom: -1px;
+			}
+			.autorizenter-tab-panel {
+				box-sizing: border-box;
+				max-width: 1180px;
+				padding: 18px 22px 24px;
+				background: #fff;
+				border: 1px solid #c3c4c7;
+				border-top: 0;
+			}
+			.autorizenter-tabs-ready .autorizenter-tab-panel {
+				display: none;
+			}
+			.autorizenter-tabs-ready .autorizenter-tab-panel.is-active {
+				display: block;
+			}
+			.autorizenter-section-title {
+				margin: 0 0 12px;
+			}
+			.autorizenter-fieldset {
+				margin: 0 0 1rem;
+				padding: 0 1rem 1rem;
+				background: #fff;
+				border: 1px solid #dcdcde;
+				border-radius: 4px;
+			}
+			.autorizenter-fieldset legend {
+				padding: 0 .5rem;
+				font-weight: 600;
+			}
+			@media (max-width: 782px) {
+				.autorizenter-tabs .nav-tab {
+					float: none;
+					display: block;
+					margin: 0 0 -1px;
+				}
+				.autorizenter-tab-panel {
+					border-top: 1px solid #c3c4c7;
+				}
+			}
+		</style>
+		<script>
+			document.addEventListener('DOMContentLoaded', function () {
+				var root = document.getElementById('autorizenter-settings');
+				if (!root) {
+					return;
+				}
+				var tabs = Array.prototype.slice.call(root.querySelectorAll('[data-autorizenter-tab]'));
+				var panels = Array.prototype.slice.call(root.querySelectorAll('[data-autorizenter-panel]'));
+				if (!tabs.length || !panels.length) {
+					return;
+				}
+				function hasTab(id) {
+					return tabs.some(function (tab) {
+						return tab.getAttribute('data-autorizenter-tab') === id;
+					});
+				}
+				function activate(id, updateHash) {
+					tabs.forEach(function (tab) {
+						var active = tab.getAttribute('data-autorizenter-tab') === id;
+						tab.classList.toggle('nav-tab-active', active);
+						tab.setAttribute('aria-selected', active ? 'true' : 'false');
+					});
+					panels.forEach(function (panel) {
+						var active = panel.getAttribute('data-autorizenter-panel') === id;
+						panel.classList.toggle('is-active', active);
+						panel.hidden = !active;
+					});
+					if (updateHash && window.history && window.history.replaceState) {
+						window.history.replaceState(null, '', '#autorizenter-tab-' + id);
+					}
+				}
+				var initial = window.location.hash.replace('#autorizenter-tab-', '');
+				if (!hasTab(initial)) {
+					initial = tabs[0].getAttribute('data-autorizenter-tab');
+				}
+				root.classList.add('autorizenter-tabs-ready');
+				activate(initial, false);
+				tabs.forEach(function (tab) {
+					tab.addEventListener('click', function (event) {
+						event.preventDefault();
+						activate(tab.getAttribute('data-autorizenter-tab'), true);
+					});
+				});
+			});
+		</script>
+		<?php
+	}
+
+	/**
+	 * Render the tab navigation.
+	 *
+	 * @param array<string,string> $tabs Tab id => label.
+	 * @return void
+	 */
+	private function render_tabs( array $tabs ) {
+		$first = true;
+		?>
+		<nav class="nav-tab-wrapper autorizenter-tabs" role="tablist" aria-label="<?php esc_attr_e( 'Settings sections', 'autorizenter' ); ?>">
+			<?php foreach ( $tabs as $id => $label ) : ?>
+				<a
+					href="#autorizenter-tab-<?php echo esc_attr( $id ); ?>"
+					class="nav-tab <?php echo $first ? 'nav-tab-active' : ''; ?>"
+					data-autorizenter-tab="<?php echo esc_attr( $id ); ?>"
+					role="tab"
+					aria-controls="autorizenter-tab-<?php echo esc_attr( $id ); ?>"
+					aria-selected="<?php echo $first ? 'true' : 'false'; ?>"
+				><?php echo esc_html( $label ); ?></a>
+				<?php $first = false; ?>
+			<?php endforeach; ?>
+		</nav>
+		<?php
+	}
+
+	/**
+	 * Open one tab panel.
+	 *
+	 * @param string $id     Tab id.
+	 * @param string $title  Panel title.
+	 * @param bool   $active Whether this panel is active by default.
+	 * @return void
+	 */
+	private function open_tab_panel( $id, $title, $active = false ) {
+		?>
+		<section
+			id="autorizenter-tab-<?php echo esc_attr( $id ); ?>"
+			class="autorizenter-tab-panel <?php echo $active ? 'is-active' : ''; ?>"
+			data-autorizenter-panel="<?php echo esc_attr( $id ); ?>"
+			role="tabpanel"
+		>
+			<h2 class="autorizenter-section-title"><?php echo esc_html( $title ); ?></h2>
+		<?php
+	}
+
+	/**
+	 * Close one tab panel.
+	 *
+	 * @return void
+	 */
+	private function close_tab_panel() {
+		?>
+		</section>
+		<?php
+	}
+
+	/**
 	 * Render the settings form.
 	 *
 	 * @return void
@@ -647,15 +826,16 @@ class Admin_Settings {
 		$classes  = $this->providers->classes();
 		$callback = rest_url( AUTORIZENTER_REST_NAMESPACE . '/callback' );
 		$roles    = array_keys( get_editable_roles() );
+		$tabs     = $this->settings_tabs();
 		?>
-		<div class="wrap">
+		<div class="wrap autorizenter-admin" id="autorizenter-settings">
 			<h1><?php esc_html_e( 'Autorizenter', 'autorizenter' ); ?></h1>
 
 			<?php if ( isset( $_GET['updated'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'autorizenter' ); ?></p></div>
 			<?php endif; ?>
 
-			<p>
+			<p class="autorizenter-callback">
 				<?php esc_html_e( 'Register this redirect / callback URL with each provider:', 'autorizenter' ); ?>
 				<code><?php echo esc_html( $callback ); ?></code>
 			</p>
@@ -664,7 +844,10 @@ class Admin_Settings {
 				<input type="hidden" name="action" value="autorizenter_save" />
 				<?php wp_nonce_field( 'autorizenter_save' ); ?>
 
-				<h2><?php esc_html_e( 'Providers', 'autorizenter' ); ?></h2>
+				<?php $this->render_tab_assets(); ?>
+				<?php $this->render_tabs( $tabs ); ?>
+
+				<?php $this->open_tab_panel( 'providers', $tabs['providers'], true ); ?>
 				<?php foreach ( $classes as $id => $class ) : ?>
 					<?php
 					$p          = isset( $all['providers'][ $id ] ) ? $all['providers'][ $id ] : array();
@@ -714,7 +897,8 @@ class Admin_Settings {
 					</table>
 				<?php endforeach; ?>
 
-				<h2><?php esc_html_e( 'Organization policy', 'autorizenter' ); ?></h2>
+				<?php $this->close_tab_panel(); ?>
+				<?php $this->open_tab_panel( 'policy', $tabs['policy'] ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Enforce organization policy', 'autorizenter' ); ?></th>
@@ -725,7 +909,7 @@ class Admin_Settings {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Allowed email domains', 'autorizenter' ); ?></th>
 						<td>
-							<textarea name="allowed_domains" rows="3" class="large-text" placeholder="psu.ac.th"><?php echo esc_textarea( implode( "\n", (array) $policy['allowed_domains'] ) ); ?></textarea>
+							<textarea name="allowed_domains" rows="3" class="large-text" placeholder="example.com"><?php echo esc_textarea( implode( "\n", (array) $policy['allowed_domains'] ) ); ?></textarea>
 							<p class="description"><?php esc_html_e( 'One domain per line (or comma-separated). Subdomains are matched. Leave empty to allow any domain.', 'autorizenter' ); ?></p>
 						</td>
 					</tr>
@@ -752,7 +936,8 @@ class Admin_Settings {
 					</tr>
 				</table>
 
-				<h2><?php esc_html_e( 'User provisioning', 'autorizenter' ); ?></h2>
+				<?php $this->close_tab_panel(); ?>
+				<?php $this->open_tab_panel( 'users', $tabs['users'] ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Auto-provision', 'autorizenter' ); ?></th>
@@ -775,13 +960,14 @@ class Admin_Settings {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Role mapping', 'autorizenter' ); ?></th>
 						<td>
-							<textarea name="role_map" rows="3" class="large-text code" placeholder="domain:staff.psu.ac.th = editor&#10;provider:oidc = author"><?php echo esc_textarea( $role_map_text ); ?></textarea>
+							<textarea name="role_map" rows="3" class="large-text code" placeholder="domain:example.com = editor&#10;provider:oidc = author"><?php echo esc_textarea( $role_map_text ); ?></textarea>
 							<p class="description"><?php esc_html_e( 'One rule per line: "matcher = role". Matchers: domain:, provider:, email:, or *. First match wins; otherwise the default role applies (new users only).', 'autorizenter' ); ?></p>
 						</td>
 					</tr>
 				</table>
 
-				<h2><?php esc_html_e( 'Access control (per user / domain)', 'autorizenter' ); ?></h2>
+				<?php $this->close_tab_panel(); ?>
+				<?php $this->open_tab_panel( 'access', __( 'Access control (per user / domain)', 'autorizenter' ) ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Restrict to approved list', 'autorizenter' ); ?></th>
@@ -790,7 +976,7 @@ class Admin_Settings {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Approved', 'autorizenter' ); ?></th>
 						<td>
-							<textarea name="access_approved" rows="4" class="large-text" placeholder="alice@psu.ac.th&#10;staff.psu.ac.th"><?php echo esc_textarea( implode( "\n", (array) ( isset( $access['approved'] ) ? $access['approved'] : array() ) ) ); ?></textarea>
+							<textarea name="access_approved" rows="4" class="large-text" placeholder="alice@example.com&#10;team.example.com"><?php echo esc_textarea( implode( "\n", (array) ( isset( $access['approved'] ) ? $access['approved'] : array() ) ) ); ?></textarea>
 							<p class="description"><?php esc_html_e( 'One email or domain per line. Domains match subdomains too.', 'autorizenter' ); ?></p>
 						</td>
 					</tr>
@@ -815,7 +1001,8 @@ class Admin_Settings {
 					<?php endif; ?>
 				</table>
 
-				<h2><?php esc_html_e( 'Login security', 'autorizenter' ); ?></h2>
+				<?php $this->close_tab_panel(); ?>
+				<?php $this->open_tab_panel( 'security', $tabs['security'] ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Disable password sign-in', 'autorizenter' ); ?></th>
@@ -846,13 +1033,15 @@ class Admin_Settings {
 					</tr>
 				</table>
 
-				<h2><?php esc_html_e( 'Questions', 'autorizenter' ); ?></h2>
+				<?php $this->close_tab_panel(); ?>
+				<?php $this->open_tab_panel( 'questions', $tabs['questions'] ); ?>
 				<p class="description"><?php esc_html_e( 'Post-login questions. Each question is a fieldset; leave a blank row\'s ID empty to ignore it. Options apply to radio/select only (one per line).', 'autorizenter' ); ?></p>
 				<?php
 				$this->render_questions_editor( isset( $all['questions'] ) ? (array) $all['questions'] : array(), array_keys( $classes ) );
 				?>
 
-				<h2><?php esc_html_e( 'Login contexts', 'autorizenter' ); ?></h2>
+				<?php $this->close_tab_panel(); ?>
+				<?php $this->open_tab_panel( 'contexts', $tabs['contexts'] ); ?>
 				<p class="description">
 					<?php esc_html_e( 'Named login profiles. Place a context on any page with [autorizenter_login context="id"]. Each context can show a subset of providers, apply its own policy, require a capability, and redirect differently.', 'autorizenter' ); ?>
 				</p>
@@ -868,6 +1057,8 @@ class Admin_Settings {
 				<?php
 				$this->render_contexts( isset( $all['contexts'] ) ? (array) $all['contexts'] : array(), array_keys( $classes ) );
 				?>
+
+				<?php $this->close_tab_panel(); ?>
 
 				<?php submit_button(); ?>
 			</form>

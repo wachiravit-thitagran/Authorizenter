@@ -16,6 +16,10 @@ if ( file_exists( dirname( __DIR__ ) . '/vendor/autoload.php' ) ) {
 
 $inc = dirname( __DIR__ ) . '/plugins/autorizenter-core/includes/';
 
+if ( ! defined( 'Autorizenter\Core\AUTORIZENTER_REST_NAMESPACE' ) ) {
+	define( 'Autorizenter\Core\AUTORIZENTER_REST_NAMESPACE', 'autorizenter/v1' );
+}
+
 require $inc . 'class-identity.php';
 require $inc . 'class-settings.php';
 require $inc . 'class-provider-base.php';
@@ -35,3 +39,4 @@ require $inc . 'class-github-updater.php';
 require $inc . 'class-password-auth.php';
 require $inc . 'class-login-throttle.php';
 require $inc . 'class-private-site.php';
+require $inc . 'class-admin-settings.php';
