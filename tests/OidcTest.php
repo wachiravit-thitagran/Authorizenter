@@ -129,4 +129,89 @@ class OidcTest extends TestCase {
 		$this->assertArrayHasKey( 'client_assertion', $result['body'] );
 		$this->assertSame( 3, count( explode( '.', $result['body']['client_assertion'] ) ) );
 	}
+
+	// --- Auto auth method detection ------------------------------------------
+
+	private function inject_discovery( OIDC $oidc, array $doc ): void {
+		$ref = new \ReflectionProperty( $oidc, 'discovery' );
+		$ref->setAccessible( true );
+		$ref->setValue( $oidc, $doc );
+	}
+
+	public function test_auto_picks_client_secret_basic_from_discovery(): void {
+		$settings = new Settings();
+		$secret   = $settings->encrypt( 'sec' );
+		$oidc     = $this->make_oidc( array( 'auth_method' => 'auto', 'client_secret' => $secret ) );
+		$this->inject_discovery( $oidc, array(
+			'token_endpoint_auth_methods_supported' => array( 'client_secret_basic', 'client_secret_post' ),
+		) );
+
+		$result = $oidc->build_token_request_public(
+			array( 'grant_type' => 'authorization_code', 'code' => 'X' ),
+			'https://idp.example.org/token'
+		);
+		$this->assertArrayHasKey( 'Authorization', $result['headers'] );
+		$this->assertStringStartsWith( 'Basic ', $result['headers']['Authorization'] );
+		$this->assertArrayNotHasKey( 'client_secret', $result['body'] );
+	}
+
+	public function test_auto_picks_client_secret_jwt_when_preferred(): void {
+		$settings = new Settings();
+		$secret   = $settings->encrypt( 'sec' );
+		$oidc     = $this->make_oidc( array( 'auth_method' => 'auto', 'client_secret' => $secret ) );
+		$this->inject_discovery( $oidc, array(
+			'token_endpoint_auth_methods_supported' => array( 'client_secret_jwt', 'client_secret_basic' ),
+		) );
+
+		$result = $oidc->build_token_request_public(
+			array( 'grant_type' => 'authorization_code', 'code' => 'X' ),
+			'https://idp.example.org/token'
+		);
+		$this->assertArrayHasKey( 'client_assertion', $result['body'] );
+	}
+
+	public function test_auto_falls_back_to_post_when_no_discovery(): void {
+		$oidc = $this->make_oidc( array( 'auth_method' => 'auto' ) );
+		// No discovery injected — discovery() will return WP_Error.
+		$result = $oidc->build_token_request_public(
+			array( 'grant_type' => 'authorization_code', 'code' => 'X' ),
+			'https://idp.example.org/token'
+		);
+		$this->assertSame( 'test-client', $result['body']['client_id'] );
+		$this->assertArrayNotHasKey( 'Authorization', $result['headers'] ?? array() );
+	}
+
+	public function test_auto_falls_back_to_post_when_methods_list_empty(): void {
+		$oidc = $this->make_oidc( array( 'auth_method' => 'auto' ) );
+		$this->inject_discovery( $oidc, array(
+			'token_endpoint_auth_methods_supported' => array(),
+		) );
+
+		$result = $oidc->build_token_request_public(
+			array( 'grant_type' => 'authorization_code', 'code' => 'X' ),
+			'https://idp.example.org/token'
+		);
+		$this->assertSame( 'test-client', $result['body']['client_id'] );
+		$this->assertArrayNotHasKey( 'client_assertion', $result['body'] );
+	}
+
+	// --- Issuer URL override --------------------------------------------------
+
+	public function test_issuer_url_override_takes_precedence(): void {
+		$oidc = $this->make_oidc( array( 'issuer_url' => 'https://custom-issuer.example.org' ) );
+		$this->inject_discovery( $oidc, array( 'issuer' => 'https://discovery-issuer.example.org' ) );
+
+		$ref = new \ReflectionMethod( $oidc, 'issuer' );
+		$ref->setAccessible( true );
+		$this->assertSame( 'https://custom-issuer.example.org', $ref->invoke( $oidc ) );
+	}
+
+	public function test_issuer_falls_back_to_discovery(): void {
+		$oidc = $this->make_oidc( array() );
+		$this->inject_discovery( $oidc, array( 'issuer' => 'https://discovery-issuer.example.org' ) );
+
+		$ref = new \ReflectionMethod( $oidc, 'issuer' );
+		$ref->setAccessible( true );
+		$this->assertSame( 'https://discovery-issuer.example.org', $ref->invoke( $oidc ) );
+	}
 }
