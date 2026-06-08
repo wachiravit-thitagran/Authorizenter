@@ -47,4 +47,22 @@ class IdentityTest extends TestCase {
 		$this->assertFalse( $id->email_verified );
 		$this->assertSame( array( 'x' => 1 ), $id->raw );
 	}
+
+	public function test_first_last_name_and_username_defaults_to_empty(): void {
+		$id = new Identity( 'oidc', array() );
+		$this->assertSame( '', $id->first_name );
+		$this->assertSame( '', $id->last_name );
+		$this->assertSame( '', $id->username );
+	}
+
+	public function test_first_last_name_and_username_set_from_data(): void {
+		$id = new Identity( 'oidc', array(
+			'first_name' => 'Somchai',
+			'last_name'  => 'Jaidee',
+			'username'   => 'somchai',
+		) );
+		$this->assertSame( 'Somchai', $id->first_name );
+		$this->assertSame( 'Jaidee', $id->last_name );
+		$this->assertSame( 'somchai', $id->username );
+	}
 }

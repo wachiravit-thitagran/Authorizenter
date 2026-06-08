@@ -57,6 +57,27 @@ class Identity {
 	public $hd;
 
 	/**
+	 * First name from provider claims.
+	 *
+	 * @var string
+	 */
+	public $first_name;
+
+	/**
+	 * Last name from provider claims.
+	 *
+	 * @var string
+	 */
+	public $last_name;
+
+	/**
+	 * Username hint from provider claims (used by User_Mapper link_by_username).
+	 *
+	 * @var string
+	 */
+	public $username;
+
+	/**
 	 * Raw claims/profile for advanced policy via filters.
 	 *
 	 * @var array
@@ -77,6 +98,9 @@ class Identity {
 		$this->name           = isset( $data['name'] ) ? (string) $data['name'] : '';
 		$this->hd             = isset( $data['hd'] ) ? strtolower( (string) $data['hd'] ) : '';
 		$this->raw            = isset( $data['raw'] ) && is_array( $data['raw'] ) ? $data['raw'] : array();
+		$this->first_name     = isset( $data['first_name'] ) ? (string) $data['first_name'] : '';
+		$this->last_name      = isset( $data['last_name'] ) ? (string) $data['last_name'] : '';
+		$this->username       = isset( $data['username'] ) ? (string) $data['username'] : '';
 	}
 
 	/**
