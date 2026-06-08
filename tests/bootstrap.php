@@ -40,3 +40,14 @@ require $inc . 'class-password-auth.php';
 require $inc . 'class-login-throttle.php';
 require $inc . 'class-private-site.php';
 require $inc . 'class-admin-settings.php';
+
+$ui_inc = dirname( __DIR__ ) . '/plugins/autorizenter-ui/includes/';
+if ( ! defined( 'AUTORIZENTER_UI_URL' ) ) {
+	define( 'AUTORIZENTER_UI_URL', 'https://example.test/ui/' );
+}
+if ( ! defined( 'AUTORIZENTER_UI_DIR' ) ) {
+	define( 'AUTORIZENTER_UI_DIR', __DIR__ . '/fixtures/' );
+}
+require $ui_inc . 'class-logos.php';
+require $ui_inc . 'class-frontend.php';
+require __DIR__ . '/core-namespace-stub.php';

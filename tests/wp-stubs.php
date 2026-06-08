@@ -33,6 +33,8 @@ function azr_test_reset() {
 	$GLOBALS['__users']      = array();
 	$GLOBALS['__transients'] = array();
 	$GLOBALS['__next_uid']   = 100;
+	$GLOBALS['__logged_in']  = false;
+	$GLOBALS['__core']       = null;
 }
 
 /** Register a fake user. */
@@ -364,5 +366,13 @@ function get_editable_roles() {
 		'administrator' => array( 'name' => 'Administrator' ),
 	);
 }
+
+function is_user_logged_in() { return (bool) ( $GLOBALS['__logged_in'] ?? false ); }
+function shortcode_atts( $defaults, $atts, $shortcode = '' ) {
+	$atts = (array) $atts;
+	return array_merge( $defaults, array_intersect_key( $atts, $defaults ) );
+}
+function wp_enqueue_style( ...$args ) {}
+function wp_enqueue_script( ...$args ) {}
 
 // phpcs:enable
