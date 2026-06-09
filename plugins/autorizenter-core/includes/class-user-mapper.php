@@ -215,11 +215,12 @@ class User_Mapper {
 			return false;
 		}
 
-		$pos    = 0;
-		$result = $this->eval_or( $tokens, $pos, $identity );
+		$pos         = 0;
+		$result      = $this->eval_or( $tokens, $pos, $identity );
+		$token_count = count( $tokens );
 
 		// Reject malformed expressions (leftover or unbalanced tokens).
-		if ( $pos !== count( $tokens ) ) {
+		if ( $pos !== $token_count ) {
 			return false;
 		}
 		return $result;
@@ -317,8 +318,9 @@ class User_Mapper {
 	 * @return bool
 	 */
 	private function eval_or( $tokens, &$pos, Identity $identity ) {
-		$value = $this->eval_and( $tokens, $pos, $identity );
-		while ( $pos < count( $tokens ) && array( 'op', '||' ) === $tokens[ $pos ] ) {
+		$value       = $this->eval_and( $tokens, $pos, $identity );
+		$token_count = count( $tokens );
+		while ( $pos < $token_count && array( 'op', '||' ) === $tokens[ $pos ] ) {
 			++$pos;
 			// Function first so the cursor always advances (no short-circuit skip).
 			$value = $this->eval_and( $tokens, $pos, $identity ) || $value;
@@ -335,8 +337,9 @@ class User_Mapper {
 	 * @return bool
 	 */
 	private function eval_and( $tokens, &$pos, Identity $identity ) {
-		$value = $this->eval_not( $tokens, $pos, $identity );
-		while ( $pos < count( $tokens ) && array( 'op', '&&' ) === $tokens[ $pos ] ) {
+		$value       = $this->eval_not( $tokens, $pos, $identity );
+		$token_count = count( $tokens );
+		while ( $pos < $token_count && array( 'op', '&&' ) === $tokens[ $pos ] ) {
 			++$pos;
 			$value = $this->eval_not( $tokens, $pos, $identity ) && $value;
 		}
@@ -415,7 +418,7 @@ class User_Mapper {
 		}
 
 		$parts = explode( ':', $condition, 2 );
-		if ( count( $parts ) !== 2 ) {
+		if ( 2 !== count( $parts ) ) {
 			return false;
 		}
 		$type  = strtolower( trim( $parts[0] ) );
@@ -426,11 +429,11 @@ class User_Mapper {
 
 		switch ( $type ) {
 			case 'provider':
-				return $identity->provider === strtolower( $value );
+				return strtolower( $value ) === $identity->provider;
 			case 'email':
-				return $email === strtolower( $value );
+				return strtolower( $value ) === $email;
 			case 'username':
-				return '' !== $identity->username && $identity->username === $value;
+				return '' !== $identity->username && $value === $identity->username;
 			case 'domain':
 				$value  = strtolower( $value );
 				$domain = $identity->email_domain();
