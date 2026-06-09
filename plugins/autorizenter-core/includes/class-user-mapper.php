@@ -159,8 +159,12 @@ class User_Mapper {
 	 * Resolve the role for a new user from the configured role map.
 	 *
 	 * Each rule is a matcher mapped to a role; the first match wins, else the
-	 * default role is used. Matchers: "domain:example.org", "provider:google",
-	 * "email:a@b.com", or "*" (catch-all).
+	 * default role is used. Condition types: domain:, provider:, email:, username:,
+	 * regex: / email_regex: (pattern vs full email), local: (pattern vs the part
+	 * before "@"), or "*". Build boolean expressions with standard precedence:
+	 * parentheses "()" highest, then "!" (NOT), "&&" (AND), "||" (OR) lowest. Quote
+	 * an atom whose value contains operator characters, e.g.
+	 * "( provider:oidc && "local:^(\d{10}|\d{13})$" ) || domain:alumni.example.org".
 	 *
 	 * @param Identity $identity Identity.
 	 * @param array    $cfg      User config.
@@ -198,33 +202,263 @@ class User_Mapper {
 	 * @return bool
 	 */
 	private function role_match( $matcher, Identity $identity ) {
-		$matcher = trim( $matcher );
+		$matcher = trim( (string) $matcher );
+		if ( '' === $matcher ) {
+			return false;
+		}
 		if ( '*' === $matcher ) {
 			return true;
 		}
-		$parts = explode( ':', $matcher, 2 );
+
+		$tokens = $this->tokenize_rule( $matcher );
+		if ( null === $tokens || array() === $tokens ) {
+			return false;
+		}
+
+		$pos    = 0;
+		$result = $this->eval_or( $tokens, $pos, $identity );
+
+		// Reject malformed expressions (leftover or unbalanced tokens).
+		if ( $pos !== count( $tokens ) ) {
+			return false;
+		}
+		return $result;
+	}
+
+	/**
+	 * Tokenize a role-map boolean expression.
+	 *
+	 * Operators (standard precedence): "(" ")" highest, then "!" (NOT), "&&" (AND),
+	 * "||" (OR) lowest. Atoms are "type:value"; wrap an atom in double quotes when
+	 * its value contains operator characters, e.g. a regex with parentheses or
+	 * alternation: "local:^(\d{10}|\d{13})$".
+	 *
+	 * @param string $s Expression.
+	 * @return array[]|null Token list, or null when malformed (unterminated quote).
+	 */
+	private function tokenize_rule( $s ) {
+		$tokens = array();
+		$i      = 0;
+		$n      = strlen( $s );
+
+		while ( $i < $n ) {
+			$c = $s[ $i ];
+
+			if ( ctype_space( $c ) ) {
+				++$i;
+				continue;
+			}
+			if ( '(' === $c || ')' === $c || '!' === $c ) {
+				$tokens[] = array( 'op', $c );
+				++$i;
+				continue;
+			}
+			if ( '&' === $c && $i + 1 < $n && '&' === $s[ $i + 1 ] ) {
+				$tokens[] = array( 'op', '&&' );
+				$i       += 2;
+				continue;
+			}
+			if ( '|' === $c && $i + 1 < $n && '|' === $s[ $i + 1 ] ) {
+				$tokens[] = array( 'op', '||' );
+				$i       += 2;
+				continue;
+			}
+			if ( '"' === $c ) {
+				++$i;
+				$val = '';
+				while ( $i < $n && '"' !== $s[ $i ] ) {
+					if ( '\\' === $s[ $i ] && $i + 1 < $n && ( '"' === $s[ $i + 1 ] || '\\' === $s[ $i + 1 ] ) ) {
+						$val .= $s[ $i + 1 ];
+						$i   += 2;
+					} else {
+						$val .= $s[ $i ];
+						++$i;
+					}
+				}
+				if ( $i >= $n ) {
+					return null; // Unterminated quote.
+				}
+				++$i; // Skip closing quote.
+				$tokens[] = array( 'atom', $val );
+				continue;
+			}
+
+			// Unquoted atom: read up to the next operator character or whitespace.
+			$val = '';
+			while ( $i < $n ) {
+				$c = $s[ $i ];
+				if ( ctype_space( $c ) || '(' === $c || ')' === $c || '!' === $c ) {
+					break;
+				}
+				if ( '&' === $c && $i + 1 < $n && '&' === $s[ $i + 1 ] ) {
+					break;
+				}
+				if ( '|' === $c && $i + 1 < $n && '|' === $s[ $i + 1 ] ) {
+					break;
+				}
+				$val .= $c;
+				++$i;
+			}
+			$val = trim( $val );
+			if ( '' !== $val ) {
+				$tokens[] = array( 'atom', $val );
+			}
+		}
+
+		return $tokens;
+	}
+
+	/**
+	 * Evaluate: or := and ( "||" and )*.
+	 *
+	 * @param array[]  $tokens   Tokens.
+	 * @param int      $pos      Cursor (by reference).
+	 * @param Identity $identity Identity.
+	 * @return bool
+	 */
+	private function eval_or( $tokens, &$pos, Identity $identity ) {
+		$value = $this->eval_and( $tokens, $pos, $identity );
+		while ( $pos < count( $tokens ) && array( 'op', '||' ) === $tokens[ $pos ] ) {
+			++$pos;
+			// Function first so the cursor always advances (no short-circuit skip).
+			$value = $this->eval_and( $tokens, $pos, $identity ) || $value;
+		}
+		return $value;
+	}
+
+	/**
+	 * Evaluate: and := not ( "&&" not )*.
+	 *
+	 * @param array[]  $tokens   Tokens.
+	 * @param int      $pos      Cursor (by reference).
+	 * @param Identity $identity Identity.
+	 * @return bool
+	 */
+	private function eval_and( $tokens, &$pos, Identity $identity ) {
+		$value = $this->eval_not( $tokens, $pos, $identity );
+		while ( $pos < count( $tokens ) && array( 'op', '&&' ) === $tokens[ $pos ] ) {
+			++$pos;
+			$value = $this->eval_not( $tokens, $pos, $identity ) && $value;
+		}
+		return $value;
+	}
+
+	/**
+	 * Evaluate: not := "!" not | primary.
+	 *
+	 * @param array[]  $tokens   Tokens.
+	 * @param int      $pos      Cursor (by reference).
+	 * @param Identity $identity Identity.
+	 * @return bool
+	 */
+	private function eval_not( $tokens, &$pos, Identity $identity ) {
+		if ( $pos < count( $tokens ) && array( 'op', '!' ) === $tokens[ $pos ] ) {
+			++$pos;
+			return ! $this->eval_not( $tokens, $pos, $identity );
+		}
+		return $this->eval_primary( $tokens, $pos, $identity );
+	}
+
+	/**
+	 * Evaluate: primary := "(" or ")" | atom.
+	 *
+	 * @param array[]  $tokens   Tokens.
+	 * @param int      $pos      Cursor (by reference).
+	 * @param Identity $identity Identity.
+	 * @return bool
+	 */
+	private function eval_primary( $tokens, &$pos, Identity $identity ) {
+		if ( $pos >= count( $tokens ) ) {
+			return false;
+		}
+		$token = $tokens[ $pos ];
+
+		if ( array( 'op', '(' ) === $token ) {
+			++$pos;
+			$value = $this->eval_or( $tokens, $pos, $identity );
+			if ( $pos < count( $tokens ) && array( 'op', ')' ) === $tokens[ $pos ] ) {
+				++$pos;
+			} else {
+				$pos = count( $tokens ) + 1; // Force a malformed result.
+			}
+			return $value;
+		}
+
+		if ( 'atom' === $token[0] ) {
+			++$pos;
+			return $this->role_condition( $token[1], $identity );
+		}
+
+		// Unexpected operator where a primary was expected.
+		$pos = count( $tokens ) + 1;
+		return false;
+	}
+
+	/**
+	 * Evaluate a single "type:value" role-map condition.
+	 *
+	 * Types: provider, email, username, domain (exact/subdomain), regex / email_regex
+	 * (pattern against the full email), local (pattern against the part before "@"),
+	 * or "*". Regex patterns are matched case-sensitively — add "(?i)" for ci.
+	 *
+	 * @param string   $condition Single condition string.
+	 * @param Identity $identity  Identity.
+	 * @return bool
+	 */
+	private function role_condition( $condition, Identity $identity ) {
+		$condition = trim( $condition );
+		if ( '' === $condition ) {
+			return false;
+		}
+		if ( '*' === $condition ) {
+			return true;
+		}
+
+		$parts = explode( ':', $condition, 2 );
 		if ( count( $parts ) !== 2 ) {
 			return false;
 		}
 		$type  = strtolower( trim( $parts[0] ) );
-		$value = strtolower( trim( $parts[1] ) );
+		$value = trim( $parts[1] ); // Case preserved; lowered per-type where needed.
+
+		$email = $identity->email;
+		$local = ( '' !== $email && false !== strpos( $email, '@' ) ) ? strstr( $email, '@', true ) : $email;
 
 		switch ( $type ) {
 			case 'provider':
-				return $identity->provider === $value;
+				return $identity->provider === strtolower( $value );
 			case 'email':
-				return $identity->email === $value;
+				return $email === strtolower( $value );
+			case 'username':
+				return '' !== $identity->username && $identity->username === $value;
 			case 'domain':
+				$value  = strtolower( $value );
 				$domain = $identity->email_domain();
 				return '' !== $domain && ( $domain === $value || substr( $domain, - ( strlen( $value ) + 1 ) ) === '.' . $value );
+			case 'regex':
 			case 'email_regex':
-				if ( '' === $identity->email || '' === $value ) {
-					return false;
-				}
-				return 1 === @preg_match( '/' . $value . '/i', $identity->email ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				return $this->regex_match( $value, $email );
+			case 'local':
+				return $this->regex_match( $value, (string) $local );
 			default:
 				return false;
 		}
+	}
+
+	/**
+	 * Safely test a user-supplied regex (no delimiters) against a subject.
+	 *
+	 * @param string $pattern Pattern without delimiters (e.g. ^\d{10}$).
+	 * @param string $subject Subject string.
+	 * @return bool
+	 */
+	private function regex_match( $pattern, $subject ) {
+		if ( '' === $pattern || '' === (string) $subject ) {
+			return false;
+		}
+		$regex  = '#' . str_replace( '#', '\\#', $pattern ) . '#u';
+		$result = @preg_match( $regex, $subject ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		return 1 === $result;
 	}
 
 	/**
