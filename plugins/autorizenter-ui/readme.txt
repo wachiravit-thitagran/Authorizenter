@@ -17,6 +17,8 @@ Autorizenter UI provides a ready-made front-end on top of Autorizenter Core:
 * `[autorizenter_login]` — renders sign-in buttons for every enabled provider.
 * `[autorizenter_logout]` — renders a sign-out link (supports SSO logout).
 * `[autorizenter_questions]` — renders the post-login question form.
+* `[autorizenter_answers]` — displays the current user's submitted answers.
+* `[autorizenter_stats]` — returns a plain aggregate count for a question (display it however you like).
 * Block editor: **Autorizenter Login** and **Autorizenter Logout** blocks (same
   output as the shortcodes, with live preview).
 * Auto-creates a "Sign in" page and a "A few questions" page on activation.

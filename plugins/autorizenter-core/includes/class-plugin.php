@@ -89,6 +89,7 @@ class Plugin {
 		( new Password_Auth( $this->settings ) )->hooks();
 		( new Login_Throttle( $this->settings ) )->hooks();
 		( new Private_Site( $this->settings ) )->hooks();
+		( new Shortcodes( $this->settings, $this->providers ) )->hooks();
 
 		$this->init_updater();
 
