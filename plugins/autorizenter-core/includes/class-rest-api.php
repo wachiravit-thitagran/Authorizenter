@@ -164,7 +164,10 @@ class Rest_Api {
 				'callback'            => array( $this, 'pending_answers' ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'token'   => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ),
+					'token'   => array(
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 					'answers' => array(),
 				),
 			)

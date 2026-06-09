@@ -243,7 +243,7 @@ class Admin_Settings {
 		$out = array();
 		foreach ( preg_split( '/[\r\n]+/', (string) $raw ) as $line ) {
 			$line = trim( (string) $line );
-			$pos = strrpos( $line, '=' );
+			$pos  = strrpos( $line, '=' );
 			if ( '' === $line || false === $pos ) {
 				continue;
 			}
@@ -1091,13 +1091,14 @@ class Admin_Settings {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Pending approval', 'autorizenter' ); ?></th>
 						<td>
-							<?php foreach ( $pending as $p_email ) :
+							<?php
+							foreach ( $pending as $p_email ) :
 								$pmeta    = isset( $pending_meta[ $p_email ] ) ? (array) $pending_meta[ $p_email ] : array();
 								$p_name   = isset( $pmeta['name'] ) && '' !== $pmeta['name'] ? $pmeta['name'] : '';
 								$p_prov   = isset( $pmeta['provider'] ) && '' !== $pmeta['provider'] ? $pmeta['provider'] : '';
 								$p_ans    = isset( $pmeta['answers'] ) && is_array( $pmeta['answers'] ) ? $pmeta['answers'] : array();
 								$p_detail = array_filter( array( $p_name, $p_prov ) );
-							?>
+								?>
 								<div style="margin-bottom:10px;border-left:3px solid #dcdcde;padding-left:10px;">
 									<label>
 										<input type="checkbox" name="approve_pending[]" value="<?php echo esc_attr( $p_email ); ?>" />
