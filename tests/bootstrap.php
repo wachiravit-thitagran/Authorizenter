@@ -40,6 +40,7 @@ require $inc . 'class-password-auth.php';
 require $inc . 'class-login-throttle.php';
 require $inc . 'class-private-site.php';
 require $inc . 'class-admin-settings.php';
+require $inc . 'class-shortcodes.php';
 
 $ui_inc = dirname( __DIR__ ) . '/plugins/autorizenter-ui/includes/';
 if ( ! defined( 'AUTORIZENTER_UI_URL' ) ) {
