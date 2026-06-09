@@ -91,6 +91,26 @@
 
 .autorizenter-req { color: #b3261e; }
 
+.autorizenter-answers {
+	margin: 0;
+}
+
+.autorizenter-answers__label {
+	font-weight: 600;
+	margin-top: 0.6rem;
+}
+
+.autorizenter-answers__value {
+	margin: 0 0 0.3rem;
+}
+
+.autorizenter-answers--empty,
+.autorizenter-answer--empty {
+	color: #6b7280;
+	font-style: italic;
+}
+
+
 .autorizenter-questions__message {
 	min-height: 1.2em;
 }

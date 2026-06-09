@@ -55,6 +55,7 @@ fetch('/wp-json/autorizenter/v1/providers')
 | `autorizenter_context` | `array $context, string $id` | Modify a resolved login context. |
 | `autorizenter_context_capability` | `bool $ok, WP_User $user, array $context` | Override the per-context capability decision. |
 | `autorizenter_context_login_url` | `string $url, string $context_id` | Login page used as a context's deny fallback. |
+| `autorizenter_button_html` | `string $default, array $data` | Render the markup for the Core `[autorizenter_button]` shortcode. `$data` has `provider_id`, `label`, `url`, `logo_url`, `context`. The UI plugin styles it; without UI a minimal link is returned. |
 | `autorizenter_sso_logout` | `bool $enabled, string $provider_id` | Enable RP-initiated logout at the IdP (OIDC `end_session_endpoint`). Default off. |
 | `autorizenter_disable_password_auth` | `bool $disabled` | Force-disable WordPress username/password sign-in (overrides the setting). |
 | `autorizenter_provision_role` | `string $role, Identity $identity` | Adjust the role assigned to a newly provisioned user. |
@@ -68,7 +69,13 @@ fetch('/wp-json/autorizenter/v1/providers')
   approved identities may sign in and others are collected as **pending** for
   review. Blocking applies even when organization policy is off.
 - **Role mapping** (`Settings → User provisioning`): `matcher = role` lines map new
-  users to roles. Matchers: `domain:`, `provider:`, `email:`, or `*`.
+  users to roles. Conditions: `domain:`, `provider:`, `email:`, `username:`,
+  `regex:` (full-email regex), `local:` (regex on the part before `@`), or `*`.
+  Build boolean expressions with standard precedence: `()` highest, then `!` (NOT),
+  `&&` (AND), `||` (OR) lowest. Quote an atom whose value contains operator
+  characters (regex with parens/alternation). Example — a 10- or 13-digit student ID
+  from the org IdP, or any alumni address, gets `student`:
+  `( provider:oidc && "local:^(\d{10}|\d{13})$" ) || domain:alumni.example.org = student`.
 - **Failed-login throttling** (`Settings → Login security`): locks an IP after N
   failed password attempts, with a progressively longer lockout.
 - **Private site** (`Settings → Login security`): redirects anonymous visitors to
