@@ -106,6 +106,115 @@ class RoleMapTest extends TestCase {
 		$this->assertSame( 'editor', $user->role );
 	}
 
+	public function test_local_regex_matcher(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array( array( 'match' => 'local:^\d{10}$', 'role' => 'student' ) ),
+		);
+		// 10-digit local part -> student.
+		$this->assertSame( 'student', $this->mapper->resolve_role( $this->id( 'oidc', '6312345678@psu.ac.th' ), $cfg ) );
+		// 9 digits / non-numeric -> default.
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'oidc', '631234567@psu.ac.th' ), $cfg ) );
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'oidc', 'staff01@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_compound_provider_and_local_regex(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array( array( 'match' => 'provider:oidc && local:^\d{10}$', 'role' => 'student' ) ),
+		);
+		// Right provider + 10-digit local -> student.
+		$this->assertSame( 'student', $this->mapper->resolve_role( $this->id( 'oidc', '6312345678@psu.ac.th' ), $cfg ) );
+		// Correct pattern but wrong provider -> default (AND fails).
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'google', '6312345678@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_or_groups_match_either_branch(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array(
+				array( 'match' => 'provider:oidc && local:^\d{10}$ || domain:alumni.psu.ac.th', 'role' => 'student' ),
+			),
+		);
+		// Branch 1: oidc + 10-digit local.
+		$this->assertSame( 'student', $this->mapper->resolve_role( $this->id( 'oidc', '6312345678@psu.ac.th' ), $cfg ) );
+		// Branch 2: alumni domain (any provider).
+		$this->assertSame( 'student', $this->mapper->resolve_role( $this->id( 'google', 'old@alumni.psu.ac.th' ), $cfg ) );
+		// Neither branch.
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'google', 'random@gmail.com' ), $cfg ) );
+	}
+
+	public function test_and_has_higher_precedence_than_or(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			// (provider:line && domain:psu.ac.th) || provider:oidc
+			'role_map'     => array(
+				array( 'match' => 'provider:line && domain:psu.ac.th || provider:oidc', 'role' => 'member' ),
+			),
+		);
+		// oidc alone (right side of OR) -> matches.
+		$this->assertSame( 'member', $this->mapper->resolve_role( $this->id( 'oidc', 'x@gmail.com' ), $cfg ) );
+		// line but wrong domain -> left AND fails, no oidc -> default.
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'line', 'x@gmail.com' ), $cfg ) );
+		// line + psu domain -> left AND matches.
+		$this->assertSame( 'member', $this->mapper->resolve_role( $this->id( 'line', 'x@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_not_operator(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array( array( 'match' => 'provider:oidc && !local:^\d{10}$', 'role' => 'staff' ) ),
+		);
+		// oidc that is NOT a 10-digit id -> staff.
+		$this->assertSame( 'staff', $this->mapper->resolve_role( $this->id( 'oidc', 'somchai@psu.ac.th' ), $cfg ) );
+		// oidc 10-digit id -> negated -> default.
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'oidc', '6312345678@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_parentheses_override_precedence(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array(
+				array( 'match' => '( provider:google || provider:facebook ) && domain:psu.ac.th', 'role' => 'social' ),
+			),
+		);
+		$this->assertSame( 'social', $this->mapper->resolve_role( $this->id( 'google', 'a@psu.ac.th' ), $cfg ) );
+		$this->assertSame( 'social', $this->mapper->resolve_role( $this->id( 'facebook', 'b@psu.ac.th' ), $cfg ) );
+		// Right provider, wrong domain -> the AND fails.
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'google', 'c@gmail.com' ), $cfg ) );
+		// Wrong provider, right domain.
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'oidc', 'd@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_quoted_atom_with_regex_alternation(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array(
+				array( 'match' => 'provider:oidc && "local:^(\d{10}|\d{13})$"', 'role' => 'student' ),
+			),
+		);
+		$this->assertSame( 'student', $this->mapper->resolve_role( $this->id( 'oidc', '6312345678@psu.ac.th' ), $cfg ) );     // 10
+		$this->assertSame( 'student', $this->mapper->resolve_role( $this->id( 'oidc', '6312345678901@psu.ac.th' ), $cfg ) );  // 13
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'oidc', '631234567@psu.ac.th' ), $cfg ) );   // 9
+	}
+
+	public function test_malformed_expression_does_not_match(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array( array( 'match' => '( provider:oidc', 'role' => 'x' ) ), // unbalanced paren.
+		);
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'oidc', 'a@psu.ac.th' ), $cfg ) );
+	}
+
+	public function test_regex_matcher_preserves_case(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			// \D would be broken by lowercasing; ensure pattern is preserved.
+			'role_map'     => array( array( 'match' => 'regex:^[a-z]+\d+@', 'role' => 'staff' ) ),
+		);
+		$this->assertSame( 'staff', $this->mapper->resolve_role( $this->id( 'oidc', 'abc123@psu.ac.th' ), $cfg ) );
+	}
+
 	public function test_wildcard_catch_all(): void {
 		$cfg = array(
 			'default_role' => 'subscriber',
