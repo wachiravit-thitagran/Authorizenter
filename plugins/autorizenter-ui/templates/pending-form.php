@@ -14,7 +14,9 @@
 defined( 'ABSPATH' ) || exit;
 ?>
 <div class="autorizenter-pending-form" data-token="<?php echo esc_attr( $token ); ?>">
-	<form class="autorizenter-questions__form" id="autorizenter-pending-form">
+	<form class="autorizenter-questions__form" id="autorizenter-pending-form" method="get">
+		<?php // Keep the token in the URL even on a native (no-JS) submit. ?>
+		<input type="hidden" name="azr_pending_token" value="<?php echo esc_attr( $token ); ?>" />
 		<?php foreach ( $questions as $q ) : ?>
 			<div class="autorizenter-field autorizenter-field--<?php echo esc_attr( $q['type'] ); ?>">
 				<?php if ( 'checkbox' === $q['type'] ) : ?>
@@ -91,6 +93,9 @@ defined( 'ABSPATH' ) || exit;
 		var answers = {};
 		form.querySelectorAll( '[name]' ).forEach( function ( el ) {
 			var name = el.getAttribute( 'name' );
+			if ( name === 'azr_pending_token' ) {
+				return; // not an answer.
+			}
 			if ( el.type === 'checkbox' ) {
 				answers[ name ] = el.checked;
 			} else if ( el.type === 'radio' ) {
