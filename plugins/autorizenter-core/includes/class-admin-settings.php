@@ -140,6 +140,7 @@ class Admin_Settings {
 				$entry['name_update']                 = isset( $p['name_update'] ) && in_array( $p['name_update'], array( 'none', 'always', 'if_empty' ), true ) ? $p['name_update'] : 'none';
 				$entry['auth_method']                 = isset( $p['auth_method'] ) && in_array( $p['auth_method'], array( 'auto', 'post', 'basic', 'secret_jwt', 'private_key_jwt' ), true ) ? $p['auth_method'] : 'auto';
 				$entry['oidc_require_verified_email'] = ! empty( $p['oidc_require_verified_email'] );
+				$entry['trust_email']                 = ! empty( $p['trust_email'] );
 				$entry['link_by_username']            = ! empty( $p['link_by_username'] );
 
 				if ( isset( $p['private_key'] ) && '' !== trim( $p['private_key'] ) ) {
@@ -1040,6 +1041,13 @@ class Admin_Settings {
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Require verified email', 'autorizenter' ); ?></th>
 							<td><label><input type="checkbox" name="providers[<?php echo esc_attr( $id ); ?>][oidc_require_verified_email]" value="1" <?php checked( ! empty( $p['oidc_require_verified_email'] ) ); ?> /> <?php esc_html_e( 'User must have a verified email address (email_verified claim) to sign in.', 'autorizenter' ); ?></label></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Trust email from this IdP', 'autorizenter' ); ?></th>
+							<td>
+								<label><input type="checkbox" name="providers[<?php echo esc_attr( $id ); ?>][trust_email]" value="1" <?php checked( ! empty( $p['trust_email'] ) ); ?> /> <?php esc_html_e( 'Treat this provider\'s email as verified, even if it omits the email_verified claim.', 'autorizenter' ); ?></label>
+								<p class="description"><?php esc_html_e( 'Enable for your own organization IdP so existing accounts link by email. Only enable for IdPs you trust to assert correct email addresses.', 'autorizenter' ); ?></p>
+							</td>
 						</tr>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Link users by username', 'autorizenter' ); ?></th>

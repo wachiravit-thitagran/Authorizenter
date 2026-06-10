@@ -31,6 +31,22 @@ class ProvidersTest extends TestCase {
 		return $ref->invokeArgs( $obj, $args );
 	}
 
+	public function test_trust_email_forces_verified(): void {
+		$oidc = new OIDC( new Settings(), array( 'id' => 'oidc', 'trust_email' => true ) );
+		$id   = $oidc->identity_from_claims_public( array( 'sub' => 'S', 'email' => 'a@psu.ac.th' ) ); // no email_verified claim.
+		$this->assertTrue( $id->email_verified );
+	}
+
+	public function test_email_verified_follows_claim_when_not_trusted(): void {
+		$oidc = new OIDC( new Settings(), array( 'id' => 'oidc' ) );
+
+		$verified = $oidc->identity_from_claims_public( array( 'sub' => 'S', 'email' => 'a@psu.ac.th', 'email_verified' => true ) );
+		$this->assertTrue( $verified->email_verified );
+
+		$unverified = $oidc->identity_from_claims_public( array( 'sub' => 'S', 'email' => 'a@psu.ac.th' ) );
+		$this->assertFalse( $unverified->email_verified );
+	}
+
 	public function test_is_oidc_flag(): void {
 		$settings = new Settings();
 		$this->assertTrue( $this->oidc()->is_oidc() );
