@@ -933,7 +933,7 @@ class Admin_Settings {
 							<th scope="row"><?php esc_html_e( 'Scopes', 'autorizenter' ); ?></th>
 							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][scopes]" value="<?php echo esc_attr( isset( $p['scopes'] ) ? $p['scopes'] : '' ); ?>" placeholder="openid email profile" /></td>
 						</tr>
-						<?php if ( $ui_active ) : ?>
+							<?php if ( $ui_active ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Logo URL', 'autorizenter' ); ?></th>
 							<td>
