@@ -81,6 +81,12 @@ class Access_List {
 		$is_trusted = in_array( $identity->provider, $trusted_providers, true );
 
 		if ( ! $is_trusted && $this->is_enforced() ) {
+			// An existing WordPress account was already vetted when it was created,
+			// so (when enabled) it may sign in without going through approval again.
+			if ( '' !== $email && $this->existing_account_bypass( $identity ) ) {
+				return true;
+			}
+
 			if ( '' === $email || ! $this->matches( $email, $this->entries( 'approved' ) ) ) {
 				$token = '';
 				if ( '' !== $email ) {
@@ -105,6 +111,36 @@ class Access_List {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Whether an identity with an existing WordPress account skips the approval
+	 * gate.
+	 *
+	 * Controlled by the "Existing accounts" setting (access.allow_existing,
+	 * defaulting to on) and overridable via the
+	 * autorizenter_existing_account_skips_approval filter. Blocked entries are
+	 * checked before this and always win.
+	 *
+	 * @param Identity $identity Identity.
+	 * @return bool
+	 */
+	private function existing_account_bypass( Identity $identity ) {
+		$access = $this->settings->get( 'access' );
+		$allow  = ! isset( $access['allow_existing'] ) || ! empty( $access['allow_existing'] );
+
+		/**
+		 * Filter whether an already-registered WordPress account bypasses approval.
+		 *
+		 * @param bool     $allow    Current setting.
+		 * @param Identity $identity Identity attempting to sign in.
+		 */
+		$allow = (bool) apply_filters( 'autorizenter_existing_account_skips_approval', $allow, $identity );
+		if ( ! $allow ) {
+			return false;
+		}
+
+		return (bool) get_user_by( 'email', $identity->email );
 	}
 
 	/**

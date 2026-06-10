@@ -58,6 +58,7 @@ fetch('/wp-json/autorizenter/v1/providers')
 | `autorizenter_sso_logout` | `bool $enabled, string $provider_id` | Enable RP-initiated logout at the IdP (OIDC `end_session_endpoint`). Default off. |
 | `autorizenter_disable_password_auth` | `bool $disabled` | Force-disable WordPress username/password sign-in (overrides the setting). |
 | `autorizenter_provision_role` | `string $role, Identity $identity` | Adjust the role assigned to a newly provisioned user. |
+| `autorizenter_existing_account_skips_approval` | `bool $allow, Identity $identity` | Whether an identity that already has a WordPress account bypasses the approved-list/pending gate. Mirrors the "Existing accounts" setting (default on). |
 | `autorizenter_private_allow` | `bool $allowed` | Let a specific front-end request through while private-site mode is on. |
 | `autorizenter_login_page_id` | `int $id` | The login page id (used to allow it under private-site mode). |
 
@@ -83,7 +84,10 @@ authentication still works but those display settings are hidden.
 - **Access lists** (`Settings → Access control`): approve or block individual
   emails or domains. Blocked entries are always denied; with enforcement on, only
   approved identities may sign in and others are collected as **pending** for
-  review. Blocking applies even when organization policy is off.
+  review. Blocking applies even when organization policy is off. By default
+  **existing WordPress accounts skip approval** (the "Existing accounts" toggle /
+  `autorizenter_existing_account_skips_approval` filter), since they were vetted
+  when the account was created; blocked entries still win.
 - **Role mapping** (`Settings → User provisioning`): `matcher = role` lines map new
   users to roles. Conditions: `domain:`, `provider:`, `email:`, `username:`,
   `regex:` (full-email regex), `local:` (regex on the part before `@`), or `*`.

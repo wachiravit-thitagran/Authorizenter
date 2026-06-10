@@ -163,8 +163,9 @@ class Admin_Settings {
 		$all['users']['role_map']       = $this->parse_role_map( isset( $_POST['role_map'] ) ? wp_unslash( $_POST['role_map'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 
 		// Access lists.
-		$all['access']['enabled']  = ! empty( $_POST['access_enabled'] );
-		$all['access']['approved'] = $this->split_lines( isset( $_POST['access_approved'] ) ? wp_unslash( $_POST['access_approved'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$all['access']['enabled']        = ! empty( $_POST['access_enabled'] );
+		$all['access']['allow_existing'] = ! empty( $_POST['access_allow_existing'] );
+		$all['access']['approved']       = $this->split_lines( isset( $_POST['access_approved'] ) ? wp_unslash( $_POST['access_approved'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		$all['access']['blocked']  = $this->split_lines( isset( $_POST['access_blocked'] ) ? wp_unslash( $_POST['access_blocked'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 
 		// Approve selected pending identities.
@@ -1081,6 +1082,10 @@ class Admin_Settings {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Restrict to approved list', 'autorizenter' ); ?></th>
 						<td><label><input type="checkbox" name="access_enabled" value="1" <?php checked( ! empty( $access['enabled'] ) ); ?> /> <?php esc_html_e( 'Only identities on the approved list may sign in. Others are recorded as pending.', 'autorizenter' ); ?></label></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Existing accounts', 'autorizenter' ); ?></th>
+						<td><label><input type="checkbox" name="access_allow_existing" value="1" <?php checked( ! isset( $access['allow_existing'] ) || ! empty( $access['allow_existing'] ) ); ?> /> <?php esc_html_e( 'Let users who already have a WordPress account sign in without approval (skip the pending list). They were already vetted when the account was created.', 'autorizenter' ); ?></label></td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Approved', 'autorizenter' ); ?></th>
