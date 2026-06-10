@@ -1,6 +1,6 @@
 <?php
 /**
- * Front-end shortcodes owned by Core (logic only; markup is delegated to UI).
+ * Front-end shortcodes owned by Core (logic only — no markup).
  *
  * @package Autorizenter\Core
  */
@@ -10,10 +10,10 @@ namespace Autorizenter\Core;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers shortcodes whose behaviour is Core's responsibility. The actual HTML
- * is produced by template-level code (the UI plugin) through filters, so Core has
- * no dependency on any presentation layer and the shortcode still works — in a
- * minimal, unstyled form — even without the UI plugin installed.
+ * Registers the shortcodes whose behaviour is purely Core's responsibility:
+ * resolving a provider/context and emitting an authorize URL. Anything that
+ * renders markup (buttons, labels, icons) belongs to the UI plugin — Core never
+ * outputs presentation, so it carries no dependency on a presentation layer.
  */
 class Shortcodes {
 
@@ -48,20 +48,33 @@ class Shortcodes {
 	 * @return void
 	 */
 	public function hooks() {
-		add_shortcode( 'autorizenter_button', array( $this, 'render_button' ) );
+		add_shortcode( 'autorizenter_url', array( $this, 'render_url' ) );
 	}
 
 	/**
-	 * Single provider login button: [autorizenter_button provider="google" context="default"].
+	 * Bare authorize URL: [autorizenter_url provider="google" context="default"].
 	 *
-	 * Core resolves the provider/context and builds the authorize URL, then hands a
-	 * data array to the `autorizenter_button_html` filter so a template can render
-	 * the styled markup. The returned default is a plain, functional link.
+	 * Returns only the authorize URL string (escaped), with no markup — handy for
+	 * custom links, redirects, or passing into templates. Returns an empty string
+	 * when the provider is missing/disabled in the context, or the visitor is
+	 * already logged in.
 	 *
 	 * @param array $atts Shortcode attributes.
 	 * @return string
 	 */
-	public function render_button( $atts ) {
+	public function render_url( $atts ) {
+		$url = $this->authorize_url( $atts, 'autorizenter_url' );
+		return null === $url ? '' : esc_url( $url );
+	}
+
+	/**
+	 * Validate attributes and build the provider authorize URL.
+	 *
+	 * @param array  $atts      Shortcode attributes.
+	 * @param string $shortcode Shortcode tag (for shortcode_atts context).
+	 * @return string|null Authorize URL (unescaped), or null when invalid.
+	 */
+	private function authorize_url( $atts, $shortcode ) {
 		$atts = shortcode_atts(
 			array(
 				'provider'  => '',
@@ -69,11 +82,11 @@ class Shortcodes {
 				'return_to' => '',
 			),
 			$atts,
-			'autorizenter_button'
+			$shortcode
 		);
 
 		if ( is_user_logged_in() || '' === $atts['provider'] ) {
-			return '';
+			return null;
 		}
 
 		$context_id  = sanitize_key( $atts['context'] );
@@ -82,39 +95,17 @@ class Shortcodes {
 		$providers   = $this->providers->enabled_for_context( $context );
 
 		if ( ! isset( $providers[ $provider_id ] ) ) {
-			return '';
+			return null;
 		}
 
-		$provider  = $providers[ $provider_id ];
 		$return_to = '' !== $atts['return_to'] ? $atts['return_to'] : $this->current_url();
-		$url       = add_query_arg(
+		return add_query_arg(
 			array(
 				'context'   => $context_id,
 				'return_to' => rawurlencode( $return_to ),
 			),
 			rest_url( AUTORIZENTER_REST_NAMESPACE . '/authorize/' . $provider_id )
 		);
-
-		$data = array(
-			'provider_id' => $provider_id,
-			'label'       => $provider->label(),
-			'url'         => $url,
-			'logo_url'    => $provider->logo_url(),
-			'context'     => $context_id,
-		);
-
-		$default = '<a class="autorizenter-btn autorizenter-btn--' . esc_attr( $provider_id ) . '" href="' . esc_url( $url ) . '">' .
-			/* translators: %s: provider label */
-			sprintf( esc_html__( 'Continue with %s', 'autorizenter' ), esc_html( $data['label'] ) ) .
-			'</a>';
-
-		/**
-		 * Filter the rendered single-provider button (template-level markup).
-		 *
-		 * @param string $default Minimal default markup.
-		 * @param array  $data    Button data: provider_id, label, url, logo_url, context.
-		 */
-		return apply_filters( 'autorizenter_button_html', $default, $data );
 	}
 
 	/**

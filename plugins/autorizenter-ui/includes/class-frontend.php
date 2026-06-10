@@ -22,8 +22,9 @@ class Frontend {
 	 */
 	public function hooks() {
 		add_shortcode( 'autorizenter_login', array( $this, 'render_login' ) );
-		// Core owns the [autorizenter_button] shortcode; UI renders its markup.
-		add_filter( 'autorizenter_button_html', array( $this, 'render_button_html' ), 10, 2 );
+		// UI owns the visual [autorizenter_button] (Core owns only the bare
+		// [autorizenter_url]); label/icon rendering live here at the template level.
+		add_shortcode( 'autorizenter_button', array( $this, 'render_button' ) );
 		add_shortcode( 'autorizenter_logout', array( $this, 'render_logout' ) );
 		add_shortcode( 'autorizenter_questions', array( $this, 'render_questions' ) );
 		add_shortcode( 'autorizenter_answers', array( $this, 'render_answers' ) );
@@ -176,35 +177,67 @@ class Frontend {
 	}
 
 	/**
-	 * Render the styled markup for the Core-owned [autorizenter_button] shortcode.
+	 * Single provider login button: [autorizenter_button provider="google" context="default"].
 	 *
-	 * This is the template-level UI for a single provider button: brand logo (or a
-	 * custom one) plus the label. Core supplies the resolved data via the
-	 * `autorizenter_button_html` filter.
+	 * Template-level UI for one provider: brand logo (or a custom one) plus the
+	 * label. The bare authorize URL itself is Core's concern (see the
+	 * [autorizenter_url] shortcode); this method resolves the provider through the
+	 * Core registry and wraps it in styled markup. Returns an empty string when the
+	 * provider is missing/disabled in the context, or the visitor is logged in.
 	 *
-	 * @param string $html Default markup from Core.
-	 * @param array  $data Button data: provider_id, label, url, logo_url, context.
+	 * @param array $atts Shortcode attributes (provider, context, return_to).
 	 * @return string
 	 */
-	public function render_button_html( $html, $data ) {
-		if ( ! is_array( $data ) || empty( $data['provider_id'] ) || empty( $data['url'] ) ) {
-			return $html;
+	public function render_button( $atts ) {
+		$atts = shortcode_atts(
+			array(
+				'provider'  => '',
+				'context'   => 'default',
+				'return_to' => '',
+			),
+			$atts,
+			'autorizenter_button'
+		);
+
+		if ( is_user_logged_in() || '' === $atts['provider'] ) {
+			return '';
 		}
+		if ( ! function_exists( 'Autorizenter\\Core\\autorizenter_core' ) ) {
+			return '';
+		}
+
+		$core        = \Autorizenter\Core\autorizenter_core();
+		$context_id  = sanitize_key( $atts['context'] );
+		$provider_id = sanitize_key( $atts['provider'] );
+		$context     = $core->settings->get_context( $context_id );
+		$providers   = $core->providers->enabled_for_context( $context );
+
+		if ( ! isset( $providers[ $provider_id ] ) ) {
+			return '';
+		}
+
+		$provider  = $providers[ $provider_id ];
+		$return_to = '' !== $atts['return_to'] ? $atts['return_to'] : $this->current_url();
+		$url       = add_query_arg(
+			array(
+				'context'   => $context_id,
+				'return_to' => rawurlencode( $return_to ),
+			),
+			rest_url( 'autorizenter/v1/authorize/' . $provider_id )
+		);
 
 		wp_enqueue_style( 'autorizenter-ui' );
 
-		$provider_id = sanitize_key( $data['provider_id'] );
-		$label       = isset( $data['label'] ) ? $data['label'] : $provider_id;
-		$logo        = isset( $data['logo_url'] ) ? $data['logo_url'] : '';
-		$icon        = '' !== $logo
+		$logo = $provider->logo_url();
+		$icon = '' !== $logo
 			? '<img src="' . esc_url( $logo ) . '" alt="" width="20" height="20" loading="lazy" />'
 			: \Autorizenter\UI\Logos::svg( $provider_id );
 
-		return '<a class="autorizenter-btn autorizenter-btn--' . esc_attr( $provider_id ) . '" href="' . esc_url( $data['url'] ) . '">' .
+		return '<a class="autorizenter-btn autorizenter-btn--' . esc_attr( $provider_id ) . '" href="' . esc_url( $url ) . '">' .
 			'<span class="autorizenter-btn__icon">' . $icon . '</span>' .
 			'<span class="autorizenter-btn__label">' .
 				/* translators: %s: provider label */
-				sprintf( esc_html__( 'Continue with %s', 'autorizenter' ), esc_html( $label ) ) .
+				sprintf( esc_html__( 'Continue with %s', 'autorizenter' ), esc_html( $provider->label() ) ) .
 			'</span>' .
 			'</a>';
 	}

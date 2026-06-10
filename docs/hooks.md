@@ -55,12 +55,28 @@ fetch('/wp-json/autorizenter/v1/providers')
 | `autorizenter_context` | `array $context, string $id` | Modify a resolved login context. |
 | `autorizenter_context_capability` | `bool $ok, WP_User $user, array $context` | Override the per-context capability decision. |
 | `autorizenter_context_login_url` | `string $url, string $context_id` | Login page used as a context's deny fallback. |
-| `autorizenter_button_html` | `string $default, array $data` | Render the markup for the Core `[autorizenter_button]` shortcode. `$data` has `provider_id`, `label`, `url`, `logo_url`, `context`. The UI plugin styles it; without UI a minimal link is returned. |
 | `autorizenter_sso_logout` | `bool $enabled, string $provider_id` | Enable RP-initiated logout at the IdP (OIDC `end_session_endpoint`). Default off. |
 | `autorizenter_disable_password_auth` | `bool $disabled` | Force-disable WordPress username/password sign-in (overrides the setting). |
 | `autorizenter_provision_role` | `string $role, Identity $identity` | Adjust the role assigned to a newly provisioned user. |
 | `autorizenter_private_allow` | `bool $allowed` | Let a specific front-end request through while private-site mode is on. |
 | `autorizenter_login_page_id` | `int $id` | The login page id (used to allow it under private-site mode). |
+
+## SSO button / URL shortcodes
+
+Display and logic are split between the two plugins:
+
+| Shortcode | Owner | Attributes | Returns |
+|-----------|-------|------------|---------|
+| `[autorizenter_url]` | Core | `provider`, `context` (default `default`), `return_to` | The bare authorize URL string only (no markup) — for custom links, redirects, or feeding other shortcodes/templates. Works with Core alone. |
+| `[autorizenter_button]` | UI | `provider`, `context` (default `default`), `return_to` | Styled single-provider login link (brand icon + label). Requires the **Autorizenter UI** plugin. |
+
+Both resolve identically: empty output when `provider` is missing, the provider
+is not enabled in the `context`, or the visitor is already logged in. `return_to`
+defaults to the current URL.
+
+Because Core never renders markup, the **Label** and **Logo URL** provider
+settings only appear in the admin once the UI plugin is active; with Core alone,
+authentication still works but those display settings are hidden.
 
 ## Access control & security (Authorizer-style)
 
