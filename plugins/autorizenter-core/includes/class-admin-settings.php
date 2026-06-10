@@ -185,15 +185,26 @@ class Admin_Settings {
 		$approve = isset( $_POST['approve_pending'] ) && is_array( $_POST['approve_pending'] )
 			? array_map( 'sanitize_text_field', wp_unslash( $_POST['approve_pending'] ) )
 			: array();
+		// Per-email role chosen at approval time (email => role slug).
+		$approve_roles = isset( $_POST['approve_role'] ) && is_array( $_POST['approve_role'] )
+			? array_map( 'sanitize_key', wp_unslash( $_POST['approve_role'] ) )
+			: array();
 		$pending = isset( $all['access']['pending'] ) ? (array) $all['access']['pending'] : array();
 		if ( ! empty( $approve ) ) {
 			$all['access']['approved'] = array_values( array_unique( array_merge( $all['access']['approved'], $approve ) ) );
 			$pending                   = array_values( array_diff( $pending, $approve ) );
-			if ( isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] ) ) {
-				foreach ( $approve as $a_email ) {
+
+			$approved_roles = isset( $all['access']['approved_roles'] ) && is_array( $all['access']['approved_roles'] ) ? $all['access']['approved_roles'] : array();
+			foreach ( $approve as $a_email ) {
+				$a_email = strtolower( trim( $a_email ) );
+				if ( ! empty( $approve_roles[ $a_email ] ) ) {
+					$approved_roles[ $a_email ] = $approve_roles[ $a_email ];
+				}
+				if ( isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] ) ) {
 					unset( $all['access']['pending_meta'][ $a_email ] );
 				}
 			}
+			$all['access']['approved_roles'] = $approved_roles;
 		}
 		$all['access']['pending'] = $pending;
 
@@ -1162,6 +1173,15 @@ class Admin_Settings {
 										<?php if ( ! empty( $p_detail ) ) : ?>
 											<span style="color:#666;font-size:12px;"> &mdash; <?php echo esc_html( implode( ' · ', $p_detail ) ); ?></span>
 										<?php endif; ?>
+									</label>
+									<label style="display:block;margin:4px 0 0 22px;font-size:12px;color:#3c434a;">
+										<?php esc_html_e( 'Role on approval:', 'autorizenter' ); ?>
+										<select name="approve_role[<?php echo esc_attr( $p_email ); ?>]">
+											<option value=""><?php esc_html_e( '— default / role map —', 'autorizenter' ); ?></option>
+											<?php foreach ( get_editable_roles() as $role_slug => $role_info ) : ?>
+												<option value="<?php echo esc_attr( $role_slug ); ?>"><?php echo esc_html( translate_user_role( $role_info['name'] ) ); ?></option>
+											<?php endforeach; ?>
+										</select>
 									</label>
 									<?php if ( ! empty( $p_ans ) ) : ?>
 										<dl style="margin:4px 0 0 22px;font-size:12px;color:#3c434a;">

@@ -85,7 +85,10 @@ authentication still works but those display settings are hidden.
 - **Access lists** (`Settings → Access control`): approve or block individual
   emails or domains. Blocked entries are always denied; with enforcement on, only
   approved identities may sign in and others are collected as **pending** for
-  review. Blocking applies even when organization policy is off. By default
+  review. When approving a pending user you can pick the **role** they get when
+  provisioned (stored per email in `access.approved_roles`); it overrides the
+  default role and role map for that user (Authorizer-style). Blocking applies
+  even when organization policy is off. By default
   **existing WordPress accounts skip approval** (the "Existing accounts" toggle /
   `autorizenter_existing_account_skips_approval` filter), since they were vetted
   when the account was created; blocked entries still win.

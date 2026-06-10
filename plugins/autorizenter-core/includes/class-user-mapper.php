@@ -185,6 +185,13 @@ class User_Mapper {
 			}
 		}
 
+		// A role assigned to this specific email on the approved list (Authorizer
+		// style) is the admin's explicit choice, so it wins over the role map.
+		$approved_role = $this->approved_role_for( $identity->email );
+		if ( '' !== $approved_role ) {
+			$role = $approved_role;
+		}
+
 		/**
 		 * Filter the role assigned to a newly provisioned user.
 		 *
@@ -192,6 +199,22 @@ class User_Mapper {
 		 * @param Identity $identity Identity.
 		 */
 		return apply_filters( 'autorizenter_provision_role', $role, $identity );
+	}
+
+	/**
+	 * Role assigned to a specific email on the approved list, if any.
+	 *
+	 * @param string $email Email.
+	 * @return string Role slug, or '' when none is set.
+	 */
+	private function approved_role_for( $email ) {
+		$email = strtolower( trim( (string) $email ) );
+		if ( '' === $email ) {
+			return '';
+		}
+		$access = $this->settings->get( 'access' );
+		$roles  = isset( $access['approved_roles'] ) && is_array( $access['approved_roles'] ) ? $access['approved_roles'] : array();
+		return isset( $roles[ $email ] ) ? sanitize_key( $roles[ $email ] ) : '';
 	}
 
 	/**

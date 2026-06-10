@@ -28,6 +28,48 @@ class UserMapperTest extends TestCase {
 		update_option( Settings::OPTION, array( 'users' => $cfg ) );
 	}
 
+	public function test_approved_role_overrides_default_and_role_map(): void {
+		update_option(
+			Settings::OPTION,
+			array( 'access' => array( 'approved_roles' => array( 'x@psu.ac.th' => 'editor' ) ) )
+		);
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		$identity = new Identity( 'oidc', array( 'email' => 'x@psu.ac.th', 'email_verified' => true ) );
+
+		$ref = new \ReflectionMethod( $mapper, 'resolve_role' );
+		$ref->setAccessible( true );
+		$role = $ref->invoke(
+			$mapper,
+			$identity,
+			array(
+				'default_role' => 'subscriber',
+				'role_map'     => array( array( 'match' => 'domain:psu.ac.th', 'role' => 'author' ) ),
+			)
+		);
+
+		$this->assertSame( 'editor', $role );
+	}
+
+	public function test_resolve_role_without_approved_role_uses_role_map(): void {
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		$identity = new Identity( 'oidc', array( 'email' => 'y@psu.ac.th', 'email_verified' => true ) );
+
+		$ref = new \ReflectionMethod( $mapper, 'resolve_role' );
+		$ref->setAccessible( true );
+		$role = $ref->invoke(
+			$mapper,
+			$identity,
+			array(
+				'default_role' => 'subscriber',
+				'role_map'     => array( array( 'match' => 'domain:psu.ac.th', 'role' => 'author' ) ),
+			)
+		);
+
+		$this->assertSame( 'author', $role );
+	}
+
 	public function test_links_existing_user_by_provider_and_sub(): void {
 		$this->users_config( array( 'auto_provision' => true, 'link_by_email' => true ) );
 		azr_test_make_user( 5, array( 'read' => true ), 'old@psu.ac.th' );

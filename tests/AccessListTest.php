@@ -218,6 +218,22 @@ class AccessListTest extends TestCase {
 		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
 	}
 
+	public function test_approve_stores_per_email_role(): void {
+		$list = $this->list_with( array( 'enabled' => true, 'pending' => array( 'wait@x.com' ) ) );
+		$list->approve( array( 'wait@x.com' ), array( 'wait@x.com' => 'editor' ) );
+
+		$this->assertContains( 'wait@x.com', $list->entries( 'approved' ) );
+		$this->assertSame( 'editor', $list->approved_role( 'wait@x.com' ) );
+		$this->assertSame( '', $list->approved_role( 'someone-else@x.com' ) );
+	}
+
+	public function test_approve_without_role_leaves_role_empty(): void {
+		$list = $this->list_with( array( 'enabled' => true, 'pending' => array( 'norole@x.com' ) ) );
+		$list->approve( array( 'norole@x.com' ) );
+
+		$this->assertSame( '', $list->approved_role( 'norole@x.com' ) );
+	}
+
 	public function test_approve_clears_pending_meta(): void {
 		$list = $this->list_with(
 			array(
