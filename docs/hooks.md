@@ -46,6 +46,7 @@ fetch('/wp-json/autorizenter/v1/providers')
 | Filter | Signature | Use |
 |--------|-----------|-----|
 | `autorizenter_provider_classes` | `array $classes` | Register custom provider adapters (`id => class`). |
+| `autorizenter_oidc_client` | `OpenIDConnectClient $client, array $config` | Tune the jumbojett OIDC client before the flow runs (e.g. `setHttpProxy`, `setVerifyHost`, provider-config overrides). OIDC providers only. |
 | `autorizenter_authorization_args` | `array $args, string $provider_id` | Tweak the authorization request query. |
 | `autorizenter_allowed_domains` | `string[] $domains` | Programmatically extend the domain allowlist. |
 | `autorizenter_is_allowed` | `true\|WP_Error $result, Identity $identity` | Final allow/deny decision. |

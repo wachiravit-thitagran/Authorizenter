@@ -37,6 +37,13 @@ class Line extends OIDC {
 	/**
 	 * {@inheritDoc}
 	 */
+	public function oidc_provider_url() {
+		return 'https://access.line.me';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	protected function discovery() {
 		$this->config['discovery_url'] = 'https://access.line.me/.well-known/openid-configuration';
 		return parent::discovery();

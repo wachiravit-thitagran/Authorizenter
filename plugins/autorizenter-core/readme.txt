@@ -33,13 +33,24 @@ Features:
 == Installation ==
 
 1. Install and activate the plugin.
-2. Run `composer install` in the plugin (or monorepo root) to provide firebase/php-jwt.
+2. Run `composer install` in the plugin (or monorepo root) to provide its
+   dependencies (jumbojett/openid-connect-php for OIDC; firebase/php-jwt). The
+   GitHub release ZIPs bundle `vendor/`, so this step is only needed when running
+   from source.
 3. Go to Settings → Autorizenter, enable a provider, and paste its credentials.
 4. Register the displayed callback URL with each provider.
+
+Note: OIDC providers (Google, LINE, generic) require the server to make outbound
+HTTPS requests to the IdP (token exchange and JWKS). If the server cannot reach
+the internet, sign-in will fail regardless of configuration.
 
 == Changelog ==
 
 = Unreleased =
+* OIDC sign-in (Google, LINE, generic) now uses the maintained
+  jumbojett/openid-connect-php library for the code exchange and token
+  verification; state/nonce/PKCE are managed in the PHP session. Facebook keeps
+  the built-in OAuth2 path.
 * Login contexts — named login profiles with per-context providers, a capability
   gate (`user_can()`), policy overrides, redirects, and questions.
 * Deny-redirect fallback chain (context → global → context login page).

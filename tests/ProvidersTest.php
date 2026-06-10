@@ -31,6 +31,35 @@ class ProvidersTest extends TestCase {
 		return $ref->invokeArgs( $obj, $args );
 	}
 
+	public function test_is_oidc_flag(): void {
+		$settings = new Settings();
+		$this->assertTrue( $this->oidc()->is_oidc() );
+		$this->assertTrue( ( new Google( $settings, array() ) )->is_oidc() );
+		$this->assertTrue( ( new Line( $settings, array() ) )->is_oidc() );
+		$this->assertFalse( ( new Facebook( $settings, array() ) )->is_oidc() );
+	}
+
+	public function test_oidc_provider_url_for_presets(): void {
+		$settings = new Settings();
+		$this->assertSame( 'https://accounts.google.com', ( new Google( $settings, array() ) )->oidc_provider_url() );
+		$this->assertSame( 'https://access.line.me', ( new Line( $settings, array() ) )->oidc_provider_url() );
+	}
+
+	public function test_oidc_provider_url_strips_well_known_suffix(): void {
+		$oidc = new OIDC( new Settings(), array( 'id' => 'oidc', 'discovery_url' => 'https://idp.example.org/.well-known/openid-configuration' ) );
+		$this->assertSame( 'https://idp.example.org', $oidc->oidc_provider_url() );
+
+		$oidc2 = new OIDC( new Settings(), array( 'id' => 'oidc', 'discovery_url' => 'https://idp.example.org/auth/.well-known/openid-configuration' ) );
+		$this->assertSame( 'https://idp.example.org/auth', $oidc2->oidc_provider_url() );
+
+		$empty = new OIDC( new Settings(), array( 'id' => 'oidc' ) );
+		$this->assertSame( '', $empty->oidc_provider_url() );
+	}
+
+	public function test_scopes_list_splits_scope_string(): void {
+		$this->assertSame( array( 'openid', 'email', 'profile' ), ( new Google( new Settings(), array() ) )->scopes_list() );
+	}
+
 	public function test_preset_ids_and_labels(): void {
 		$settings = new Settings();
 		$this->assertSame( 'google', ( new Google( $settings, array() ) )->id() );

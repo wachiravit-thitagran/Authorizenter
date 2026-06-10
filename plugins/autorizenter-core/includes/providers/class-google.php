@@ -35,6 +35,13 @@ class Google extends OIDC {
 	/**
 	 * {@inheritDoc}
 	 */
+	public function oidc_provider_url() {
+		return 'https://accounts.google.com';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	protected function discovery() {
 		// Force Google's well-known config regardless of stored discovery_url.
 		$this->config['discovery_url'] = 'https://accounts.google.com/.well-known/openid-configuration';
