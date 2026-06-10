@@ -140,10 +140,10 @@ class Oidc_Client {
 		$client->setRedirectURL( $redirect_uri );
 		$client->setCodeChallengeMethod( 'S256' );
 
-		foreach ( $scopes as $scope ) {
-			if ( '' !== (string) $scope ) {
-				$client->addScope( $scope );
-			}
+		// jumbojett's addScope() expects an array of scopes (not one string).
+		$scopes = array_values( array_filter( array_map( 'strval', $scopes ) ) );
+		if ( ! empty( $scopes ) ) {
+			$client->addScope( $scopes );
 		}
 
 		if ( ! empty( $config['issuer_url'] ) ) {
