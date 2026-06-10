@@ -12,3 +12,9 @@ namespace Autorizenter\Core;
 function autorizenter_core() {
 	return $GLOBALS['__core'] ?? null;
 }
+
+// No-op debug logger for tests (the real one lives in the plugin bootstrap file,
+// which is not loaded under PHPUnit).
+if ( ! function_exists( __NAMESPACE__ . '\\autorizenter_log' ) ) {
+	function autorizenter_log( $message, array $context = array() ) {} // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter
+}
