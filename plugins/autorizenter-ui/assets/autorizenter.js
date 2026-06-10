@@ -12,6 +12,7 @@
 	var container = form.closest( '.autorizenter-questions' );
 	var message = form.querySelector( '.autorizenter-questions__message' );
 	var returnTo = container ? container.getAttribute( 'data-return-to' ) : '/';
+	var doneMessage = container ? container.getAttribute( 'data-done-message' ) : '';
 
 	function setMessage( text, kind ) {
 		if ( ! message ) {
@@ -66,6 +67,13 @@
 				}
 				if ( result.data.pending && result.data.pending.length > 0 ) {
 					setMessage( 'Some required answers are still missing.', 'error' );
+					return;
+				}
+				// Custom message: show it and stay on the page. Otherwise show the
+				// default note and redirect to the configured destination.
+				if ( doneMessage ) {
+					setMessage( doneMessage, 'ok' );
+					form.style.display = 'none';
 					return;
 				}
 				setMessage( 'Saved. Redirecting…', 'ok' );

@@ -75,6 +75,8 @@ defined( 'ABSPATH' ) || exit;
 	// otherwise be undefined here, causing a native form submit that drops the
 	// token from the URL).
 	var restUrl = <?php echo wp_json_encode( esc_url_raw( rest_url( 'autorizenter/v1' ) ) ); ?>;
+	var doneMessage = <?php echo wp_json_encode( isset( $done_message ) ? (string) $done_message : '' ); ?>;
+	var redirectTo = <?php echo wp_json_encode( isset( $redirect ) ? (string) $redirect : '' ); ?>;
 	var form = document.getElementById( 'autorizenter-pending-form' );
 	if ( ! form ) {
 		return;
@@ -130,8 +132,11 @@ defined( 'ABSPATH' ) || exit;
 				setMessage( result.data && result.data.message ? result.data.message : '<?php echo esc_js( __( 'Error submitting form.', 'autorizenter' ) ); ?>', 'error' );
 				return;
 			}
-			setMessage( '<?php echo esc_js( __( 'Received. An administrator will review your request.', 'autorizenter' ) ); ?>', 'ok' );
+			setMessage( doneMessage || '<?php echo esc_js( __( 'Received. An administrator will review your request.', 'autorizenter' ) ); ?>', 'ok' );
 			form.style.display = 'none';
+			if ( redirectTo ) {
+				window.location.href = redirectTo;
+			}
 		} )
 		.catch( function () {
 			setMessage( '<?php echo esc_js( __( 'Network error. Please try again.', 'autorizenter' ) ); ?>', 'error' );

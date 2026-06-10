@@ -4,13 +4,15 @@
  *
  * @package Autorizenter\UI
  *
- * @var array  $questions Pending question definitions.
- * @var string $return_to Destination after completion.
+ * @var array  $questions    Pending question definitions.
+ * @var string $return_to    Destination after completion.
+ * @var string $done_message Optional custom success message (empty = default).
  */
 
 defined( 'ABSPATH' ) || exit;
+$done_message = isset( $done_message ) ? $done_message : '';
 ?>
-<div class="autorizenter-questions" data-return-to="<?php echo esc_attr( $return_to ); ?>">
+<div class="autorizenter-questions" data-return-to="<?php echo esc_attr( $return_to ); ?>" data-done-message="<?php echo esc_attr( $done_message ); ?>">
 	<?php if ( empty( $questions ) ) : ?>
 		<p><?php esc_html_e( 'Thanks — nothing else is needed.', 'autorizenter' ); ?></p>
 		<p><a class="autorizenter-btn" href="<?php echo esc_url( $return_to ); ?>"><?php esc_html_e( 'Continue', 'autorizenter' ); ?></a></p>
