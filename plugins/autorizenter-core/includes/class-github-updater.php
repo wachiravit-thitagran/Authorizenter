@@ -108,7 +108,9 @@ class Github_Updater {
 		$cache_key = 'autorizenter_gh_' . md5( $this->repo );
 		$cached    = get_transient( $cache_key );
 		if ( is_array( $cached ) ) {
-			return $cached;
+			// An empty array is the negative cache written after a failed/!200
+			// request; treat it as "no release" rather than a malformed one.
+			return ! empty( $cached['tag_name'] ) ? $cached : null;
 		}
 
 		$url     = 'https://api.github.com/repos/' . $this->repo . '/releases/latest';
@@ -293,7 +295,7 @@ class Github_Updater {
 		}
 
 		$release = $this->latest_release();
-		if ( null === $release ) {
+		if ( null === $release || empty( $release['tag_name'] ) ) {
 			return $transient;
 		}
 

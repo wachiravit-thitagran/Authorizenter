@@ -93,6 +93,25 @@ class GithubUpdaterTest extends TestCase {
 		$this->assertFalse( $u->inject_update( false ) );
 	}
 
+	public function test_inject_update_handles_negative_cache(): void {
+		// A failed/!200 GitHub request stores an empty array as a negative cache.
+		// It must not be treated as a release (no "tag_name" key).
+		$this->seed_release( array() );
+		$u         = $this->updater( '0.1.0' );
+		$transient = (object) array( 'response' => array(), 'no_update' => array() );
+
+		$result = $u->inject_update( $transient );
+
+		$key = plugin_basename( self::FILE );
+		$this->assertArrayNotHasKey( $key, $result->response );
+		$this->assertArrayNotHasKey( $key, $result->no_update );
+	}
+
+	public function test_latest_release_negative_cache_returns_null(): void {
+		$this->seed_release( array() );
+		$this->assertNull( $this->invoke( $this->updater( '0.1.0' ), 'latest_release', array() ) );
+	}
+
 	public function test_plugin_info_for_matching_slug(): void {
 		$this->seed_release(
 			array(
