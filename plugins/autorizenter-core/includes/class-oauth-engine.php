@@ -175,9 +175,12 @@ class OAuth_Engine {
 		// Remember which provider/context this user last used (for SSO logout).
 		update_user_meta( $user->ID, 'autorizenter_last_provider', $provider->id() );
 
-		// Log the user in.
+		// Log the user in. wp_set_auth_cookie sends the Set-Cookie header, so this
+		// must run before any output (the REST callback buffers output to protect
+		// it). wp_login finalizes the session for core and other plugins.
 		wp_set_current_user( $user->ID );
 		wp_set_auth_cookie( $user->ID, true );
+		do_action( 'wp_login', $user->user_login, $user );
 
 		/**
 		 * Fires after a successful Autorizenter login.
