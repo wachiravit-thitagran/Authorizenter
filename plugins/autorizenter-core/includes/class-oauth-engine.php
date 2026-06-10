@@ -165,16 +165,20 @@ class OAuth_Engine {
 	 * @return array|\WP_Error On success: array( user => WP_User, return_to => string ).
 	 */
 	public function handle_callback( $code, $state ) {
+		// OIDC providers: jumbojett validated state/nonce/PKCE from the PHP session.
+		$session = $this->oidc_session();
+
 		autorizenter_log(
 			'callback received',
 			array(
-				'code'  => '' !== $code,
-				'state' => '' !== $state,
+				'code'                 => '' !== $code,
+				'state'                => '' !== $state,
+				'oidc_session_present' => is_array( $session ),
+				'php_session'          => session_status(),
+				'has_session_cookie'   => isset( $_COOKIE[ session_name() ] ),
 			)
 		);
 
-		// OIDC providers: jumbojett validated state/nonce/PKCE from the PHP session.
-		$session = $this->oidc_session();
 		if ( is_array( $session ) ) {
 			return $this->handle_callback_oidc( $session );
 		}
