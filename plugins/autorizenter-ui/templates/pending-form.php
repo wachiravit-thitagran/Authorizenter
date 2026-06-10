@@ -68,8 +68,13 @@ defined( 'ABSPATH' ) || exit;
 <script>
 ( function () {
 	'use strict';
+	// REST base injected via PHP so this does not depend on the footer-loaded
+	// AutorizenterUI object (which is printed after this inline script and would
+	// otherwise be undefined here, causing a native form submit that drops the
+	// token from the URL).
+	var restUrl = <?php echo wp_json_encode( esc_url_raw( rest_url( 'autorizenter/v1' ) ) ); ?>;
 	var form = document.getElementById( 'autorizenter-pending-form' );
-	if ( ! form || typeof window.AutorizenterUI === 'undefined' ) {
+	if ( ! form ) {
 		return;
 	}
 	var container = form.closest( '.autorizenter-pending-form' );
@@ -105,7 +110,7 @@ defined( 'ABSPATH' ) || exit;
 		e.preventDefault();
 		setMessage( '', '' );
 
-		fetch( window.AutorizenterUI.restUrl + '/pending/answers', {
+		fetch( restUrl + '/pending/answers', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify( { token: token, answers: collectAnswers() } )
