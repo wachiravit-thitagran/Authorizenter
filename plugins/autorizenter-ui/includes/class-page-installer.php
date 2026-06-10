@@ -18,6 +18,7 @@ class Page_Installer {
 
 	const OPT_LOGIN_PAGE     = 'autorizenter_login_page_id';
 	const OPT_QUESTIONS_PAGE = 'autorizenter_questions_page_id';
+	const OPT_PENDING_PAGE   = 'autorizenter_pending_page_id';
 	const OPT_CONTEXT_PAGES  = 'autorizenter_context_pages'; // map: context_id => page_id.
 
 	/**
@@ -31,6 +32,12 @@ class Page_Installer {
 			__( 'A few questions', 'autorizenter' ),
 			'autorizenter-questions',
 			'[autorizenter_questions]'
+		);
+		self::ensure_page(
+			self::OPT_PENDING_PAGE,
+			__( 'Pending approval', 'autorizenter' ),
+			'autorizenter-pending',
+			'[autorizenter_pending_form]'
 		);
 		self::ensure_context_pages();
 	}
@@ -49,8 +56,24 @@ class Page_Installer {
 			return;
 		}
 		$core = \Autorizenter\Core\autorizenter_core();
-		$map  = get_option( self::OPT_CONTEXT_PAGES, array() );
-		$map  = is_array( $map ) ? $map : array();
+
+		// Self-heal the shared pages so installs that predate them (or had a page
+		// trashed) get them back without needing reactivation.
+		self::ensure_page(
+			self::OPT_QUESTIONS_PAGE,
+			__( 'A few questions', 'autorizenter' ),
+			'autorizenter-questions',
+			'[autorizenter_questions]'
+		);
+		self::ensure_page(
+			self::OPT_PENDING_PAGE,
+			__( 'Pending approval', 'autorizenter' ),
+			'autorizenter-pending',
+			'[autorizenter_pending_form]'
+		);
+
+		$map = get_option( self::OPT_CONTEXT_PAGES, array() );
+		$map = is_array( $map ) ? $map : array();
 
 		foreach ( $core->settings->context_ids() as $id ) {
 			$ctx   = $core->settings->get_context( $id );

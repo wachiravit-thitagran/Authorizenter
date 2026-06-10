@@ -39,6 +39,10 @@ class Frontend {
 		// Map a context to its login page (used by Core for deny fallbacks).
 		add_filter( 'autorizenter_context_login_url', array( $this, 'context_login_url' ), 10, 2 );
 
+		// Point pending (awaiting-approval) users at the pre-approval form page,
+		// unless a context already configures its own pending_redirect.
+		add_filter( 'autorizenter_context', array( $this, 'context_pending_redirect' ), 10, 2 );
+
 		// Expose the login page id so Core's private-site mode can allow it.
 		add_filter( 'autorizenter_login_page_id', array( $this, 'login_page_id' ) );
 
@@ -97,6 +101,32 @@ class Frontend {
 	public function context_login_url( $default, $context_id ) {
 		$url = Page_Installer::url_for_context( $context_id );
 		return '' !== $url ? $url : $default;
+	}
+
+	/**
+	 * Send awaiting-approval (pending) users to the pre-approval form page.
+	 *
+	 * Only fills in pending_redirect when the context hasn't set its own, so admins
+	 * keep full control. The page holds [autorizenter_pending_form], which renders
+	 * the same questions configured under Questions for the user to complete while
+	 * waiting for approval.
+	 *
+	 * @param array  $context Resolved context.
+	 * @param string $id      Context id.
+	 * @return array
+	 */
+	public function context_pending_redirect( $context, $id ) {
+		if ( ! is_array( $context ) || ! empty( $context['pending_redirect'] ) ) {
+			return $context;
+		}
+		$page = (int) get_option( Page_Installer::OPT_PENDING_PAGE, 0 );
+		if ( $page ) {
+			$url = get_permalink( $page );
+			if ( $url ) {
+				$context['pending_redirect'] = (string) $url;
+			}
+		}
+		return $context;
 	}
 
 	/**
