@@ -267,8 +267,19 @@ class Rest_Api {
 			return $this->error_response( $url );
 		}
 
-		wp_redirect( $url ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- external IdP URL by design.
-		exit;
+		// Fail loudly instead of a blank page when no URL could be built.
+		if ( ! is_string( $url ) || '' === $url ) {
+			return $this->error_response(
+				new \WP_Error(
+					'autorizenter_no_authorize_url',
+					__( 'The provider did not return a sign-in URL. Check that the provider is configured (client ID, and for OIDC a reachable discovery URL).', 'autorizenter' ),
+					array( 'status' => 500 )
+				)
+			);
+		}
+
+		// External IdP URL by design.
+		$this->redirect_to( $url, false );
 	}
 
 	/**
@@ -278,6 +289,13 @@ class Rest_Api {
 	 * @return \WP_REST_Response|void
 	 */
 	public function callback( \WP_REST_Request $request ) {
+		// Buffer any stray output produced while completing the login (notices from
+		// other plugins, the IdP HTTP round-trip, provisioning hooks, ...). Without
+		// this, such output would mark the headers as sent and silently prevent
+		// wp_set_auth_cookie() from issuing the login cookie — the user would return
+		// to the site without a session. The buffer is discarded before we redirect.
+		ob_start();
+
 		// Provider-reported error (user denied, etc.).
 		$provider_error = $request->get_param( 'error' );
 		if ( $provider_error ) {
@@ -292,8 +310,7 @@ class Rest_Api {
 			// The engine may attach a deny-redirect target (e.g. context fallback).
 			$data = (array) $result->get_error_data();
 			if ( ! empty( $data['redirect'] ) ) {
-				wp_safe_redirect( $data['redirect'] );
-				exit;
+				$this->redirect_to( $data['redirect'], true );
 			}
 			return $this->redirect_with_error( $result->get_error_code() );
 		}
@@ -305,8 +322,7 @@ class Rest_Api {
 		if ( $this->questions->has_pending_required( $user->ID ) ) {
 			$questions_url = apply_filters( 'autorizenter_questions_url', '', $return_to );
 			if ( '' !== $questions_url ) {
-				wp_safe_redirect( add_query_arg( 'return_to', rawurlencode( $return_to ), $questions_url ) );
-				exit;
+				$this->redirect_to( add_query_arg( 'return_to', rawurlencode( $return_to ), $questions_url ), true );
 			}
 		}
 
@@ -318,8 +334,7 @@ class Rest_Api {
 		 */
 		$return_to = apply_filters( 'autorizenter_post_login_redirect', $return_to, $user );
 
-		wp_safe_redirect( $return_to );
-		exit;
+		$this->redirect_to( $return_to, true );
 	}
 
 	/**
@@ -331,11 +346,13 @@ class Rest_Api {
 	public function logout( \WP_REST_Request $request ) {
 		$return_to = (string) $request->get_param( 'return_to' );
 		$url       = $this->engine->logout( $return_to );
+		if ( ! is_string( $url ) || '' === $url ) {
+			$url = home_url( '/' );
+		}
 
-		// $url may be an external IdP end-session endpoint, so wp_redirect is used;
-		// the value is either a validated same-host URL or a configured provider URL.
-		wp_redirect( $url ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
-		exit;
+		// $url may be an external IdP end-session endpoint (validated same-host URL
+		// or a configured provider URL), so the unsafe redirect is intentional.
+		$this->redirect_to( $url, false );
 	}
 
 	/**
@@ -388,6 +405,9 @@ class Rest_Api {
 	 * @return \WP_REST_Response
 	 */
 	private function error_response( \WP_Error $error ) {
+		// Drop any buffered output so the JSON body is clean.
+		$this->discard_buffers();
+
 		$data   = $error->get_error_data();
 		$status = is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 400;
 		return new \WP_REST_Response(
@@ -407,7 +427,58 @@ class Rest_Api {
 	 */
 	private function redirect_with_error( $error_code ) {
 		$base = apply_filters( 'autorizenter_login_url', wp_login_url() );
-		wp_safe_redirect( add_query_arg( 'autorizenter_error', rawurlencode( $error_code ), $base ) );
+		$this->redirect_to( add_query_arg( 'autorizenter_error', rawurlencode( $error_code ), $base ), true );
+	}
+
+	/**
+	 * Redirect the browser and terminate.
+	 *
+	 * A plain `wp_redirect(); exit;` in a REST callback fails silently — a blank
+	 * page with no error — when a 302 `Location` header cannot be sent because
+	 * output already started (a stray notice, whitespace, or BOM ahead of us).
+	 * To stay robust we send the header when possible AND always print a tiny
+	 * meta-refresh + JS fallback so the browser still navigates either way.
+	 *
+	 * @param string $url  Destination URL.
+	 * @param bool   $safe Restrict to allowed hosts (wp_safe_redirect) when true.
+	 * @return void
+	 */
+	private function redirect_to( $url, $safe = false ) {
+		$url = (string) $url;
+
+		// Throw away buffered output so it cannot flush and "send" the headers,
+		// which would block the Location header (and any auth cookie set earlier).
+		$this->discard_buffers();
+
+		nocache_headers();
+
+		if ( ! headers_sent() ) {
+			if ( $safe ) {
+				wp_safe_redirect( $url );
+			} else {
+				wp_redirect( $url ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- may target an external IdP by design.
+			}
+		}
+
+		// Fallback navigation for the headers-already-sent case (harmless once a
+		// 302 has been sent — the browser follows the header and ignores this body).
+		printf(
+			'<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=%1$s"><script>window.location.replace(%2$s);</script></head><body><p><a href="%1$s">%3$s</a></p></body></html>',
+			esc_url( $url ),
+			wp_json_encode( $url ),
+			esc_html__( 'Continue', 'autorizenter' )
+		);
 		exit;
+	}
+
+	/**
+	 * Discard all active output buffers without flushing them.
+	 *
+	 * @return void
+	 */
+	private function discard_buffers() {
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
 	}
 }
