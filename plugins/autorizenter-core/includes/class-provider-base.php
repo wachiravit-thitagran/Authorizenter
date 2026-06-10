@@ -89,6 +89,46 @@ abstract class Provider_Base {
 	abstract public function exchange( $code, $redirect_uri, $code_verifier, $nonce );
 
 	/**
+	 * Whether this provider speaks OpenID Connect.
+	 *
+	 * OIDC providers (Google, LINE, generic OIDC) are driven by the
+	 * jumbojett/openid-connect-php library via Oidc_Client. Non-OIDC providers
+	 * (e.g. Facebook plain OAuth2) keep the built-in code-exchange path.
+	 *
+	 * @return bool
+	 */
+	public function is_oidc() {
+		return false;
+	}
+
+	/**
+	 * Issuer / provider base URL for the OIDC client (discovery is appended).
+	 *
+	 * @return string Empty for non-OIDC providers.
+	 */
+	public function oidc_provider_url() {
+		return '';
+	}
+
+	/**
+	 * Requested scopes as a list (for the OIDC client).
+	 *
+	 * @return string[]
+	 */
+	public function scopes_list() {
+		return array_values( array_filter( preg_split( '/\s+/', (string) $this->scopes() ) ) );
+	}
+
+	/**
+	 * Provider config (read-only) for the OIDC client.
+	 *
+	 * @return array
+	 */
+	public function config() {
+		return $this->config;
+	}
+
+	/**
 	 * Whether this provider is enabled.
 	 *
 	 * @return bool

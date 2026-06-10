@@ -21,11 +21,24 @@ class OAuth_Engine {
 	const FLOW_TTL = 600; // 10 minutes.
 
 	/**
+	 * PHP session key holding the in-flight OIDC login (provider/context/return_to).
+	 * OIDC state/nonce/PKCE themselves live in the jumbojett session keys.
+	 */
+	const SESSION_KEY = 'autorizenter_oidc_flow';
+
+	/**
 	 * Settings store.
 	 *
 	 * @var Settings
 	 */
 	private $settings;
+
+	/**
+	 * Lazily-built OIDC client (jumbojett wrapper).
+	 *
+	 * @var Oidc_Client|null
+	 */
+	private $oidc_client = null;
 
 	/**
 	 * Provider registry.
@@ -92,6 +105,14 @@ class OAuth_Engine {
 			return new \WP_Error( 'autorizenter_provider_not_in_context', __( 'This sign-in method is not available here.', 'autorizenter' ), array( 'status' => 400 ) );
 		}
 
+		$return_to = $this->sanitize_return_to( $return_to );
+
+		// OIDC providers (Google, LINE, generic) are driven by jumbojett.
+		if ( $provider->is_oidc() ) {
+			return $this->begin_oidc( $provider, $context, $return_to );
+		}
+
+		// Legacy OAuth2 path (e.g. Facebook): our own state/nonce/PKCE + transient.
 		$state          = $this->random( 24 );
 		$nonce          = $this->random( 24 );
 		$code_verifier  = $this->random( 48 );
@@ -102,12 +123,38 @@ class OAuth_Engine {
 			'context'       => $context['id'],
 			'nonce'         => $nonce,
 			'code_verifier' => $code_verifier,
-			'return_to'     => $this->sanitize_return_to( $return_to ),
+			'return_to'     => $return_to,
 			'created'       => time(),
 		);
 		set_transient( $this->flow_key( $state ), $flow, self::FLOW_TTL );
 
 		return $provider->authorization_url( $state, $this->redirect_uri(), $code_challenge, $nonce );
+	}
+
+	/**
+	 * Begin an OIDC login via jumbojett (redirects + exits on success).
+	 *
+	 * @param Provider_Base $provider  OIDC provider.
+	 * @param array         $context   Resolved context.
+	 * @param string        $return_to Sanitized post-login destination.
+	 * @return \WP_Error Returns only on failure.
+	 */
+	private function begin_oidc( Provider_Base $provider, array $context, $return_to ) {
+		$this->maybe_start_session();
+		$_SESSION[ self::SESSION_KEY ] = array(
+			'provider'  => $provider->id(),
+			'context'   => $context['id'],
+			'return_to' => $return_to,
+			'created'   => time(),
+		);
+
+		// start() redirects the browser to the IdP and exits on success.
+		return $this->oidc_client()->start(
+			$provider->config(),
+			$provider->oidc_provider_url(),
+			$this->redirect_uri(),
+			$provider->scopes_list()
+		);
 	}
 
 	/**
@@ -126,6 +173,13 @@ class OAuth_Engine {
 			)
 		);
 
+		// OIDC providers: jumbojett validated state/nonce/PKCE from the PHP session.
+		$session = $this->oidc_session();
+		if ( is_array( $session ) ) {
+			return $this->handle_callback_oidc( $session );
+		}
+
+		// Legacy OAuth2 path (e.g. Facebook): our transient-backed state.
 		if ( '' === $code || '' === $state ) {
 			return new \WP_Error( 'autorizenter_callback_missing', __( 'Missing authorization parameters.', 'autorizenter' ), array( 'status' => 400 ) );
 		}
@@ -161,12 +215,84 @@ class OAuth_Engine {
 		autorizenter_log(
 			'identity obtained',
 			array(
-				'provider'  => $identity->provider,
-				'email'     => $identity->email,
-				'verified'  => $identity->email_verified,
+				'provider' => $identity->provider,
+				'email'    => $identity->email,
+				'verified' => $identity->email_verified,
 			)
 		);
 
+		$return_to = isset( $flow['return_to'] ) ? $flow['return_to'] : '';
+		return $this->finish_login( $identity, $context, $provider, $return_to );
+	}
+
+	/**
+	 * Complete an OIDC callback through jumbojett, then run the shared pipeline.
+	 *
+	 * @param array $session Stored flow (provider/context/return_to) from the session.
+	 * @return array|\WP_Error
+	 */
+	private function handle_callback_oidc( array $session ) {
+		$this->clear_oidc_session(); // single use.
+
+		$provider_id = isset( $session['provider'] ) ? $session['provider'] : '';
+		$provider    = $this->providers->get( $provider_id );
+		if ( ! $provider || ! $provider->is_enabled() ) {
+			autorizenter_log( 'provider disabled at callback', array( 'provider' => $provider_id ) );
+			return new \WP_Error( 'autorizenter_provider_disabled', __( 'This sign-in method is not available.', 'autorizenter' ), array( 'status' => 400 ) );
+		}
+
+		$context = $this->settings->get_context( isset( $session['context'] ) ? $session['context'] : 'default' );
+
+		$claims = $this->oidc_client()->complete(
+			$provider->config(),
+			$provider->oidc_provider_url(),
+			$this->redirect_uri(),
+			$provider->scopes_list()
+		);
+		if ( is_wp_error( $claims ) ) {
+			autorizenter_log(
+				'token exchange failed',
+				array(
+					'provider' => $provider->id(),
+					'error'    => $claims->get_error_code(),
+					'message'  => $claims->get_error_message(),
+				)
+			);
+			return $claims;
+		}
+
+		$identity = method_exists( $provider, 'identity_from_claims_public' )
+			? $provider->identity_from_claims_public( $claims )
+			: new Identity( $provider->id(), $claims );
+		if ( is_wp_error( $identity ) ) {
+			autorizenter_log( 'identity mapping failed', array( 'provider' => $provider->id(), 'error' => $identity->get_error_code() ) );
+			return $identity;
+		}
+
+		autorizenter_log(
+			'identity obtained',
+			array(
+				'provider' => $identity->provider,
+				'email'    => $identity->email,
+				'verified' => $identity->email_verified,
+			)
+		);
+
+		$return_to = isset( $session['return_to'] ) ? $session['return_to'] : '';
+		return $this->finish_login( $identity, $context, $provider, $return_to );
+	}
+
+	/**
+	 * Shared post-identity pipeline: identity filter, policy, provisioning, the
+	 * per-context capability gate, then sign the user in.
+	 *
+	 * @param Identity      $identity  Normalized identity.
+	 * @param array         $context   Resolved login context.
+	 * @param Provider_Base $provider  Provider that produced the identity.
+	 * @param string        $return_to Post-login destination.
+	 * @return array|\WP_Error
+	 */
+	private function finish_login( Identity $identity, array $context, Provider_Base $provider, $return_to ) {
 		/**
 		 * Inspect/short-circuit a freshly obtained identity.
 		 *
@@ -252,7 +378,7 @@ class OAuth_Engine {
 		do_action( 'autorizenter_login_success', $user, $provider->id(), $identity, $context );
 
 		// Context redirect wins over return_to when configured.
-		$destination = '' !== $context['redirect'] ? $context['redirect'] : ( isset( $flow['return_to'] ) ? $flow['return_to'] : '' );
+		$destination = '' !== $context['redirect'] ? $context['redirect'] : (string) $return_to;
 
 		autorizenter_log( 'login complete', array( 'user_id' => $user->ID, 'destination' => '' !== $destination ? $destination : home_url( '/' ) ) );
 
@@ -261,6 +387,58 @@ class OAuth_Engine {
 			'context'   => $context,
 			'return_to' => $destination,
 		);
+	}
+
+	/**
+	 * Lazily build the jumbojett-backed OIDC client.
+	 *
+	 * @return Oidc_Client
+	 */
+	private function oidc_client() {
+		if ( null === $this->oidc_client ) {
+			$this->oidc_client = new Oidc_Client( $this->settings );
+		}
+		return $this->oidc_client;
+	}
+
+	/**
+	 * Start the PHP session if one is not already active.
+	 *
+	 * jumbojett stores OIDC state/nonce/PKCE in the session across the authorize
+	 * and callback requests, so a session is required for the OIDC flow.
+	 *
+	 * @return void
+	 */
+	private function maybe_start_session() {
+		if ( 'cli' === PHP_SAPI ) {
+			return; // No sessions under CLI/test runs.
+		}
+		if ( PHP_SESSION_NONE === session_status() && ! headers_sent() ) {
+			session_start();
+		}
+	}
+
+	/**
+	 * Read the in-flight OIDC session payload (provider/context/return_to).
+	 *
+	 * @return array|null
+	 */
+	private function oidc_session() {
+		$this->maybe_start_session();
+		return isset( $_SESSION[ self::SESSION_KEY ] ) && is_array( $_SESSION[ self::SESSION_KEY ] )
+			? $_SESSION[ self::SESSION_KEY ]
+			: null;
+	}
+
+	/**
+	 * Clear the in-flight OIDC session payload (single-use).
+	 *
+	 * @return void
+	 */
+	private function clear_oidc_session() {
+		if ( isset( $_SESSION[ self::SESSION_KEY ] ) ) {
+			unset( $_SESSION[ self::SESSION_KEY ] );
+		}
 	}
 
 	/**

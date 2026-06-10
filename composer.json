@@ -6,7 +6,8 @@
     "keywords": ["wordpress", "oauth2", "oidc", "sso", "login", "google", "line", "facebook"],
     "require": {
         "php": ">=8.0",
-        "firebase/php-jwt": "^7.0"
+        "firebase/php-jwt": "^7.0",
+        "jumbojett/openid-connect-php": "^1.0"
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "^3.9",

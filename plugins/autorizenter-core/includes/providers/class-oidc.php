@@ -29,6 +29,28 @@ class OIDC extends Provider_Base {
 	/**
 	 * {@inheritDoc}
 	 */
+	public function is_oidc() {
+		return true;
+	}
+
+	/**
+	 * Issuer base URL for the jumbojett client: the discovery URL with the
+	 * /.well-known/openid-configuration suffix removed.
+	 *
+	 * @return string
+	 */
+	public function oidc_provider_url() {
+		$url = isset( $this->config['discovery_url'] ) ? (string) $this->config['discovery_url'] : '';
+		if ( '' === $url ) {
+			return '';
+		}
+		$url = preg_replace( '#/\.well-known/openid-configuration/?$#', '', $url );
+		return rtrim( (string) $url, '/' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	public function id() {
 		return isset( $this->config['id'] ) ? (string) $this->config['id'] : 'oidc';
 	}
