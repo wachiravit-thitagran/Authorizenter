@@ -183,6 +183,41 @@ class AccessListTest extends TestCase {
 		$this->assertSame( 'autorizenter_invalid_token', $result->get_error_code() );
 	}
 
+	public function test_existing_account_skips_approval(): void {
+		azr_test_make_user( 50, array( 'read' => true ), 'member@gmail.com' );
+		$list   = $this->list_with( array( 'enabled' => true, 'approved' => array( 'psu.ac.th' ) ) );
+		$result = $list->evaluate( $this->id( 'member@gmail.com' ) );
+
+		$this->assertTrue( $result );
+		$this->assertNotContains( 'member@gmail.com', $list->entries( 'pending' ) );
+	}
+
+	public function test_existing_account_bypass_can_be_disabled(): void {
+		azr_test_make_user( 51, array( 'read' => true ), 'member2@gmail.com' );
+		$list   = $this->list_with( array( 'enabled' => true, 'allow_existing' => false, 'approved' => array( 'psu.ac.th' ) ) );
+		$result = $list->evaluate( $this->id( 'member2@gmail.com' ) );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+	}
+
+	public function test_blocked_beats_existing_account_bypass(): void {
+		azr_test_make_user( 52, array( 'read' => true ), 'member3@gmail.com' );
+		$list   = $this->list_with( array( 'enabled' => true, 'blocked' => array( 'member3@gmail.com' ) ) );
+		$result = $list->evaluate( $this->id( 'member3@gmail.com' ) );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'autorizenter_blocked', $result->get_error_code() );
+	}
+
+	public function test_no_existing_account_still_pending_when_default_on(): void {
+		$list   = $this->list_with( array( 'enabled' => true, 'approved' => array( 'psu.ac.th' ) ) );
+		$result = $list->evaluate( $this->id( 'noaccount@gmail.com' ) );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+	}
+
 	public function test_approve_clears_pending_meta(): void {
 		$list = $this->list_with(
 			array(
