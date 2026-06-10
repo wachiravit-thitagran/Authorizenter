@@ -244,15 +244,20 @@ class OIDC extends Provider_Base {
 	 * @return Identity|\WP_Error
 	 */
 	protected function identity_from_claims( array $claims ) {
-		if ( ! empty( $this->config['oidc_require_verified_email'] ) ) {
-			$verified = isset( $claims['email_verified'] ) ? $claims['email_verified'] : false;
-			if ( ! $verified ) {
-				return new \WP_Error(
-					'autorizenter_oidc_email_unverified',
-					__( 'Your email address must be verified to sign in.', 'autorizenter' ),
-					array( 'status' => 403 )
-				);
-			}
+		// Treat the email as verified when the claim says so, or when the admin
+		// has chosen to trust this IdP's email (many enterprise/university OIDC
+		// servers do not send the email_verified claim at all).
+		$claim_verified = isset( $claims['email_verified'] )
+			? filter_var( $claims['email_verified'], FILTER_VALIDATE_BOOLEAN )
+			: false;
+		$email_verified = ! empty( $this->config['trust_email'] ) ? true : $claim_verified;
+
+		if ( ! empty( $this->config['oidc_require_verified_email'] ) && ! $email_verified ) {
+			return new \WP_Error(
+				'autorizenter_oidc_email_unverified',
+				__( 'Your email address must be verified to sign in.', 'autorizenter' ),
+				array( 'status' => 403 )
+			);
 		}
 
 		$attr_username   = ! empty( $this->config['attr_username'] ) ? $this->config['attr_username'] : '';
@@ -269,7 +274,7 @@ class OIDC extends Provider_Base {
 			array(
 				'sub'            => isset( $claims['sub'] ) ? $claims['sub'] : '',
 				'email'          => isset( $claims[ $attr_email ] ) ? $claims[ $attr_email ] : '',
-				'email_verified' => isset( $claims['email_verified'] ) ? $claims['email_verified'] : false,
+				'email_verified' => $email_verified,
 				'name'           => isset( $claims['name'] ) ? $claims['name'] : '',
 				'first_name'     => isset( $claims[ $attr_first_name ] ) ? $claims[ $attr_first_name ] : '',
 				'last_name'      => isset( $claims[ $attr_last_name ] ) ? $claims[ $attr_last_name ] : '',
