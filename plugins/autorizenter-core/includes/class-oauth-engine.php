@@ -265,7 +265,13 @@ class OAuth_Engine {
 			? $provider->identity_from_claims_public( $claims )
 			: new Identity( $provider->id(), $claims );
 		if ( is_wp_error( $identity ) ) {
-			autorizenter_log( 'identity mapping failed', array( 'provider' => $provider->id(), 'error' => $identity->get_error_code() ) );
+			autorizenter_log(
+				'identity mapping failed',
+				array(
+					'provider' => $provider->id(),
+					'error'    => $identity->get_error_code(),
+				)
+			);
 			return $identity;
 		}
 
@@ -320,12 +326,24 @@ class OAuth_Engine {
 			return $this->attach_deny_redirect( $user, $context );
 		}
 
-		autorizenter_log( 'user resolved', array( 'user_id' => $user->ID, 'login' => $user->user_login ) );
+		autorizenter_log(
+			'user resolved',
+			array(
+				'user_id' => $user->ID,
+				'login'   => $user->user_login,
+			)
+		);
 
 		// Per-context capability gate (e.g. admin context requires manage_options).
 		$cap_ok = $this->policy->check_capability( $user, $context );
 		if ( is_wp_error( $cap_ok ) ) {
-			autorizenter_log( 'capability denied', array( 'user_id' => $user->ID, 'context' => $context['id'] ) );
+			autorizenter_log(
+				'capability denied',
+				array(
+					'user_id' => $user->ID,
+					'context' => $context['id'],
+				)
+			);
 			/**
 			 * Fires when a user is denied entry to a context due to capability.
 			 *
@@ -380,7 +398,13 @@ class OAuth_Engine {
 		// Context redirect wins over return_to when configured.
 		$destination = '' !== $context['redirect'] ? $context['redirect'] : (string) $return_to;
 
-		autorizenter_log( 'login complete', array( 'user_id' => $user->ID, 'destination' => '' !== $destination ? $destination : home_url( '/' ) ) );
+		autorizenter_log(
+			'login complete',
+			array(
+				'user_id'     => $user->ID,
+				'destination' => '' !== $destination ? $destination : home_url( '/' ),
+			)
+		);
 
 		return array(
 			'user'      => $user,
@@ -404,7 +428,7 @@ class OAuth_Engine {
 	/**
 	 * Start the PHP session if one is not already active.
 	 *
-	 * jumbojett stores OIDC state/nonce/PKCE in the session across the authorize
+	 * Jumbojett stores OIDC state/nonce/PKCE in the session across the authorize
 	 * and callback requests, so a session is required for the OIDC flow.
 	 *
 	 * @return void
@@ -425,9 +449,12 @@ class OAuth_Engine {
 	 */
 	private function oidc_session() {
 		$this->maybe_start_session();
-		return isset( $_SESSION[ self::SESSION_KEY ] ) && is_array( $_SESSION[ self::SESSION_KEY ] )
-			? $_SESSION[ self::SESSION_KEY ]
-			: null;
+		if ( ! isset( $_SESSION[ self::SESSION_KEY ] ) || ! is_array( $_SESSION[ self::SESSION_KEY ] ) ) {
+			return null;
+		}
+		// Plugin-controlled payload (written in begin_oidc); each value is
+		// re-validated downstream (provider registry, get_context, return_to).
+		return $_SESSION[ self::SESSION_KEY ]; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 	}
 
 	/**

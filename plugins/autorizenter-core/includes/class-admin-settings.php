@@ -166,7 +166,7 @@ class Admin_Settings {
 		$all['access']['enabled']        = ! empty( $_POST['access_enabled'] );
 		$all['access']['allow_existing'] = ! empty( $_POST['access_allow_existing'] );
 		$all['access']['approved']       = $this->split_lines( isset( $_POST['access_approved'] ) ? wp_unslash( $_POST['access_approved'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		$all['access']['blocked']  = $this->split_lines( isset( $_POST['access_blocked'] ) ? wp_unslash( $_POST['access_blocked'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$all['access']['blocked']        = $this->split_lines( isset( $_POST['access_blocked'] ) ? wp_unslash( $_POST['access_blocked'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 
 		// Approve selected pending identities.
 		$approve = isset( $_POST['approve_pending'] ) && is_array( $_POST['approve_pending'] )
