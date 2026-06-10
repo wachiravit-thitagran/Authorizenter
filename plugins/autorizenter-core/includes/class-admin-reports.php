@@ -59,9 +59,9 @@ class Admin_Reports {
 	 */
 	public function menu() {
 		add_submenu_page(
-			'options-general.php',
+			'autorizenter',
 			__( 'Autorizenter Report', 'autorizenter' ),
-			__( 'Autorizenter Report', 'autorizenter' ),
+			__( 'Report', 'autorizenter' ),
 			self::CAP,
 			'autorizenter-report',
 			array( $this, 'render' )

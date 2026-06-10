@@ -68,9 +68,22 @@ class Admin_Settings {
 	 * @return void
 	 */
 	public function menu() {
-		add_options_page(
+		// Top-level sidebar menu (instead of a Settings submenu).
+		add_menu_page(
 			__( 'Autorizenter', 'autorizenter' ),
 			__( 'Autorizenter', 'autorizenter' ),
+			'manage_options',
+			'autorizenter',
+			array( $this, 'render' ),
+			'dashicons-lock',
+			80
+		);
+
+		// Rename the first auto-created submenu from "Autorizenter" to "Settings".
+		add_submenu_page(
+			'autorizenter',
+			__( 'Autorizenter Settings', 'autorizenter' ),
+			__( 'Settings', 'autorizenter' ),
 			'manage_options',
 			'autorizenter',
 			array( $this, 'render' )
@@ -235,6 +248,24 @@ class Admin_Settings {
 			}
 		}
 		return array_values( array_unique( $out ) );
+	}
+
+	/**
+	 * Human-readable rendering of a stored pre-approval answer.
+	 *
+	 * @param mixed  $value Stored answer value.
+	 * @param string $type  Question type.
+	 * @return string
+	 */
+	private function format_answer_display( $value, $type ) {
+		if ( is_array( $value ) ) {
+			return implode( ', ', array_map( 'strval', $value ) );
+		}
+		if ( is_bool( $value ) || 'checkbox' === $type ) {
+			$truthy = is_bool( $value ) ? $value : ( '1' === (string) $value || 'true' === (string) $value );
+			return $truthy ? __( 'Yes', 'autorizenter' ) : __( 'No', 'autorizenter' );
+		}
+		return (string) $value;
 	}
 
 	/**
@@ -1104,6 +1135,13 @@ class Admin_Settings {
 					<?php
 					$pending      = isset( $access['pending'] ) ? (array) $access['pending'] : array();
 					$pending_meta = isset( $access['pending_meta'] ) && is_array( $access['pending_meta'] ) ? $access['pending_meta'] : array();
+
+					// Map question id => definition so pending answers show the
+					// configured Questions label (not the raw id) and readable values.
+					$q_defs = array();
+					foreach ( $this->questions->all() as $q_def ) {
+						$q_defs[ $q_def['id'] ] = $q_def;
+					}
 					?>
 					<?php if ( ! empty( $pending ) ) : ?>
 					<tr>
@@ -1127,9 +1165,13 @@ class Admin_Settings {
 									</label>
 									<?php if ( ! empty( $p_ans ) ) : ?>
 										<dl style="margin:4px 0 0 22px;font-size:12px;color:#3c434a;">
-											<?php foreach ( $p_ans as $q_id => $q_val ) : ?>
-												<dt style="font-weight:600;display:inline;"><?php echo esc_html( $q_id ); ?>:</dt>
-												<dd style="display:inline;margin:0 0 0 4px;"><?php echo esc_html( is_array( $q_val ) ? implode( ', ', $q_val ) : (string) $q_val ); ?></dd><br />
+											<?php
+											foreach ( $p_ans as $q_id => $q_val ) :
+												$q_label = isset( $q_defs[ $q_id ]['label'] ) && '' !== $q_defs[ $q_id ]['label'] ? $q_defs[ $q_id ]['label'] : $q_id;
+												$q_type  = isset( $q_defs[ $q_id ]['type'] ) ? $q_defs[ $q_id ]['type'] : 'text';
+												?>
+												<dt style="font-weight:600;display:inline;"><?php echo esc_html( $q_label ); ?>:</dt>
+												<dd style="display:inline;margin:0 0 0 4px;"><?php echo esc_html( $this->format_answer_display( $q_val, $q_type ) ); ?></dd><br />
 											<?php endforeach; ?>
 										</dl>
 									<?php endif; ?>
