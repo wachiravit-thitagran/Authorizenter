@@ -47,6 +47,47 @@ class Password_Auth {
 		// Run after WP's own username/password checks (priority 20).
 		add_filter( 'authenticate', array( $this, 'maybe_block' ), 30, 3 );
 		add_filter( 'login_message', array( $this, 'login_notice' ) );
+		add_action( 'login_head', array( $this, 'maybe_hide_form' ) );
+	}
+
+	/**
+	 * Whether the WordPress credential form should be revealed even though
+	 * password sign-in is disabled.
+	 *
+	 * Uses the Authorizer-style escape hatch: append ?external=wordpress to the
+	 * login URL. Lets an administrator reach the password form for the bypass even
+	 * when the form is otherwise hidden.
+	 *
+	 * @return bool
+	 */
+	private function form_revealed() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return isset( $_GET['external'] ) && 'wordpress' === $_GET['external'];
+	}
+
+	/**
+	 * Hide the username/password fields on wp-login.php when password auth is
+	 * disabled (so users are pushed to SSO). The server-side block in maybe_block()
+	 * is the real enforcement; this only removes the now-useless form.
+	 *
+	 * @return void
+	 */
+	public function maybe_hide_form() {
+		if ( ! $this->is_disabled() || $this->form_revealed() ) {
+			return;
+		}
+		?>
+		<style id="autorizenter-hide-login">
+			#loginform p:has(> #user_login),
+			#loginform p:has(> #user_pass),
+			#loginform .user-pass-wrap,
+			#loginform .forgetmenot,
+			#loginform p.submit { display: none !important; }
+			/* Fallback for browsers without :has(). */
+			#loginform #user_login,
+			#loginform #user_pass { display: none !important; }
+		</style>
+		<?php
 	}
 
 	/**
@@ -107,6 +148,17 @@ class Password_Auth {
 			return $message;
 		}
 		$notice = '<p class="message">' . esc_html__( 'This site uses single sign-on. Password login is disabled.', 'autorizenter' ) . '</p>';
+
+		// Offer the admin escape hatch to the password form (for the bypass) when
+		// it is enabled and the form is currently hidden.
+		$adv = $this->settings->get( 'advanced' );
+		if ( ! empty( $adv['password_auth_admin_bypass'] ) && ! $this->form_revealed() ) {
+			$url     = add_query_arg( 'external', 'wordpress', wp_login_url() );
+			$notice .= '<p class="message"><a href="' . esc_url( $url ) . '">' .
+				esc_html__( 'Administrator? Sign in with a password.', 'autorizenter' ) .
+				'</a></p>';
+		}
+
 		return $message . $notice;
 	}
 }
