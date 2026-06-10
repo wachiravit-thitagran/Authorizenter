@@ -77,6 +77,27 @@ class Questions {
 	}
 
 	/**
+	 * Questions that apply to a given provider.
+	 *
+	 * A question with a non-empty `providers` list only applies to those providers;
+	 * a question with an empty list applies to everyone. An empty `$provider`
+	 * (unknown) returns all questions.
+	 *
+	 * @param string $provider Provider id (optional).
+	 * @return array[]
+	 */
+	public function for_provider( $provider = '' ) {
+		$out = array();
+		foreach ( $this->all() as $q ) {
+			if ( ! empty( $q['providers'] ) && '' !== $provider && ! in_array( $provider, (array) $q['providers'], true ) ) {
+				continue;
+			}
+			$out[] = $q;
+		}
+		return $out;
+	}
+
+	/**
 	 * Questions applicable to a given provider, minus those already answered.
 	 *
 	 * @param int    $user_id  User id.
@@ -86,10 +107,7 @@ class Questions {
 	public function pending_for_user( $user_id, $provider = '' ) {
 		$answers = $this->get_answers( $user_id );
 		$pending = array();
-		foreach ( $this->all() as $q ) {
-			if ( ! empty( $q['providers'] ) && '' !== $provider && ! in_array( $provider, $q['providers'], true ) ) {
-				continue;
-			}
+		foreach ( $this->for_provider( $provider ) as $q ) {
 			if ( ! array_key_exists( $q['id'], $answers ) ) {
 				$pending[] = $q;
 			}

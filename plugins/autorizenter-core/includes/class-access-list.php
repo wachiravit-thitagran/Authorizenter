@@ -177,6 +177,18 @@ class Access_List {
 	}
 
 	/**
+	 * The provider associated with a pending token (for scoping the pre-approval
+	 * questions to that provider).
+	 *
+	 * @param string $token Pending token from add_pending().
+	 * @return string Provider id, or '' when unknown.
+	 */
+	public function pending_provider( $token ) {
+		$data = get_transient( 'azr_pending_' . hash( 'sha256', (string) $token ) );
+		return is_array( $data ) && isset( $data['provider'] ) ? (string) $data['provider'] : '';
+	}
+
+	/**
 	 * Save pre-approval answers for a pending identity.
 	 *
 	 * @param string $token   Pending token from add_pending().

@@ -150,6 +150,17 @@ function username_exists( $login ) {
 	return $u ? $u->ID : false;
 }
 
+function wp_list_pluck( $list, $field ) {
+	$out = array();
+	foreach ( (array) $list as $item ) {
+		$item = (array) $item;
+		if ( array_key_exists( $field, $item ) ) {
+			$out[] = $item[ $field ];
+		}
+	}
+	return $out;
+}
+
 function get_users( $args = array() ) {
 	$key = isset( $args['meta_key'] ) ? $args['meta_key'] : null;
 	$val = array_key_exists( 'meta_value', $args ) ? $args['meta_value'] : null;

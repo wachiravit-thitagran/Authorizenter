@@ -318,8 +318,10 @@ class Rest_Api {
 		$user      = $result['user'];
 		$return_to = '' !== $result['return_to'] ? $result['return_to'] : home_url( '/' );
 
-		// If questions are pending, send the user to the questions page first.
-		if ( $this->questions->has_pending_required( $user->ID ) ) {
+		// If questions are pending (scoped to the provider used), send the user to
+		// the questions page first.
+		$login_provider = (string) get_user_meta( $user->ID, 'autorizenter_last_provider', true );
+		if ( $this->questions->has_pending_required( $user->ID, $login_provider ) ) {
 			$questions_url = apply_filters( 'autorizenter_questions_url', '', $return_to );
 			if ( '' !== $questions_url ) {
 				$this->redirect_to( add_query_arg( 'return_to', rawurlencode( $return_to ), $questions_url ), true );
