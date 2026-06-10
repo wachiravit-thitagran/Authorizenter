@@ -316,12 +316,29 @@ class Frontend {
 			return '<div class="autorizenter-questions">' . esc_html__( 'Please sign in first.', 'autorizenter' ) . '</div>';
 		}
 
+		$atts = shortcode_atts(
+			array(
+				// Where to send the user after completing (overrides ?return_to=).
+				'redirect' => '',
+				// Custom message shown on success (empty = default + redirect).
+				'message'  => '',
+			),
+			$atts,
+			'autorizenter_questions'
+		);
+
 		wp_enqueue_style( 'autorizenter-ui' );
 		wp_enqueue_script( 'autorizenter-ui' );
 
 		$core      = \Autorizenter\Core\autorizenter_core();
 		$questions = $core->questions->pending_for_user( get_current_user_id() );
 		$return_to = isset( $_GET['return_to'] ) ? esc_url_raw( wp_unslash( $_GET['return_to'] ) ) : home_url( '/' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		// A shortcode redirect attribute wins over the ?return_to= query arg.
+		if ( '' !== $atts['redirect'] ) {
+			$return_to = esc_url_raw( $atts['redirect'] );
+		}
+		$done_message = (string) $atts['message'];
 
 		ob_start();
 		include AUTORIZENTER_UI_DIR . 'templates/questions.php';
@@ -476,12 +493,26 @@ class Frontend {
 	 * @return string
 	 */
 	public function render_pending_form( $atts ) {
+		$atts = shortcode_atts(
+			array(
+				// Custom message shown after submitting (empty = default).
+				'message'  => '',
+				// Optional URL to send the user to after submitting.
+				'redirect' => '',
+			),
+			$atts,
+			'autorizenter_pending_form'
+		);
+
 		$token = isset( $_GET['azr_pending_token'] ) ? sanitize_text_field( wp_unslash( $_GET['azr_pending_token'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( '' === $token ) {
 			return '<div class="autorizenter-pending-form">' .
 				esc_html__( 'Invalid or missing access token.', 'autorizenter' ) .
 				'</div>';
 		}
+
+		$done_message = (string) $atts['message'];
+		$redirect     = '' !== $atts['redirect'] ? esc_url_raw( $atts['redirect'] ) : '';
 
 		$core      = \Autorizenter\Core\autorizenter_core();
 		$questions = $core->questions->all();
