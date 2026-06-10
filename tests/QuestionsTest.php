@@ -33,6 +33,41 @@ class QuestionsTest extends TestCase {
 		$this->assertSame( 'text', $clean['type'] );
 	}
 
+	public function test_for_provider_filters_by_provider(): void {
+		$q = $this->questions_with(
+			array(
+				array( 'id' => 'g_only', 'type' => 'text', 'label' => 'Google only', 'providers' => array( 'google' ) ),
+				array( 'id' => 'o_only', 'type' => 'text', 'label' => 'OIDC only', 'providers' => array( 'oidc' ) ),
+				array( 'id' => 'all', 'type' => 'text', 'label' => 'Everyone' ), // no providers = all.
+			)
+		);
+
+		$google = wp_list_pluck( $q->for_provider( 'google' ), 'id' );
+		$this->assertContains( 'g_only', $google );
+		$this->assertContains( 'all', $google );
+		$this->assertNotContains( 'o_only', $google );
+
+		$oidc = wp_list_pluck( $q->for_provider( 'oidc' ), 'id' );
+		$this->assertContains( 'o_only', $oidc );
+		$this->assertContains( 'all', $oidc );
+		$this->assertNotContains( 'g_only', $oidc );
+
+		// Unknown provider ('') returns everything.
+		$this->assertCount( 3, $q->for_provider( '' ) );
+	}
+
+	public function test_pending_for_user_scoped_to_provider(): void {
+		$q = $this->questions_with(
+			array(
+				array( 'id' => 'g_only', 'type' => 'text', 'label' => 'Google only', 'providers' => array( 'google' ) ),
+				array( 'id' => 'o_only', 'type' => 'text', 'label' => 'OIDC only', 'providers' => array( 'oidc' ) ),
+			)
+		);
+
+		$pending = wp_list_pluck( $q->pending_for_user( 7, 'oidc' ), 'id' );
+		$this->assertSame( array( 'o_only' ), $pending );
+	}
+
 	public function test_required_checkbox_must_be_checked(): void {
 		$q = $this->questions_with(
 			array(

@@ -158,8 +158,10 @@ class Frontend {
 			return; // Already on the questions page.
 		}
 
-		$core = \Autorizenter\Core\autorizenter_core();
-		if ( ! $core->questions->has_pending_required( get_current_user_id() ) ) {
+		$core     = \Autorizenter\Core\autorizenter_core();
+		$user_id  = get_current_user_id();
+		$provider = (string) get_user_meta( $user_id, 'autorizenter_last_provider', true );
+		if ( ! $core->questions->has_pending_required( $user_id, $provider ) ) {
 			return;
 		}
 
@@ -331,7 +333,9 @@ class Frontend {
 		wp_enqueue_script( 'autorizenter-ui' );
 
 		$core      = \Autorizenter\Core\autorizenter_core();
-		$questions = $core->questions->pending_for_user( get_current_user_id() );
+		$user_id   = get_current_user_id();
+		$provider  = (string) get_user_meta( $user_id, 'autorizenter_last_provider', true );
+		$questions = $core->questions->pending_for_user( $user_id, $provider );
 		$return_to = isset( $_GET['return_to'] ) ? esc_url_raw( wp_unslash( $_GET['return_to'] ) ) : home_url( '/' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		// A shortcode redirect attribute wins over the ?return_to= query arg.
@@ -515,7 +519,8 @@ class Frontend {
 		$redirect     = '' !== $atts['redirect'] ? esc_url_raw( $atts['redirect'] ) : '';
 
 		$core      = \Autorizenter\Core\autorizenter_core();
-		$questions = $core->questions->all();
+		$provider  = ( new \Autorizenter\Core\Access_List( $core->settings ) )->pending_provider( $token );
+		$questions = $core->questions->for_provider( $provider );
 
 		if ( empty( $questions ) ) {
 			return '<div class="autorizenter-pending-form">' .
