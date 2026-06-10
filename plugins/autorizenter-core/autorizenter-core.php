@@ -87,6 +87,30 @@ function autorizenter_core() {
 	return $instance;
 }
 
+/**
+ * Write a diagnostic line to the PHP error log when WordPress debugging is on.
+ *
+ * Gated on WP_DEBUG, so it uses the standard WordPress debug switch — set
+ * `define( 'WP_DEBUG', true );` (and `WP_DEBUG_LOG` to capture it in
+ * wp-content/debug.log). Lines are prefixed with [autorizenter] for easy
+ * grepping. Never logs secrets or tokens — only flow state useful for diagnosing
+ * login issues.
+ *
+ * @param string $message Message.
+ * @param array  $context Optional key/value context appended as JSON.
+ * @return void
+ */
+function autorizenter_log( $message, array $context = array() ) {
+	if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+		return;
+	}
+	$line = '[autorizenter] ' . $message;
+	if ( ! empty( $context ) ) {
+		$line .= ' ' . wp_json_encode( $context );
+	}
+	error_log( $line ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+}
+
 add_action( 'plugins_loaded', __NAMESPACE__ . '\\autorizenter_core' );
 
 // Lifecycle hooks.

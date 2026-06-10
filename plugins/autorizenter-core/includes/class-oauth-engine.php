@@ -118,18 +118,28 @@ class OAuth_Engine {
 	 * @return array|\WP_Error On success: array( user => WP_User, return_to => string ).
 	 */
 	public function handle_callback( $code, $state ) {
+		autorizenter_log(
+			'callback received',
+			array(
+				'code'  => '' !== $code,
+				'state' => '' !== $state,
+			)
+		);
+
 		if ( '' === $code || '' === $state ) {
 			return new \WP_Error( 'autorizenter_callback_missing', __( 'Missing authorization parameters.', 'autorizenter' ), array( 'status' => 400 ) );
 		}
 
 		$flow = get_transient( $this->flow_key( $state ) );
 		if ( ! is_array( $flow ) ) {
+			autorizenter_log( 'flow transient missing/expired for state' );
 			return new \WP_Error( 'autorizenter_state_invalid', __( 'Login session expired or invalid. Please try again.', 'autorizenter' ), array( 'status' => 400 ) );
 		}
 		delete_transient( $this->flow_key( $state ) ); // single use.
 
 		$provider = $this->providers->get( $flow['provider'] );
 		if ( ! $provider || ! $provider->is_enabled() ) {
+			autorizenter_log( 'provider disabled at callback', array( 'provider' => $flow['provider'] ) );
 			return new \WP_Error( 'autorizenter_provider_disabled', __( 'This sign-in method is not available.', 'autorizenter' ), array( 'status' => 400 ) );
 		}
 
@@ -137,8 +147,25 @@ class OAuth_Engine {
 
 		$identity = $provider->exchange( $code, $this->redirect_uri(), $flow['code_verifier'], $flow['nonce'] );
 		if ( is_wp_error( $identity ) ) {
+			autorizenter_log(
+				'token exchange failed',
+				array(
+					'provider' => $flow['provider'],
+					'error'    => $identity->get_error_code(),
+					'message'  => $identity->get_error_message(),
+				)
+			);
 			return $identity;
 		}
+
+		autorizenter_log(
+			'identity obtained',
+			array(
+				'provider'  => $identity->provider,
+				'email'     => $identity->email,
+				'verified'  => $identity->email_verified,
+			)
+		);
 
 		/**
 		 * Inspect/short-circuit a freshly obtained identity.
@@ -151,17 +178,28 @@ class OAuth_Engine {
 		// Domain / verified-email / hd policy, scoped to the context.
 		$allowed = $this->policy->is_allowed( $identity, $context );
 		if ( is_wp_error( $allowed ) ) {
+			autorizenter_log( 'policy denied', array( 'error' => $allowed->get_error_code() ) );
 			return $this->attach_deny_redirect( $allowed, $context );
 		}
 
 		$user = $this->users->resolve( $identity, $context );
 		if ( is_wp_error( $user ) ) {
+			autorizenter_log(
+				'user resolve failed',
+				array(
+					'error'   => $user->get_error_code(),
+					'message' => $user->get_error_message(),
+				)
+			);
 			return $this->attach_deny_redirect( $user, $context );
 		}
+
+		autorizenter_log( 'user resolved', array( 'user_id' => $user->ID, 'login' => $user->user_login ) );
 
 		// Per-context capability gate (e.g. admin context requires manage_options).
 		$cap_ok = $this->policy->check_capability( $user, $context );
 		if ( is_wp_error( $cap_ok ) ) {
+			autorizenter_log( 'capability denied', array( 'user_id' => $user->ID, 'context' => $context['id'] ) );
 			/**
 			 * Fires when a user is denied entry to a context due to capability.
 			 *
@@ -178,9 +216,30 @@ class OAuth_Engine {
 		// Log the user in. wp_set_auth_cookie sends the Set-Cookie header, so this
 		// must run before any output (the REST callback buffers output to protect
 		// it). wp_login finalizes the session for core and other plugins.
+		$headers_already_sent = headers_sent( $hs_file, $hs_line );
+		autorizenter_log(
+			'about to set auth cookie',
+			array(
+				'user_id'      => $user->ID,
+				'headers_sent' => $headers_already_sent,
+				'output_at'    => $headers_already_sent ? ( $hs_file . ':' . $hs_line ) : '',
+				'is_ssl'       => is_ssl(),
+			)
+		);
+
 		wp_set_current_user( $user->ID );
 		wp_set_auth_cookie( $user->ID, true );
 		do_action( 'wp_login', $user->user_login, $user );
+
+		if ( ! headers_sent() ) {
+			$set_cookie = array();
+			foreach ( headers_list() as $header ) {
+				if ( 0 === stripos( $header, 'Set-Cookie:' ) && false !== stripos( $header, 'wordpress_logged_in' ) ) {
+					$set_cookie[] = 'wordpress_logged_in';
+				}
+			}
+			autorizenter_log( 'auth cookie issued', array( 'logged_in_cookie_present' => ! empty( $set_cookie ) ) );
+		}
 
 		/**
 		 * Fires after a successful Autorizenter login.
@@ -194,6 +253,8 @@ class OAuth_Engine {
 
 		// Context redirect wins over return_to when configured.
 		$destination = '' !== $context['redirect'] ? $context['redirect'] : ( isset( $flow['return_to'] ) ? $flow['return_to'] : '' );
+
+		autorizenter_log( 'login complete', array( 'user_id' => $user->ID, 'destination' => '' !== $destination ? $destination : home_url( '/' ) ) );
 
 		return array(
 			'user'      => $user,
