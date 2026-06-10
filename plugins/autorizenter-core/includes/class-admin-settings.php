@@ -100,9 +100,12 @@ class Admin_Settings {
 				'enabled'       => ! empty( $p['enabled'] ),
 				'client_id'     => isset( $p['client_id'] ) ? sanitize_text_field( $p['client_id'] ) : '',
 				'discovery_url' => isset( $p['discovery_url'] ) ? esc_url_raw( $p['discovery_url'] ) : '',
-				'label'         => isset( $p['label'] ) ? sanitize_text_field( $p['label'] ) : '',
+				// Label/logo are UI display settings; when the UI plugin is inactive
+				// those inputs are not rendered, so preserve any stored value
+				// instead of clearing it on save.
+				'label'         => isset( $p['label'] ) ? sanitize_text_field( $p['label'] ) : ( isset( $cur['label'] ) ? $cur['label'] : '' ),
 				'scopes'        => isset( $p['scopes'] ) ? sanitize_text_field( $p['scopes'] ) : '',
-				'logo_url'      => isset( $p['logo_url'] ) ? esc_url_raw( $p['logo_url'] ) : '',
+				'logo_url'      => isset( $p['logo_url'] ) ? esc_url_raw( $p['logo_url'] ) : ( isset( $cur['logo_url'] ) ? $cur['logo_url'] : '' ),
 			);
 
 			// Only overwrite the secret if a new value was entered.
@@ -884,6 +887,12 @@ class Admin_Settings {
 				<?php $this->render_tabs( $tabs ); ?>
 
 				<?php $this->open_tab_panel( 'providers', $tabs['providers'], true ); ?>
+				<?php $ui_active = defined( 'AUTORIZENTER_UI_VERSION' ); ?>
+				<?php if ( ! $ui_active ) : ?>
+					<div class="notice notice-info inline">
+						<p><?php esc_html_e( 'Install and activate the Autorizenter UI plugin to customize the button label and icon. Core handles authentication only and does not render the SSO button, so these display settings are hidden until the UI plugin is active.', 'autorizenter' ); ?></p>
+					</div>
+				<?php endif; ?>
 				<?php foreach ( $classes as $id => $class ) : ?>
 					<?php
 					$p          = isset( $all['providers'][ $id ] ) ? $all['providers'][ $id ] : array();
@@ -906,10 +915,12 @@ class Admin_Settings {
 								<input type="password" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][client_secret]" placeholder="<?php echo $has_secret ? esc_attr__( '•••••• (stored — leave blank to keep)', 'autorizenter' ) : ''; ?>" autocomplete="new-password" />
 							</td>
 						</tr>
+						<?php if ( $ui_active ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Label', 'autorizenter' ); ?></th>
 							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][label]" value="<?php echo esc_attr( isset( $p['label'] ) ? $p['label'] : '' ); ?>" placeholder="<?php echo esc_attr( $is_generic ? __( 'SSO', 'autorizenter' ) : ucfirst( $id ) ); ?>" /></td>
 						</tr>
+						<?php endif; ?>
 						<?php if ( $is_generic ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Discovery URL', 'autorizenter' ); ?></th>
@@ -922,6 +933,7 @@ class Admin_Settings {
 							<th scope="row"><?php esc_html_e( 'Scopes', 'autorizenter' ); ?></th>
 							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][scopes]" value="<?php echo esc_attr( isset( $p['scopes'] ) ? $p['scopes'] : '' ); ?>" placeholder="openid email profile" /></td>
 						</tr>
+						<?php if ( $ui_active ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Logo URL', 'autorizenter' ); ?></th>
 							<td>
@@ -929,6 +941,7 @@ class Admin_Settings {
 								<p class="description"><?php esc_html_e( 'Optional. Shown on the SSO button instead of the default lock icon (square image, e.g. 20×20 SVG or PNG).', 'autorizenter' ); ?></p>
 							</td>
 						</tr>
+						<?php endif; ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Issuer URL', 'autorizenter' ); ?></th>
 							<td>

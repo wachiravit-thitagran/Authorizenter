@@ -1,13 +1,12 @@
 <?php
 /**
- * Tests for the [autorizenter_button] shortcode.
+ * Tests for the SSO button/URL shortcodes.
  *
- * The shortcode handler (render_button) lives in Autorizenter\Core\Shortcodes.
- * Autorizenter\UI\Frontend provides the styled markup via the
- * autorizenter_button_html filter; we hook it here so the full pipeline is
- * exercised.
+ * The visual [autorizenter_button] is owned by Autorizenter\UI\Frontend
+ * (template-level markup: label + icon). The bare [autorizenter_url] is owned by
+ * Autorizenter\Core\Shortcodes (logic only, no markup).
  *
- * @package Autorizenter\UI\Tests
+ * @package Autorizenter\Core\Tests
  */
 
 namespace Autorizenter\Core\Tests;
@@ -37,54 +36,51 @@ class FrontendTest extends TestCase {
 			Settings::OPTION,
 			array( 'providers' => $provider_config )
 		);
-		$settings              = new Settings();
-		$providers             = new Provider_Registry( $settings );
-		$core                  = new \stdClass();
-		$core->settings        = $settings;
-		$core->providers       = $providers;
-		$GLOBALS['__core']     = $core;
+		$settings          = new Settings();
+		$providers         = new Provider_Registry( $settings );
+		$core              = new \stdClass();
+		$core->settings    = $settings;
+		$core->providers   = $providers;
+		$GLOBALS['__core'] = $core;
 
 		$this->shortcodes = new Shortcodes( $settings, $providers );
-
-		// Hook the UI filter so the full render pipeline is tested.
-		add_filter( 'autorizenter_button_html', array( $this->frontend, 'render_button_html' ), 10, 2 );
 	}
 
-	// --- render_button: early-exit cases ------------------------------------
+	// --- UI [autorizenter_button]: early-exit cases -------------------------
 
 	public function test_returns_empty_when_no_provider_given(): void {
 		$this->make_core();
-		$this->assertSame( '', $this->shortcodes->render_button( array() ) );
+		$this->assertSame( '', $this->frontend->render_button( array() ) );
 	}
 
 	public function test_returns_empty_when_user_is_logged_in(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
 		$GLOBALS['__logged_in'] = true;
-		$this->assertSame( '', $this->shortcodes->render_button( array( 'provider' => 'google' ) ) );
+		$this->assertSame( '', $this->frontend->render_button( array( 'provider' => 'google' ) ) );
 	}
 
 	public function test_returns_empty_when_provider_not_enabled(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => false, 'client_id' => 'G' ) ) );
-		$this->assertSame( '', $this->shortcodes->render_button( array( 'provider' => 'google' ) ) );
+		$this->assertSame( '', $this->frontend->render_button( array( 'provider' => 'google' ) ) );
 	}
 
 	public function test_returns_empty_when_provider_not_configured(): void {
 		$this->make_core();
-		$this->assertSame( '', $this->shortcodes->render_button( array( 'provider' => 'google' ) ) );
+		$this->assertSame( '', $this->frontend->render_button( array( 'provider' => 'google' ) ) );
 	}
 
-	// --- render_button: HTML output -----------------------------------------
+	// --- UI [autorizenter_button]: HTML output ------------------------------
 
 	public function test_renders_anchor_with_provider_class(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
-		$html = $this->shortcodes->render_button( array( 'provider' => 'google' ) );
+		$html = $this->frontend->render_button( array( 'provider' => 'google' ) );
 		$this->assertStringContainsString( 'autorizenter-btn--google', $html );
 		$this->assertStringContainsString( '<a ', $html );
 	}
 
 	public function test_renders_provider_label_in_button(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
-		$html = $this->shortcodes->render_button( array( 'provider' => 'google' ) );
+		$html = $this->frontend->render_button( array( 'provider' => 'google' ) );
 		$this->assertStringContainsString( 'Google', $html );
 	}
 
@@ -92,23 +88,58 @@ class FrontendTest extends TestCase {
 		$this->make_core( array(
 			'google' => array( 'enabled' => true, 'client_id' => 'G', 'label' => 'PSU Login' ),
 		) );
-		$html = $this->shortcodes->render_button( array( 'provider' => 'google' ) );
+		$html = $this->frontend->render_button( array( 'provider' => 'google' ) );
 		$this->assertStringContainsString( 'PSU Login', $html );
 	}
 
 	public function test_button_href_contains_provider_and_context(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
-		$html = $this->shortcodes->render_button( array( 'provider' => 'google', 'context' => 'default' ) );
+		$html = $this->frontend->render_button( array( 'provider' => 'google', 'context' => 'default' ) );
 		$this->assertStringContainsString( 'autorizenter/v1/authorize/google', $html );
 		$this->assertStringContainsString( 'context=default', $html );
 	}
 
 	public function test_return_to_is_included_in_href(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
-		$html = $this->shortcodes->render_button( array(
+		$html = $this->frontend->render_button( array(
 			'provider'  => 'google',
 			'return_to' => 'https://example.test/dashboard/',
 		) );
 		$this->assertStringContainsString( 'return_to=', $html );
+	}
+
+	// --- render_url: bare authorize URL -------------------------------------
+
+	public function test_url_returns_empty_when_no_provider_given(): void {
+		$this->make_core();
+		$this->assertSame( '', $this->shortcodes->render_url( array() ) );
+	}
+
+	public function test_url_returns_empty_when_user_is_logged_in(): void {
+		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
+		$GLOBALS['__logged_in'] = true;
+		$this->assertSame( '', $this->shortcodes->render_url( array( 'provider' => 'google' ) ) );
+	}
+
+	public function test_url_returns_empty_when_provider_not_enabled(): void {
+		$this->make_core( array( 'google' => array( 'enabled' => false, 'client_id' => 'G' ) ) );
+		$this->assertSame( '', $this->shortcodes->render_url( array( 'provider' => 'google' ) ) );
+	}
+
+	public function test_url_returns_authorize_url_without_markup(): void {
+		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
+		$url = $this->shortcodes->render_url( array( 'provider' => 'google', 'context' => 'default' ) );
+		$this->assertStringContainsString( 'autorizenter/v1/authorize/google', $url );
+		$this->assertStringContainsString( 'context=default', $url );
+		$this->assertStringNotContainsString( '<a', $url );
+	}
+
+	public function test_url_includes_return_to(): void {
+		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
+		$url = $this->shortcodes->render_url( array(
+			'provider'  => 'google',
+			'return_to' => 'https://example.test/dashboard/',
+		) );
+		$this->assertStringContainsString( 'return_to=', $url );
 	}
 }
