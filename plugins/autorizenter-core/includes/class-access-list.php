@@ -223,10 +223,12 @@ class Access_List {
 	/**
 	 * Approve emails: add to approved, remove from pending/blocked.
 	 *
-	 * @param string[] $emails Emails to approve.
+	 * @param string[]              $emails Emails to approve.
+	 * @param array<string,string>  $roles  Optional email => role slug to assign
+	 *                                       that user when they are provisioned.
 	 * @return void
 	 */
-	public function approve( array $emails ) {
+	public function approve( array $emails, array $roles = array() ) {
 		$emails = array_filter( array_map( array( $this, 'normalize' ), $emails ) );
 		if ( empty( $emails ) ) {
 			return;
@@ -241,6 +243,17 @@ class Access_List {
 		$all['access']['approved'] = array_values( array_unique( array_filter( $approved ) ) );
 		$all['access']['pending']  = array_values( $pending );
 
+		// Per-email role assignment (used when the user is provisioned on login).
+		$approved_roles = isset( $all['access']['approved_roles'] ) && is_array( $all['access']['approved_roles'] ) ? $all['access']['approved_roles'] : array();
+		foreach ( $roles as $r_email => $r_role ) {
+			$r_email = $this->normalize( $r_email );
+			$r_role  = sanitize_key( $r_role );
+			if ( '' !== $r_email && '' !== $r_role ) {
+				$approved_roles[ $r_email ] = $r_role;
+			}
+		}
+		$all['access']['approved_roles'] = $approved_roles;
+
 		// Clear stored metadata for approved identities.
 		if ( isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] ) ) {
 			foreach ( $emails as $email ) {
@@ -249,6 +262,19 @@ class Access_List {
 		}
 
 		$this->settings->save( $all );
+	}
+
+	/**
+	 * Role assigned to a specific approved email, if any.
+	 *
+	 * @param string $email Email.
+	 * @return string Role slug, or '' when none is set.
+	 */
+	public function approved_role( $email ) {
+		$email = $this->normalize( $email );
+		$all   = $this->settings->all();
+		$roles = isset( $all['access']['approved_roles'] ) && is_array( $all['access']['approved_roles'] ) ? $all['access']['approved_roles'] : array();
+		return isset( $roles[ $email ] ) ? sanitize_key( $roles[ $email ] ) : '';
 	}
 
 	/**
