@@ -199,11 +199,6 @@ class Frontend {
 			'authorizenter_login'
 		);
 
-		if ( is_user_logged_in() ) {
-			return '<div class="authorizenter-login authorizenter-login--in">' .
-				esc_html__( 'You are already signed in.', 'authorizenter' ) . '</div>';
-		}
-
 		wp_enqueue_style( 'authorizenter-ui' );
 
 		$core       = \Authorizenter\Core\authorizenter_core();
