@@ -359,11 +359,14 @@ class Frontend {
 		$done_message = (string) $atts['message'];
 
 		ob_start();
-		$this->load_template( 'questions.php', array(
-			'questions'    => $questions,
-			'done_message' => $done_message,
-			'redirect'     => $return_to,
-		) );
+		$this->load_template(
+			'questions.php',
+			array(
+				'questions'    => $questions,
+				'done_message' => $done_message,
+				'redirect'     => $return_to,
+			)
+		);
 		return ob_get_clean();
 	}
 
@@ -591,7 +594,7 @@ class Frontend {
 	 * @return void
 	 */
 	private function load_template( $name, $args = array() ) {
-		extract( $args );
+		extract( $args ); // phpcs:ignore WordPress.PHP.DontExtract.extract_extract
 		$theme_file = locate_template( 'authorizenter/' . $name );
 		if ( $theme_file ) {
 			include $theme_file;
