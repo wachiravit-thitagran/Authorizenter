@@ -546,7 +546,16 @@ class Frontend {
 			$redirect = wp_validate_redirect( $get_return_to, '' );
 		}
 
-		$core      = \Authorizenter\Core\authorizenter_core();
+		$core = \Authorizenter\Core\authorizenter_core();
+
+		if ( '' === $redirect ) {
+			// Do not use the `authorizenter_pending_redirect` filter here, because
+			// that filter explicitly forces users to this form if questions exist!
+			// We want their destination *after* the form is submitted.
+			$ctx      = $core->settings->get_context( 'default' );
+			$redirect = isset( $ctx['pending_redirect'] ) ? (string) $ctx['pending_redirect'] : '';
+		}
+
 		$provider  = ( new \Authorizenter\Core\Access_List( $core->settings ) )->pending_provider( $token );
 		$questions = $core->questions->for_provider( $provider );
 
