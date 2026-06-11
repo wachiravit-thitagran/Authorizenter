@@ -93,7 +93,7 @@ class Frontend {
 			return '';
 		}
 		$new = str_replace( 'autorizenter_', 'authorizenter_', $tag );
-		_deprecated_function( "[{$tag}] shortcode", 'Authorizenter 0.2.0', "[{$new}]" );
+		_deprecated_function( esc_html( "[{$tag}] shortcode" ), 'Authorizenter 0.2.0', esc_html( "[{$new}]" ) );
 		return $this->{ $map[ $tag ] }( (array) $atts );
 	}
 
