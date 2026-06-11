@@ -56,8 +56,7 @@ class Shortcodes {
 	 *
 	 * Returns only the authorize URL string (escaped), with no markup — handy for
 	 * custom links, redirects, or passing into templates. Returns an empty string
-	 * when the provider is missing/disabled in the context, or the visitor is
-	 * already logged in.
+	 * when the provider is missing/disabled in the context.
 	 *
 	 * @param array $atts Shortcode attributes.
 	 * @return string
@@ -85,7 +84,7 @@ class Shortcodes {
 			$shortcode
 		);
 
-		if ( ( is_user_logged_in() && ! authorizenter_is_builder_preview() ) || '' === $atts['provider'] ) {
+		if ( '' === $atts['provider'] ) {
 			return null;
 		}
 

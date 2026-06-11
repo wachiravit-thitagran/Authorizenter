@@ -51,6 +51,14 @@ class AdminSettingsUiTest extends TestCase {
 		$this->assertStringNotContainsString( 'alice@psu.ac.th', $html );
 	}
 
+	public function test_email_approval_template_fields_exist(): void {
+		$html = $this->render_settings();
+
+		$this->assertStringContainsString( 'name="access_approval_subject"', $html );
+		$this->assertStringContainsString( 'name="access_approval_body"', $html );
+		$this->assertStringContainsString( '{site_name}', $html );
+	}
+
 	public function test_thai_translation_files_cover_templates(): void {
 		$root  = dirname( __DIR__ );
 		$files = array(
