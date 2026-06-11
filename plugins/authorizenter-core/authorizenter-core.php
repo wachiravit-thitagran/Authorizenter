@@ -158,10 +158,9 @@ function authorizenter_is_builder_preview() {
  * @return void
  */
 function authorizenter_migrate_legacy() {
-	// 1. Settings + page-id options. Idempotent and unguarded: it copies each old
-	//    key to the new key only while the new key is missing, so it self-heals
-	//    (e.g. if an earlier build set a "migrated" flag without copying) and is a
-	//    cheap no-op once done.
+	// Settings + page-id options. Idempotent and unguarded: copies each old key to
+	// the new key only while the new key is missing, so it self-heals (e.g. if an
+	// earlier build set a "migrated" flag without copying) and no-ops once done.
 	$option_keys = array(
 		'autorizenter_settings'          => 'authorizenter_settings',
 		'autorizenter_login_page_id'     => 'authorizenter_login_page_id',
@@ -176,8 +175,8 @@ function authorizenter_migrate_legacy() {
 		}
 	}
 
-	// 2. User meta: rename every autorizenter_* key to authorizenter_*. Guarded so
-	//    the table scan runs only once; re-running would be a harmless no-op anyway.
+	// User meta: rename every autorizenter_* key to authorizenter_*. Guarded so the
+	// table scan runs only once; re-running would be a harmless no-op anyway.
 	if ( ! get_option( 'authorizenter_meta_migrated' ) ) {
 		global $wpdb;
 		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
