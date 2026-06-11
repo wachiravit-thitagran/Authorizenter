@@ -259,6 +259,12 @@ class Rest_Api {
 	public function authorize( \WP_REST_Request $request ) {
 		$provider  = $request->get_param( 'provider' );
 		$return_to = (string) $request->get_param( 'return_to' );
+
+		if ( '' === $return_to && isset( $_COOKIE['authorizenter_redirect'] ) ) {
+			$return_to = wp_validate_redirect( esc_url_raw( wp_unslash( $_COOKIE['authorizenter_redirect'] ) ), '' );
+			setcookie( 'authorizenter_redirect', '', time() - 3600, '/' );
+		}
+
 		$context   = (string) $request->get_param( 'context' );
 		$context   = '' !== $context ? $context : 'default';
 

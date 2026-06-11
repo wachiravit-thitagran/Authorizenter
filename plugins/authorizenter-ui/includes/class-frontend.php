@@ -210,7 +210,7 @@ class Frontend {
 		$context_id = sanitize_key( $atts['context'] );
 		$context    = $core->settings->get_context( $context_id );
 		$providers  = $core->providers->enabled_for_context( $context );
-		$return_to  = '' !== $atts['return_to'] ? $atts['return_to'] : $this->current_url();
+		$return_to  = $atts['return_to'];
 
 		$error = isset( $_GET['authorizenter_error'] ) ? sanitize_text_field( wp_unslash( $_GET['authorizenter_error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
@@ -261,12 +261,15 @@ class Frontend {
 		}
 
 		$provider  = $providers[ $provider_id ];
-		$return_to = '' !== $atts['return_to'] ? $atts['return_to'] : $this->current_url();
-		$url       = add_query_arg(
-			array(
-				'context'   => $context_id,
-				'return_to' => rawurlencode( $return_to ),
-			),
+		$return_to = $atts['return_to'];
+
+		$query_args = array( 'context' => $context_id );
+		if ( '' !== $return_to ) {
+			$query_args['return_to'] = rawurlencode( $return_to );
+		}
+
+		$url = add_query_arg(
+			$query_args,
 			rest_url( 'authorizenter/v1/authorize/' . $provider_id )
 		);
 
@@ -277,7 +280,9 @@ class Frontend {
 			? '<img src="' . esc_url( $logo ) . '" alt="" width="20" height="20" loading="lazy" />'
 			: \Authorizenter\UI\Logos::svg( $provider_id );
 
-		return '<a class="authorizenter-btn authorizenter-btn--' . esc_attr( $provider_id ) . '" href="' . esc_url( $url ) . '">' .
+		$onclick = "document.cookie='authorizenter_redirect=' + encodeURIComponent(window.location.href) + '; path=/';";
+
+		return '<a class="authorizenter-btn authorizenter-btn--' . esc_attr( $provider_id ) . '" href="' . esc_url( $url ) . '" onclick="' . esc_attr( $onclick ) . '">' .
 			'<span class="authorizenter-btn__icon">' . $icon . '</span>' .
 			'<span class="authorizenter-btn__label">' .
 				/* translators: %s: provider label */
