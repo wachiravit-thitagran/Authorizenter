@@ -204,9 +204,6 @@ class Admin_Settings {
 				if ( ! empty( $approve_roles[ $a_email ] ) ) {
 					$approved_roles[ $a_email ] = $approve_roles[ $a_email ];
 				}
-				if ( isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] ) ) {
-					unset( $all['access']['pending_meta'][ $a_email ] );
-				}
 
 				// Send approval email.
 				$subject  = ! empty( $all['access']['approval_subject'] ) ? $all['access']['approval_subject'] : __( 'Your account has been approved', 'authorizenter' );

@@ -90,6 +90,7 @@ class Plugin {
 		( new Login_Throttle( $this->settings ) )->hooks();
 		( new Private_Site( $this->settings ) )->hooks();
 		( new Shortcodes( $this->settings, $this->providers ) )->hooks();
+		$this->questions->hooks();
 
 		$this->init_updater();
 

@@ -270,13 +270,6 @@ class Access_List {
 		}
 		$all['access']['approved_roles'] = $approved_roles;
 
-		// Clear stored metadata for approved identities.
-		if ( isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] ) ) {
-			foreach ( $emails as $email ) {
-				unset( $all['access']['pending_meta'][ $email ] );
-			}
-		}
-
 		$this->settings->save( $all );
 
 		// Send approval email.
