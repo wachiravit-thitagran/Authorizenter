@@ -526,16 +526,32 @@ class OAuth_Engine {
 	 * @return \WP_Error
 	 */
 	private function attach_deny_redirect( \WP_Error $error, array $context ) {
-		$pending = isset( $context['pending_redirect'] ) ? (string) $context['pending_redirect'] : '';
-		if ( '' !== $pending && 'autorizenter_not_approved' === $error->get_error_code() ) {
-			$data             = (array) $error->get_error_data();
-			$token            = isset( $data['pending_token'] ) ? (string) $data['pending_token'] : '';
-			$url              = '' !== $token
-				? add_query_arg( 'azr_pending_token', rawurlencode( $token ), $pending )
-				: $pending;
-			$data['redirect'] = $url;
-			$error->add_data( $data );
-			return $error;
+		if ( 'autorizenter_not_approved' === $error->get_error_code() ) {
+			$data     = (array) $error->get_error_data();
+			$provider = isset( $data['provider'] ) ? (string) $data['provider'] : '';
+			$pending  = isset( $context['pending_redirect'] ) ? (string) $context['pending_redirect'] : '';
+
+			/**
+			 * Filter where an awaiting-approval (pending) user is sent. The UI uses
+			 * this to route to the pre-approval questions form when questions apply
+			 * to the login provider, and otherwise to the configured pending page
+			 * (or a sensible default).
+			 *
+			 * @param string $pending  Configured pending_redirect (may be empty).
+			 * @param string $provider Provider id the user signed in with.
+			 * @param array  $context  Resolved context.
+			 */
+			$pending = (string) apply_filters( 'autorizenter_pending_redirect', $pending, $provider, $context );
+
+			if ( '' !== $pending ) {
+				$token            = isset( $data['pending_token'] ) ? (string) $data['pending_token'] : '';
+				$url              = '' !== $token
+					? add_query_arg( 'azr_pending_token', rawurlencode( $token ), $pending )
+					: $pending;
+				$data['redirect'] = $url;
+				$error->add_data( $data );
+				return $error;
+			}
 		}
 
 		$target = isset( $context['deny_redirect'] ) ? (string) $context['deny_redirect'] : '';

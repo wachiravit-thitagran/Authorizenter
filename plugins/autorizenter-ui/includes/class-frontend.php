@@ -39,9 +39,10 @@ class Frontend {
 		// Map a context to its login page (used by Core for deny fallbacks).
 		add_filter( 'autorizenter_context_login_url', array( $this, 'context_login_url' ), 10, 2 );
 
-		// Point pending (awaiting-approval) users at the pre-approval form page,
-		// unless a context already configures its own pending_redirect.
-		add_filter( 'autorizenter_context', array( $this, 'context_pending_redirect' ), 10, 2 );
+		// Route pending (awaiting-approval) users: to the pre-approval questions
+		// form when questions apply to their provider, else the configured pending
+		// page (or the default form page).
+		add_filter( 'autorizenter_pending_redirect', array( $this, 'pending_redirect_url' ), 10, 3 );
 
 		// Expose the login page id so Core's private-site mode can allow it.
 		add_filter( 'autorizenter_login_page_id', array( $this, 'login_page_id' ) );
@@ -104,29 +105,38 @@ class Frontend {
 	}
 
 	/**
-	 * Send awaiting-approval (pending) users to the pre-approval form page.
+	 * Decide where a pending (awaiting-approval) user goes.
 	 *
-	 * Only fills in pending_redirect when the context hasn't set its own, so admins
-	 * keep full control. The page holds [autorizenter_pending_form], which renders
-	 * the same questions configured under Questions for the user to complete while
-	 * waiting for approval.
+	 * If any questions apply to the login provider, route to the pre-approval
+	 * questions form (the page holding [autorizenter_pending_form]) so they complete
+	 * them first. Otherwise use the admin's configured pending page, or fall back to
+	 * the default form page (which shows a generic "awaiting approval" message).
 	 *
-	 * @param array  $context Resolved context.
-	 * @param string $id      Context id.
-	 * @return array
+	 * @param string $configured Configured pending_redirect (may be empty).
+	 * @param string $provider   Provider the user signed in with.
+	 * @param array  $context    Resolved context.
+	 * @return string
 	 */
-	public function context_pending_redirect( $context, $id ) {
-		if ( ! is_array( $context ) || ! empty( $context['pending_redirect'] ) ) {
-			return $context;
+	public function pending_redirect_url( $configured, $provider, $context ) {
+		if ( ! function_exists( 'Autorizenter\\Core\\autorizenter_core' ) ) {
+			return $configured;
 		}
-		$page = (int) get_option( Page_Installer::OPT_PENDING_PAGE, 0 );
-		if ( $page ) {
-			$url = get_permalink( $page );
-			if ( $url ) {
-				$context['pending_redirect'] = (string) $url;
-			}
+		$core = \Autorizenter\Core\autorizenter_core();
+
+		$page     = (int) apply_filters( 'autorizenter_pending_page_id', (int) get_option( Page_Installer::OPT_PENDING_PAGE, 0 ) );
+		$form_url = ( $page && 'publish' === get_post_status( $page ) ) ? (string) get_permalink( $page ) : '';
+
+		// Questions apply to this provider → send them to fill the form first.
+		if ( '' !== $form_url && ! empty( $core->questions->for_provider( (string) $provider ) ) ) {
+			return $form_url;
 		}
-		return $context;
+
+		// No questions: honour the configured pending page, else fall back to the
+		// default form page (its empty-questions state is a fine waiting message).
+		if ( '' !== (string) $configured ) {
+			return (string) $configured;
+		}
+		return '' !== $form_url ? $form_url : (string) $configured;
 	}
 
 	/**
