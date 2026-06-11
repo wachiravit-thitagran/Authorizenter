@@ -242,8 +242,7 @@ class Frontend {
 			'authorizenter_button'
 		);
 
-		$preview = function_exists( 'Authorizenter\\Core\\authorizenter_is_builder_preview' ) && \Authorizenter\Core\authorizenter_is_builder_preview();
-		if ( ( is_user_logged_in() && ! $preview ) || '' === $atts['provider'] ) {
+		if ( '' === $atts['provider'] ) {
 			return '';
 		}
 		if ( ! function_exists( 'Authorizenter\\Core\\authorizenter_core' ) ) {
