@@ -234,6 +234,36 @@ class AccessListTest extends TestCase {
 		$this->assertSame( '', $list->approved_role( 'norole@x.com' ) );
 	}
 
+	public function test_release_after_provision_removes_exact_email(): void {
+		$list = $this->list_with(
+			array(
+				'enabled'        => true,
+				'allow_existing' => true,
+				'approved'       => array( 'a@x.com', 'psu.ac.th' ),
+				'approved_roles' => array( 'a@x.com' => 'editor' ),
+			)
+		);
+		$list->release_after_provision( 'a@x.com' );
+
+		$this->assertNotContains( 'a@x.com', $list->entries( 'approved' ) );
+		$this->assertContains( 'psu.ac.th', $list->entries( 'approved' ) ); // domain entry kept.
+		$this->assertSame( '', $list->approved_role( 'a@x.com' ) );
+	}
+
+	public function test_release_after_provision_kept_when_bypass_disabled(): void {
+		$list = $this->list_with( array( 'enabled' => true, 'allow_existing' => false, 'approved' => array( 'a@x.com' ) ) );
+		$list->release_after_provision( 'a@x.com' );
+
+		$this->assertContains( 'a@x.com', $list->entries( 'approved' ) );
+	}
+
+	public function test_release_after_provision_ignores_domain_match(): void {
+		$list = $this->list_with( array( 'enabled' => true, 'allow_existing' => true, 'approved' => array( 'psu.ac.th' ) ) );
+		$list->release_after_provision( 'someone@psu.ac.th' );
+
+		$this->assertContains( 'psu.ac.th', $list->entries( 'approved' ) );
+	}
+
 	public function test_approve_clears_pending_meta(): void {
 		$list = $this->list_with(
 			array(

@@ -152,6 +152,10 @@ class User_Mapper {
 		 */
 		do_action( 'autorizenter_user_provisioned', $user, $identity );
 
+		// Keep the approved list clean: now that a WordPress account exists, drop
+		// the email from the approved list (the existing-account bypass covers it).
+		( new Access_List( $this->settings ) )->release_after_provision( $email );
+
 		return $user;
 	}
 
