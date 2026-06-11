@@ -537,6 +537,12 @@ class Frontend {
 		$done_message = (string) $atts['message'];
 		$redirect     = '' !== $atts['redirect'] ? esc_url_raw( $atts['redirect'] ) : '';
 
+		// Inherit the return_to passed from the OAuth engine to the pending page,
+		// so the JS redirect knows where to send them after successful submission.
+		if ( '' === $redirect && isset( $_GET['return_to'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$redirect = wp_validate_redirect( esc_url_raw( wp_unslash( $_GET['return_to'] ) ), '' );
+		}
+
 		$core      = \Authorizenter\Core\authorizenter_core();
 		$provider  = ( new \Authorizenter\Core\Access_List( $core->settings ) )->pending_provider( $token );
 		$questions = $core->questions->for_provider( $provider );

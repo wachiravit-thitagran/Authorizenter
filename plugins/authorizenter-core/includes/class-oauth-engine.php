@@ -315,7 +315,7 @@ class OAuth_Engine {
 		$allowed = $this->policy->is_allowed( $identity, $context );
 		if ( is_wp_error( $allowed ) ) {
 			authorizenter_log( 'policy denied', array( 'error' => $allowed->get_error_code() ) );
-			return $this->attach_deny_redirect( $allowed, $context );
+			return $this->attach_deny_redirect( $allowed, $context, $return_to );
 		}
 
 		$user = $this->users->resolve( $identity, $context );
@@ -327,7 +327,7 @@ class OAuth_Engine {
 					'message' => $user->get_error_message(),
 				)
 			);
-			return $this->attach_deny_redirect( $user, $context );
+			return $this->attach_deny_redirect( $user, $context, $return_to );
 		}
 
 		authorizenter_log(
@@ -355,7 +355,7 @@ class OAuth_Engine {
 			 * @param array    $context Resolved context.
 			 */
 			do_action( 'authorizenter_context_denied', $user, $context );
-			return $this->attach_deny_redirect( $cap_ok, $context );
+			return $this->attach_deny_redirect( $cap_ok, $context, $return_to );
 		}
 
 		// Remember which provider/context this user last used (for SSO logout).
@@ -525,7 +525,7 @@ class OAuth_Engine {
 	 * @param array     $context Resolved context.
 	 * @return \WP_Error
 	 */
-	private function attach_deny_redirect( \WP_Error $error, array $context ) {
+	private function attach_deny_redirect( \WP_Error $error, array $context, $return_to = '' ) {
 		if ( 'authorizenter_not_approved' === $error->get_error_code() ) {
 			$data     = (array) $error->get_error_data();
 			$provider = isset( $data['provider'] ) ? (string) $data['provider'] : '';
@@ -544,10 +544,16 @@ class OAuth_Engine {
 			$pending = (string) apply_filters( 'authorizenter_pending_redirect', $pending, $provider, $context );
 
 			if ( '' !== $pending ) {
-				$token            = isset( $data['pending_token'] ) ? (string) $data['pending_token'] : '';
-				$url              = '' !== $token
-					? add_query_arg( 'azr_pending_token', rawurlencode( $token ), $pending )
-					: $pending;
+				$token = isset( $data['pending_token'] ) ? (string) $data['pending_token'] : '';
+				$args  = array();
+				if ( '' !== $token ) {
+					$args['azr_pending_token'] = rawurlencode( $token );
+				}
+				if ( '' !== $return_to ) {
+					$args['return_to'] = rawurlencode( $return_to );
+				}
+				
+				$url = ! empty( $args ) ? add_query_arg( $args, $pending ) : $pending;
 				$data['redirect'] = $url;
 				$error->add_data( $data );
 				return $error;
@@ -563,8 +569,12 @@ class OAuth_Engine {
 			 * @param string $url        Default (wp_login_url()).
 			 * @param string $context_id Context id.
 			 */
-			$login  = apply_filters( 'authorizenter_context_login_url', wp_login_url(), $context['id'] );
-			$target = add_query_arg( 'authorizenter_error', rawurlencode( $error->get_error_code() ), $login );
+			$login = apply_filters( 'authorizenter_context_login_url', wp_login_url(), $context['id'] );
+			$args  = array( 'authorizenter_error' => rawurlencode( $error->get_error_code() ) );
+			if ( '' !== $return_to ) {
+				$args['return_to'] = rawurlencode( $return_to );
+			}
+			$target = add_query_arg( $args, $login );
 		}
 
 		$data             = (array) $error->get_error_data();
