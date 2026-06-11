@@ -281,8 +281,9 @@ class Access_List {
 
 		// Send approval email.
 		foreach ( $newly_approved as $a_email ) {
-			$subject = ! empty( $all['access']['approval_subject'] ) ? $all['access']['approval_subject'] : __( 'Your account has been approved', 'authorizenter' );
+			$subject  = ! empty( $all['access']['approval_subject'] ) ? $all['access']['approval_subject'] : __( 'Your account has been approved', 'authorizenter' );
 			$body_tpl = ! empty( $all['access']['approval_body'] ) ? $all['access']['approval_body'] : sprintf(
+				/* translators: 1: double newline, 2: newline */
 				__( 'Hello,%1$sYour request to access {site_name} has been approved.%2$sYou can now log in at: {login_url}', 'authorizenter' ),
 				"\r\n\r\n",
 				"\r\n"

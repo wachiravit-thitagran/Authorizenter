@@ -177,10 +177,10 @@ class Admin_Settings {
 		$all['users']['role_map']       = $this->parse_role_map( isset( $_POST['role_map'] ) ? wp_unslash( $_POST['role_map'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 
 		// Access lists.
-		$all['access']['enabled']        = ! empty( $_POST['access_enabled'] );
-		$all['access']['allow_existing'] = ! empty( $_POST['access_allow_existing'] );
-		$all['access']['approved']       = $this->split_lines( isset( $_POST['access_approved'] ) ? wp_unslash( $_POST['access_approved'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		$all['access']['blocked']        = $this->split_lines( isset( $_POST['access_blocked'] ) ? wp_unslash( $_POST['access_blocked'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$all['access']['enabled']          = ! empty( $_POST['access_enabled'] );
+		$all['access']['allow_existing']   = ! empty( $_POST['access_allow_existing'] );
+		$all['access']['approved']         = $this->split_lines( isset( $_POST['access_approved'] ) ? wp_unslash( $_POST['access_approved'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$all['access']['blocked']          = $this->split_lines( isset( $_POST['access_blocked'] ) ? wp_unslash( $_POST['access_blocked'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		$all['access']['approval_subject'] = isset( $_POST['access_approval_subject'] ) ? sanitize_text_field( wp_unslash( $_POST['access_approval_subject'] ) ) : '';
 		$all['access']['approval_body']    = isset( $_POST['access_approval_body'] ) ? sanitize_textarea_field( wp_unslash( $_POST['access_approval_body'] ) ) : '';
 
@@ -209,8 +209,9 @@ class Admin_Settings {
 				}
 
 				// Send approval email.
-				$subject = ! empty( $all['access']['approval_subject'] ) ? $all['access']['approval_subject'] : __( 'Your account has been approved', 'authorizenter' );
+				$subject  = ! empty( $all['access']['approval_subject'] ) ? $all['access']['approval_subject'] : __( 'Your account has been approved', 'authorizenter' );
 				$body_tpl = ! empty( $all['access']['approval_body'] ) ? $all['access']['approval_body'] : sprintf(
+					/* translators: 1: double newline, 2: newline */
 					__( 'Hello,%1$sYour request to access {site_name} has been approved.%2$sYou can now log in at: {login_url}', 'authorizenter' ),
 					"\r\n\r\n",
 					"\r\n"
@@ -1180,6 +1181,7 @@ class Admin_Settings {
 						<td>
 							<?php
 							$default_body = sprintf(
+								/* translators: 1: double newline, 2: newline */
 								__( 'Hello,%1$sYour request to access {site_name} has been approved.%2$sYou can now log in at: {login_url}', 'authorizenter' ),
 								"\n\n",
 								"\n"

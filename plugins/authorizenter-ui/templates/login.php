@@ -36,7 +36,7 @@ $authorizenter_ctx = isset( $context_id ) ? $context_id : 'default';
 					$query_args,
 					rest_url( 'authorizenter/v1/authorize/' . $provider_id )
 				);
-				
+
 				$onclick = '';
 				if ( '' === $return_to ) {
 					$onclick = ' onclick="document.cookie=\'authorizenter_redirect=\' + encodeURIComponent(window.location.href) + \'; path=/\';"';
