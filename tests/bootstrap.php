@@ -5,7 +5,7 @@
  * These are pure unit tests — they do not require a running WordPress. WordPress
  * functions are replaced by the lightweight stubs in wp-stubs.php.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
 require __DIR__ . '/wp-stubs.php';
@@ -14,10 +14,10 @@ if ( file_exists( dirname( __DIR__ ) . '/vendor/autoload.php' ) ) {
 	require dirname( __DIR__ ) . '/vendor/autoload.php';
 }
 
-$inc = dirname( __DIR__ ) . '/plugins/autorizenter-core/includes/';
+$inc = dirname( __DIR__ ) . '/plugins/authorizenter-core/includes/';
 
-if ( ! defined( 'Autorizenter\Core\AUTORIZENTER_REST_NAMESPACE' ) ) {
-	define( 'Autorizenter\Core\AUTORIZENTER_REST_NAMESPACE', 'autorizenter/v1' );
+if ( ! defined( 'Authorizenter\Core\AUTHORIZENTER_REST_NAMESPACE' ) ) {
+	define( 'Authorizenter\Core\AUTHORIZENTER_REST_NAMESPACE', 'autorizenter/v1' );
 }
 
 require $inc . 'class-identity.php';
@@ -43,12 +43,12 @@ require $inc . 'class-private-site.php';
 require $inc . 'class-admin-settings.php';
 require $inc . 'class-shortcodes.php';
 
-$ui_inc = dirname( __DIR__ ) . '/plugins/autorizenter-ui/includes/';
-if ( ! defined( 'AUTORIZENTER_UI_URL' ) ) {
-	define( 'AUTORIZENTER_UI_URL', 'https://example.test/ui/' );
+$ui_inc = dirname( __DIR__ ) . '/plugins/authorizenter-ui/includes/';
+if ( ! defined( 'AUTHORIZENTER_UI_URL' ) ) {
+	define( 'AUTHORIZENTER_UI_URL', 'https://example.test/ui/' );
 }
-if ( ! defined( 'AUTORIZENTER_UI_DIR' ) ) {
-	define( 'AUTORIZENTER_UI_DIR', __DIR__ . '/fixtures/' );
+if ( ! defined( 'AUTHORIZENTER_UI_DIR' ) ) {
+	define( 'AUTHORIZENTER_UI_DIR', __DIR__ . '/fixtures/' );
 }
 require $ui_inc . 'class-logos.php';
 require $ui_inc . 'class-frontend.php';

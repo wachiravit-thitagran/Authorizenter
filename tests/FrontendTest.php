@@ -2,19 +2,19 @@
 /**
  * Tests for the SSO button/URL shortcodes.
  *
- * The visual [autorizenter_button] is owned by Autorizenter\UI\Frontend
- * (template-level markup: label + icon). The bare [autorizenter_url] is owned by
- * Autorizenter\Core\Shortcodes (logic only, no markup).
+ * The visual [authorizenter_button] is owned by Authorizenter\UI\Frontend
+ * (template-level markup: label + icon). The bare [authorizenter_url] is owned by
+ * Authorizenter\Core\Shortcodes (logic only, no markup).
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Provider_Registry;
-use Autorizenter\Core\Shortcodes;
-use Autorizenter\UI\Frontend;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Provider_Registry;
+use Authorizenter\Core\Shortcodes;
+use Authorizenter\UI\Frontend;
 use PHPUnit\Framework\TestCase;
 
 class FrontendTest extends TestCase {
@@ -46,7 +46,7 @@ class FrontendTest extends TestCase {
 		$this->shortcodes = new Shortcodes( $settings, $providers );
 	}
 
-	// --- UI [autorizenter_button]: early-exit cases -------------------------
+	// --- UI [authorizenter_button]: early-exit cases -------------------------
 
 	public function test_returns_empty_when_no_provider_given(): void {
 		$this->make_core();
@@ -69,12 +69,12 @@ class FrontendTest extends TestCase {
 		$this->assertSame( '', $this->frontend->render_button( array( 'provider' => 'google' ) ) );
 	}
 
-	// --- UI [autorizenter_button]: HTML output ------------------------------
+	// --- UI [authorizenter_button]: HTML output ------------------------------
 
 	public function test_renders_anchor_with_provider_class(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
 		$html = $this->frontend->render_button( array( 'provider' => 'google' ) );
-		$this->assertStringContainsString( 'autorizenter-btn--google', $html );
+		$this->assertStringContainsString( 'authorizenter-btn--google', $html );
 		$this->assertStringContainsString( '<a ', $html );
 	}
 

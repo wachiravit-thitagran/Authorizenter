@@ -2,13 +2,13 @@
 /**
  * Tests for OIDC provider: custom claim attributes, require_verified_email, auth methods.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Providers\OIDC;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Providers\OIDC;
 use PHPUnit\Framework\TestCase;
 
 class OidcTest extends TestCase {
@@ -36,7 +36,7 @@ class OidcTest extends TestCase {
 			'given_name'     => 'First',
 			'family_name'    => 'Last',
 		) );
-		$this->assertInstanceOf( \Autorizenter\Core\Identity::class, $id );
+		$this->assertInstanceOf( \Authorizenter\Core\Identity::class, $id );
 		$this->assertSame( 'U1', $id->sub );
 		$this->assertSame( 'u@example.test', $id->email );
 		$this->assertSame( 'First', $id->first_name );
@@ -57,7 +57,7 @@ class OidcTest extends TestCase {
 			'fname'              => 'John',
 			'lname'              => 'Doe',
 		) );
-		$this->assertInstanceOf( \Autorizenter\Core\Identity::class, $id );
+		$this->assertInstanceOf( \Authorizenter\Core\Identity::class, $id );
 		$this->assertSame( 'jdoe', $id->username );
 		$this->assertSame( 'jdoe@example.test', $id->email );
 		$this->assertSame( 'John', $id->first_name );
@@ -72,7 +72,7 @@ class OidcTest extends TestCase {
 			'email_verified' => false,
 		) );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_oidc_email_unverified', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_oidc_email_unverified', $result->get_error_code() );
 	}
 
 	public function test_require_verified_email_allows_verified(): void {
@@ -82,7 +82,7 @@ class OidcTest extends TestCase {
 			'email'          => 'u@example.test',
 			'email_verified' => true,
 		) );
-		$this->assertInstanceOf( \Autorizenter\Core\Identity::class, $result );
+		$this->assertInstanceOf( \Authorizenter\Core\Identity::class, $result );
 	}
 
 	// --- Auth methods --------------------------------------------------------

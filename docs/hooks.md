@@ -1,4 +1,4 @@
-# Autorizenter — Hooks & REST reference
+# Authorizenter — Hooks & REST reference
 
 The Core plugin is the contract. The UI plugin (or any front-end you build) must
 only depend on what is documented here.
@@ -12,7 +12,7 @@ Namespace: `autorizenter/v1`
 | GET | `/providers?context=` | public | List providers allowed in a context, with `authorize_url`. |
 | GET | `/authorize/{provider}?context=&return_to=` | public | 302 redirect into the provider. Browser entry point. |
 | GET | `/callback` | public | Provider redirect target; completes login, then redirects. |
-| GET | `/logout?return_to=` | public | Ends the session; optionally redirects via the IdP (see `autorizenter_sso_logout`). |
+| GET | `/logout?return_to=` | public | Ends the session; optionally redirects via the IdP (see `authorizenter_sso_logout`). |
 | GET | `/questions` | logged-in | Pending questions for the current user. |
 | POST | `/answers` | logged-in (nonce) | Submit `{ "answers": { id: value } }`. |
 | GET | `/answers/report` | `list_users` | Per-question aggregate counts and breakdowns. |
@@ -35,33 +35,33 @@ fetch('/wp-json/autorizenter/v1/providers')
 
 | Hook | Args | Fires |
 |------|------|-------|
-| `autorizenter_login_success` | `WP_User $user, string $provider, Identity $identity, array $context` | After a successful login. |
-| `autorizenter_user_provisioned` | `WP_User $user, Identity $identity` | When a new user is created. |
-| `autorizenter_context_denied` | `WP_User $user, array $context` | When a user fails a context's capability gate. |
-| `autorizenter_answers_saved` | `int $user_id, array $answers` | After answers are stored. |
-| `autorizenter_questions_completed` | `int $user_id` | When all required questions are answered. |
+| `authorizenter_login_success` | `WP_User $user, string $provider, Identity $identity, array $context` | After a successful login. |
+| `authorizenter_user_provisioned` | `WP_User $user, Identity $identity` | When a new user is created. |
+| `authorizenter_context_denied` | `WP_User $user, array $context` | When a user fails a context's capability gate. |
+| `authorizenter_answers_saved` | `int $user_id, array $answers` | After answers are stored. |
+| `authorizenter_questions_completed` | `int $user_id` | When all required questions are answered. |
 
 ## Filter hooks
 
 | Filter | Signature | Use |
 |--------|-----------|-----|
-| `autorizenter_provider_classes` | `array $classes` | Register custom provider adapters (`id => class`). |
-| `autorizenter_oidc_client` | `OpenIDConnectClient $client, array $config` | Tune the jumbojett OIDC client before the flow runs (e.g. `setHttpProxy`, `setVerifyHost`, provider-config overrides). OIDC providers only. |
-| `autorizenter_authorization_args` | `array $args, string $provider_id` | Tweak the authorization request query. |
-| `autorizenter_allowed_domains` | `string[] $domains` | Programmatically extend the domain allowlist. |
-| `autorizenter_is_allowed` | `true\|WP_Error $result, Identity $identity` | Final allow/deny decision. |
-| `autorizenter_post_login_redirect` | `string $url, WP_User $user` | Change the post-login destination. |
-| `autorizenter_questions_url` | `string $url, string $return_to` | Where the question gate redirects. |
-| `autorizenter_login_url` | `string $url` | Login page used for error redirects. |
-| `autorizenter_context` | `array $context, string $id` | Modify a resolved login context. |
-| `autorizenter_context_capability` | `bool $ok, WP_User $user, array $context` | Override the per-context capability decision. |
-| `autorizenter_context_login_url` | `string $url, string $context_id` | Login page used as a context's deny fallback. |
-| `autorizenter_sso_logout` | `bool $enabled, string $provider_id` | Enable RP-initiated logout at the IdP (OIDC `end_session_endpoint`). Default off. |
-| `autorizenter_disable_password_auth` | `bool $disabled` | Force-disable WordPress username/password sign-in (overrides the setting). |
-| `autorizenter_provision_role` | `string $role, Identity $identity` | Adjust the role assigned to a newly provisioned user. |
-| `autorizenter_existing_account_skips_approval` | `bool $allow, Identity $identity` | Whether an identity that already has a WordPress account bypasses the approved-list/pending gate. Mirrors the "Existing accounts" setting (default on). |
-| `autorizenter_private_allow` | `bool $allowed` | Let a specific front-end request through while private-site mode is on. |
-| `autorizenter_login_page_id` | `int $id` | The login page id (used to allow it under private-site mode). |
+| `authorizenter_provider_classes` | `array $classes` | Register custom provider adapters (`id => class`). |
+| `authorizenter_oidc_client` | `OpenIDConnectClient $client, array $config` | Tune the jumbojett OIDC client before the flow runs (e.g. `setHttpProxy`, `setVerifyHost`, provider-config overrides). OIDC providers only. |
+| `authorizenter_authorization_args` | `array $args, string $provider_id` | Tweak the authorization request query. |
+| `authorizenter_allowed_domains` | `string[] $domains` | Programmatically extend the domain allowlist. |
+| `authorizenter_is_allowed` | `true\|WP_Error $result, Identity $identity` | Final allow/deny decision. |
+| `authorizenter_post_login_redirect` | `string $url, WP_User $user` | Change the post-login destination. |
+| `authorizenter_questions_url` | `string $url, string $return_to` | Where the question gate redirects. |
+| `authorizenter_login_url` | `string $url` | Login page used for error redirects. |
+| `authorizenter_context` | `array $context, string $id` | Modify a resolved login context. |
+| `authorizenter_context_capability` | `bool $ok, WP_User $user, array $context` | Override the per-context capability decision. |
+| `authorizenter_context_login_url` | `string $url, string $context_id` | Login page used as a context's deny fallback. |
+| `authorizenter_sso_logout` | `bool $enabled, string $provider_id` | Enable RP-initiated logout at the IdP (OIDC `end_session_endpoint`). Default off. |
+| `authorizenter_disable_password_auth` | `bool $disabled` | Force-disable WordPress username/password sign-in (overrides the setting). |
+| `authorizenter_provision_role` | `string $role, Identity $identity` | Adjust the role assigned to a newly provisioned user. |
+| `authorizenter_existing_account_skips_approval` | `bool $allow, Identity $identity` | Whether an identity that already has a WordPress account bypasses the approved-list/pending gate. Mirrors the "Existing accounts" setting (default on). |
+| `authorizenter_private_allow` | `bool $allowed` | Let a specific front-end request through while private-site mode is on. |
+| `authorizenter_login_page_id` | `int $id` | The login page id (used to allow it under private-site mode). |
 
 ## SSO button / URL shortcodes
 
@@ -69,8 +69,8 @@ Display and logic are split between the two plugins:
 
 | Shortcode | Owner | Attributes | Returns |
 |-----------|-------|------------|---------|
-| `[autorizenter_url]` | Core | `provider`, `context` (default `default`), `return_to` | The bare authorize URL string only (no markup) — for custom links, redirects, or feeding other shortcodes/templates. Works with Core alone. |
-| `[autorizenter_button]` | UI | `provider`, `context` (default `default`), `return_to` | Styled single-provider login link (brand icon + label). Requires the **Autorizenter UI** plugin. |
+| `[authorizenter_url]` | Core | `provider`, `context` (default `default`), `return_to` | The bare authorize URL string only (no markup) — for custom links, redirects, or feeding other shortcodes/templates. Works with Core alone. |
+| `[authorizenter_button]` | UI | `provider`, `context` (default `default`), `return_to` | Styled single-provider login link (brand icon + label). Requires the **Authorizenter UI** plugin. |
 
 Both resolve identically: empty output when `provider` is missing, the provider
 is not enabled in the `context`, or the visitor is already logged in. `return_to`
@@ -90,7 +90,7 @@ authentication still works but those display settings are hidden.
   default role and role map for that user (Authorizer-style). Blocking applies
   even when organization policy is off. By default
   **existing WordPress accounts skip approval** (the "Existing accounts" toggle /
-  `autorizenter_existing_account_skips_approval` filter), since they were vetted
+  `authorizenter_existing_account_skips_approval` filter), since they were vetted
   when the account was created; blocked entries still win.
 - **Role mapping** (`Settings → User provisioning`): `matcher = role` lines map new
   users to roles. Conditions: `domain:`, `provider:`, `email:`, `username:`,
@@ -107,18 +107,18 @@ authentication still works but those display settings are hidden.
 
 ## Disabling password sign-in
 
-**Settings → Autorizenter → Login security** can disable WordPress
+**Settings → Authorizenter → Login security** can disable WordPress
 username/password login so users must authenticate via a provider. An
 **Administrator bypass** (on by default) keeps `manage_options` users able to log
 in with a password, preventing lockout if the IdP becomes unreachable; turn it off
 once SSO is verified. Only interactive password logins are affected — cookie auth,
 application passwords, and the SSO flow use separate paths.
-| `autorizenter_identity` | `Identity $identity, array $context` | Inspect/modify identity (now context-aware). |
+| `authorizenter_identity` | `Identity $identity, array $context` | Inspect/modify identity (now context-aware). |
 
 ## Login contexts
 
 A **context** is a named login profile. Pages opt into one via the shortcode
-attribute `[autorizenter_login context="admin"]`. Each context can:
+attribute `[authorizenter_login context="admin"]`. Each context can:
 
 - show a subset of providers (`providers`, empty = all enabled),
 - require a WordPress **capability** (`required_capability`, default `read`),
@@ -142,15 +142,15 @@ and multisite. Example: a `default` context for everyone at `/auth/`, and an
 
 Deny fallback chain when a context refuses a user: the context's `deny_redirect`
 → the global `deny_redirect` → the context's own login page with
-`?autorizenter_error=…`.
+`?authorizenter_error=…`.
 
 ## Answer storage & reporting
 
 Each user's answers are stored two ways:
 
-- `autorizenter_answers` (user meta) — the full array `{ id: value }`. Checkboxes
+- `authorizenter_answers` (user meta) — the full array `{ id: value }`. Checkboxes
   are stored as booleans.
-- `autorizenter_answer_{id}` (user meta) — a per-question **indexed mirror** (`'1'`
+- `authorizenter_answer_{id}` (user meta) — a per-question **indexed mirror** (`'1'`
   / `'0'` for checkboxes, the string value otherwise), written so reports can query
   with an index instead of `LIKE`-matching the serialized blob.
 
@@ -159,7 +159,7 @@ Query examples (e.g. "who are the volunteers?"):
 ```php
 // Indexed, fast:
 $q = new WP_User_Query( array(
-    'meta_key'   => 'autorizenter_answer_is_bia_volunteer',
+    'meta_key'   => 'authorizenter_answer_is_bia_volunteer',
     'meta_value' => '1',
 ) );
 echo $q->get_total();            // count
@@ -169,37 +169,37 @@ $people = $q->get_results();     // WP_User[]
 Or use the aggregator directly:
 
 ```php
-$reports = \Autorizenter\Core\autorizenter_core()->reports;
+$reports = \Authorizenter\Core\authorizenter_core()->reports;
 $reports->summary();                          // per-question counts + breakdown
 $reports->respondents( 'is_bia_volunteer', '1' ); // who answered "yes"
 $reports->matrix();                           // full grid for CSV export
 ```
 
-Admins also get **Settings → Autorizenter Report** (per-question counts, drill-down
+Admins also get **Settings → Authorizenter Report** (per-question counts, drill-down
 respondent lists, CSV export) and the REST route `GET /answers/report`
 (`list_users` capability).
 
 ## Writing a custom provider
 
-Extend `Autorizenter\Core\Provider_Base` (or `Providers\OIDC` for an OIDC IdP) and
+Extend `Authorizenter\Core\Provider_Base` (or `Providers\OIDC` for an OIDC IdP) and
 register it:
 
 ```php
-add_filter( 'autorizenter_provider_classes', function ( $classes ) {
+add_filter( 'authorizenter_provider_classes', function ( $classes ) {
     $classes['github'] = My_GitHub_Provider::class;
     return $classes;
 } );
 ```
 
-Your `exchange()` must return an `Autorizenter\Core\Identity` (or `WP_Error`).
+Your `exchange()` must return an `Authorizenter\Core\Identity` (or `WP_Error`).
 
 ## Restricting to an organization in code
 
 ```php
 // Allow only a domain, and trust your org IdP outright.
-add_filter( 'autorizenter_allowed_domains', fn( $d ) => array_merge( $d, [ 'psu.ac.th' ] ) );
+add_filter( 'authorizenter_allowed_domains', fn( $d ) => array_merge( $d, [ 'psu.ac.th' ] ) );
 
-add_filter( 'autorizenter_is_allowed', function ( $ok, $identity ) {
+add_filter( 'authorizenter_is_allowed', function ( $ok, $identity ) {
     if ( 'oidc' === $identity->provider ) {
         return true; // already authenticated by the org IdP.
     }

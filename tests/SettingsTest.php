@@ -2,12 +2,12 @@
 /**
  * Tests for Settings, focused on context resolution and secret encryption.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
+use Authorizenter\Core\Settings;
 use PHPUnit\Framework\TestCase;
 
 class SettingsTest extends TestCase {

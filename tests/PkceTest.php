@@ -3,16 +3,16 @@
  * Tests for the PKCE S256 code challenge derivation, using the RFC 7636
  * Appendix B reference vector.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Provider_Registry;
-use Autorizenter\Core\Org_Policy;
-use Autorizenter\Core\User_Mapper;
-use Autorizenter\Core\OAuth_Engine;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Provider_Registry;
+use Authorizenter\Core\Org_Policy;
+use Authorizenter\Core\User_Mapper;
+use Authorizenter\Core\OAuth_Engine;
 use PHPUnit\Framework\TestCase;
 
 class PkceTest extends TestCase {

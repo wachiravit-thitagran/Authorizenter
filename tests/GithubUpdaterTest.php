@@ -2,17 +2,17 @@
 /**
  * Tests for the GitHub release updater (version logic + asset selection).
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Github_Updater;
+use Authorizenter\Core\Github_Updater;
 use PHPUnit\Framework\TestCase;
 
 class GithubUpdaterTest extends TestCase {
 
-	private const FILE = '/plugins/autorizenter-core/autorizenter-core.php';
+	private const FILE = '/plugins/authorizenter-core/authorizenter-core.php';
 	private const REPO = 'owner/repo';
 
 	protected function setUp(): void {
@@ -20,7 +20,7 @@ class GithubUpdaterTest extends TestCase {
 	}
 
 	private function updater( string $version ): Github_Updater {
-		return new Github_Updater( self::FILE, 'autorizenter-core', self::REPO, $version, 'autorizenter-core.zip' );
+		return new Github_Updater( self::FILE, 'authorizenter-core', self::REPO, $version, 'authorizenter-core.zip' );
 	}
 
 	private function invoke( object $obj, string $method, array $args ) {
@@ -30,7 +30,7 @@ class GithubUpdaterTest extends TestCase {
 	}
 
 	private function seed_release( array $release ): void {
-		set_transient( 'autorizenter_gh_' . md5( self::REPO ), $release );
+		set_transient( 'authorizenter_gh_' . md5( self::REPO ), $release );
 	}
 
 	public function test_normalize_strips_v_prefix(): void {
@@ -43,7 +43,7 @@ class GithubUpdaterTest extends TestCase {
 		$u       = $this->updater( '0.1.0' );
 		$release = array(
 			'assets'      => array(
-				array( 'name' => 'autorizenter-core.zip', 'browser_download_url' => 'https://dl/core.zip' ),
+				array( 'name' => 'authorizenter-core.zip', 'browser_download_url' => 'https://dl/core.zip' ),
 				array( 'name' => 'other.zip', 'browser_download_url' => 'https://dl/other.zip' ),
 			),
 			'zipball_url' => 'https://dl/zipball',
@@ -61,7 +61,7 @@ class GithubUpdaterTest extends TestCase {
 		$this->seed_release(
 			array(
 				'tag_name'    => 'v9.9.9',
-				'assets'      => array( array( 'name' => 'autorizenter-core.zip', 'browser_download_url' => 'https://dl/core.zip' ) ),
+				'assets'      => array( array( 'name' => 'authorizenter-core.zip', 'browser_download_url' => 'https://dl/core.zip' ) ),
 				'zipball_url' => 'https://dl/zipball',
 			)
 		);
@@ -117,10 +117,10 @@ class GithubUpdaterTest extends TestCase {
 			array(
 				'tag_name' => 'v2.0.0',
 				'body'     => 'Release notes',
-				'assets'   => array( array( 'name' => 'autorizenter-core.zip', 'browser_download_url' => 'https://dl/core.zip' ) ),
+				'assets'   => array( array( 'name' => 'authorizenter-core.zip', 'browser_download_url' => 'https://dl/core.zip' ) ),
 			)
 		);
-		$res = $this->updater( '0.1.0' )->plugin_info( false, 'plugin_information', (object) array( 'slug' => 'autorizenter-core' ) );
+		$res = $this->updater( '0.1.0' )->plugin_info( false, 'plugin_information', (object) array( 'slug' => 'authorizenter-core' ) );
 
 		$this->assertIsObject( $res );
 		$this->assertSame( '2.0.0', $res->version );
@@ -133,8 +133,8 @@ class GithubUpdaterTest extends TestCase {
 	}
 
 	public function test_parse_readme_splits_headers_and_sections(): void {
-		$raw = "=== Autorizenter Core ===\n"
-			. "Contributors: autorizenter\n"
+		$raw = "=== Authorizenter Core ===\n"
+			. "Contributors: authorizenter\n"
 			. "Tags: oauth2, oidc\n"
 			. "Tested up to: 6.5\n"
 			. "Requires PHP: 8.0\n"
@@ -153,7 +153,7 @@ class GithubUpdaterTest extends TestCase {
 
 		$parsed = $this->invoke( $this->updater( '0.1.0' ), 'parse_readme', array( $raw ) );
 
-		$this->assertSame( 'autorizenter', $parsed['headers']['contributors'] );
+		$this->assertSame( 'authorizenter', $parsed['headers']['contributors'] );
 		$this->assertSame( 'oauth2, oidc', $parsed['headers']['tags'] );
 		$this->assertSame( '6.5', $parsed['headers']['tested up to'] );
 		$this->assertSame( '8.0', $parsed['headers']['requires php'] );

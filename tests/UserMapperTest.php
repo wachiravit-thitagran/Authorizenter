@@ -2,15 +2,15 @@
 /**
  * Tests for User_Mapper: linking and auto-provisioning.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Org_Policy;
-use Autorizenter\Core\User_Mapper;
-use Autorizenter\Core\Identity;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Org_Policy;
+use Authorizenter\Core\User_Mapper;
+use Authorizenter\Core\Identity;
 use PHPUnit\Framework\TestCase;
 
 class UserMapperTest extends TestCase {
@@ -73,7 +73,7 @@ class UserMapperTest extends TestCase {
 	public function test_links_existing_user_by_provider_and_sub(): void {
 		$this->users_config( array( 'auto_provision' => true, 'link_by_email' => true ) );
 		azr_test_make_user( 5, array( 'read' => true ), 'old@psu.ac.th' );
-		update_user_meta( 5, 'autorizenter_link_google', 'SUB-123' );
+		update_user_meta( 5, 'authorizenter_link_google', 'SUB-123' );
 
 		$identity = new Identity( 'google', array( 'sub' => 'SUB-123', 'email' => 'old@psu.ac.th', 'email_verified' => true ) );
 		$user     = $this->mapper->resolve( $identity );
@@ -91,7 +91,7 @@ class UserMapperTest extends TestCase {
 
 		$this->assertSame( 7, $user->ID );
 		// Link is stored for next time.
-		$this->assertSame( 'NEW-SUB', get_user_meta( 7, 'autorizenter_link_google', true ) );
+		$this->assertSame( 'NEW-SUB', get_user_meta( 7, 'authorizenter_link_google', true ) );
 	}
 
 	public function test_unverified_email_does_not_link(): void {
@@ -113,7 +113,7 @@ class UserMapperTest extends TestCase {
 
 		$this->assertInstanceOf( \WP_User::class, $user );
 		$this->assertSame( 'newbie@psu.ac.th', $user->user_email );
-		$this->assertSame( 'G-9', get_user_meta( $user->ID, 'autorizenter_link_google', true ) );
+		$this->assertSame( 'G-9', get_user_meta( $user->ID, 'authorizenter_link_google', true ) );
 	}
 
 	public function test_auto_provision_disabled_returns_error(): void {
@@ -123,7 +123,7 @@ class UserMapperTest extends TestCase {
 		$result   = $this->mapper->resolve( $identity );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_no_account', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_no_account', $result->get_error_code() );
 	}
 
 	public function test_context_can_override_auto_provision_off(): void {
@@ -154,7 +154,7 @@ class UserMapperTest extends TestCase {
 
 		$this->assertInstanceOf( \WP_User::class, $user );
 		$this->assertSame( 20, $user->ID );
-		$this->assertSame( 'OIDC-SUB-1', get_user_meta( 20, 'autorizenter_link_oidc', true ) );
+		$this->assertSame( 'OIDC-SUB-1', get_user_meta( 20, 'authorizenter_link_oidc', true ) );
 	}
 
 	public function test_provision_stores_first_and_last_name(): void {
@@ -183,7 +183,7 @@ class UserMapperTest extends TestCase {
 			'providers' => array( 'oidc' => array( 'name_update' => 'always' ) ),
 		) );
 		azr_test_make_user( 30, array( 'read' => true ), 'u30@example.test' );
-		update_user_meta( 30, 'autorizenter_link_oidc', 'SUB-30' );
+		update_user_meta( 30, 'authorizenter_link_oidc', 'SUB-30' );
 		update_user_meta( 30, 'first_name', 'OldFirst' );
 		update_user_meta( 30, 'last_name', 'OldLast' );
 
@@ -206,7 +206,7 @@ class UserMapperTest extends TestCase {
 			'providers' => array( 'oidc' => array( 'name_update' => 'if_empty' ) ),
 		) );
 		azr_test_make_user( 31, array( 'read' => true ), 'u31@example.test' );
-		update_user_meta( 31, 'autorizenter_link_oidc', 'SUB-31' );
+		update_user_meta( 31, 'authorizenter_link_oidc', 'SUB-31' );
 		update_user_meta( 31, 'first_name', 'KeepThis' );
 		update_user_meta( 31, 'last_name', '' );
 
@@ -229,7 +229,7 @@ class UserMapperTest extends TestCase {
 			'providers' => array( 'oidc' => array( 'name_update' => 'none' ) ),
 		) );
 		azr_test_make_user( 32, array( 'read' => true ), 'u32@example.test' );
-		update_user_meta( 32, 'autorizenter_link_oidc', 'SUB-32' );
+		update_user_meta( 32, 'authorizenter_link_oidc', 'SUB-32' );
 		update_user_meta( 32, 'first_name', 'Stay' );
 		update_user_meta( 32, 'last_name', 'Same' );
 

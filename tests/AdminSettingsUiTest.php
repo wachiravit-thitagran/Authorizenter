@@ -2,15 +2,15 @@
 /**
  * Tests for the admin settings screen UI contract.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Admin_Settings;
-use Autorizenter\Core\Provider_Registry;
-use Autorizenter\Core\Questions;
-use Autorizenter\Core\Settings;
+use Authorizenter\Core\Admin_Settings;
+use Authorizenter\Core\Provider_Registry;
+use Authorizenter\Core\Questions;
+use Authorizenter\Core\Settings;
 use PHPUnit\Framework\TestCase;
 
 class AdminSettingsUiTest extends TestCase {
@@ -35,10 +35,10 @@ class AdminSettingsUiTest extends TestCase {
 	public function test_settings_screen_uses_grouped_tabs(): void {
 		$html = $this->render_settings();
 
-		$this->assertStringContainsString( 'nav-tab-wrapper autorizenter-tabs', $html );
-		$this->assertStringContainsString( 'href="#autorizenter-tab-providers"', $html );
-		$this->assertStringContainsString( 'id="autorizenter-tab-security"', $html );
-		$this->assertStringContainsString( 'data-autorizenter-tab', $html );
+		$this->assertStringContainsString( 'nav-tab-wrapper authorizenter-tabs', $html );
+		$this->assertStringContainsString( 'href="#authorizenter-tab-providers"', $html );
+		$this->assertStringContainsString( 'id="authorizenter-tab-security"', $html );
+		$this->assertStringContainsString( 'data-authorizenter-tab', $html );
 	}
 
 	public function test_domain_placeholders_are_generic(): void {
@@ -54,8 +54,8 @@ class AdminSettingsUiTest extends TestCase {
 	public function test_thai_translation_files_cover_templates(): void {
 		$root  = dirname( __DIR__ );
 		$files = array(
-			$root . '/plugins/autorizenter-core/languages/autorizenter-th.po',
-			$root . '/plugins/autorizenter-ui/languages/autorizenter-th.po',
+			$root . '/plugins/authorizenter-core/languages/authorizenter-th.po',
+			$root . '/plugins/authorizenter-ui/languages/authorizenter-th.po',
 		);
 
 		foreach ( $files as $file ) {
@@ -65,21 +65,21 @@ class AdminSettingsUiTest extends TestCase {
 			$this->assertDoesNotMatchRegularExpression( '/^msgid "(?!")(.|\n)*?^msgstr ""$/m', $po );
 		}
 
-		$this->assertFileExists( $root . '/plugins/autorizenter-core/languages/autorizenter-th.mo' );
-		$this->assertFileExists( $root . '/plugins/autorizenter-ui/languages/autorizenter-th.mo' );
+		$this->assertFileExists( $root . '/plugins/authorizenter-core/languages/authorizenter-th.mo' );
+		$this->assertFileExists( $root . '/plugins/authorizenter-ui/languages/authorizenter-th.mo' );
 	}
 
 	public function test_block_editor_strings_have_thai_script_translations(): void {
 		$root = dirname( __DIR__ );
 
-		$blocks = (string) file_get_contents( $root . '/plugins/autorizenter-ui/includes/class-blocks.php' );
+		$blocks = (string) file_get_contents( $root . '/plugins/authorizenter-ui/includes/class-blocks.php' );
 		$this->assertStringContainsString( 'wp_set_script_translations', $blocks );
 
-		$json_file = $root . '/plugins/autorizenter-ui/languages/autorizenter-th-autorizenter-blocks.json';
+		$json_file = $root . '/plugins/authorizenter-ui/languages/authorizenter-th-authorizenter-blocks.json';
 		$this->assertFileExists( $json_file );
 
 		$json = (string) file_get_contents( $json_file );
-		$this->assertStringContainsString( 'เข้าสู่ระบบด้วย Autorizenter', $json );
+		$this->assertStringContainsString( 'เข้าสู่ระบบด้วย Authorizenter', $json );
 		$this->assertStringContainsString( 'การตั้งค่าการออกจากระบบ', $json );
 	}
 }

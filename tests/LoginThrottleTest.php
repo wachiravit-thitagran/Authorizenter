@@ -2,13 +2,13 @@
 /**
  * Tests for failed-login throttling.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Login_Throttle;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Login_Throttle;
 use PHPUnit\Framework\TestCase;
 
 class LoginThrottleTest extends TestCase {
@@ -45,7 +45,7 @@ class LoginThrottleTest extends TestCase {
 
 		$result = $t->maybe_block( null );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_locked_out', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_locked_out', $result->get_error_code() );
 	}
 
 	public function test_disabled_never_locks(): void {

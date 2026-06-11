@@ -2,13 +2,13 @@
 /**
  * Tests for the customizable Questions system.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Questions;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Questions;
 use PHPUnit\Framework\TestCase;
 
 class QuestionsTest extends TestCase {
@@ -78,7 +78,7 @@ class QuestionsTest extends TestCase {
 		// Not provided / unchecked -> error.
 		$result = $q->save_answers( 1, array() );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_answer_required', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_answer_required', $result->get_error_code() );
 	}
 
 	public function test_checked_checkbox_saves_and_clears_pending(): void {
@@ -150,7 +150,7 @@ class QuestionsTest extends TestCase {
 		);
 
 		$q->save_answers( 1, array( 'agree' => '1' ) );
-		$this->assertSame( '1', get_user_meta( 1, 'autorizenter_answer_agree', true ) );
+		$this->assertSame( '1', get_user_meta( 1, 'authorizenter_answer_agree', true ) );
 	}
 
 	public function test_provider_scoped_question_is_filtered(): void {

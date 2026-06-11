@@ -3,14 +3,14 @@
  * Tests for Org_Policy: domain matching, verified email, trusted providers,
  * and the per-context capability gate.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Org_Policy;
-use Autorizenter\Core\Identity;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Org_Policy;
+use Authorizenter\Core\Identity;
 use PHPUnit\Framework\TestCase;
 
 class OrgPolicyTest extends TestCase {
@@ -66,7 +66,7 @@ class OrgPolicyTest extends TestCase {
 
 		$result = $this->policy->is_allowed( $id, $ctx );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_denied', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_denied', $result->get_error_code() );
 	}
 
 	public function test_unverified_email_is_denied_when_domains_set(): void {
@@ -96,7 +96,7 @@ class OrgPolicyTest extends TestCase {
 	public function test_trusted_provider_bypasses_access_list_approval(): void {
 		// Access list enforcement ON, OIDC is trusted → oidc bypasses, google goes to pending.
 		update_option(
-			\Autorizenter\Core\Settings::OPTION,
+			\Authorizenter\Core\Settings::OPTION,
 			array( 'access' => array( 'enabled' => true, 'approved' => array( 'psu.ac.th' ) ) )
 		);
 		$ctx = $this->context( array( 'trusted_providers' => array( 'oidc' ) ) );
@@ -108,7 +108,7 @@ class OrgPolicyTest extends TestCase {
 
 		$result = $this->policy->is_allowed( $google_id, $ctx );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_not_approved', $result->get_error_code() );
 	}
 
 	public function test_google_hd_required_and_matching(): void {
@@ -127,7 +127,7 @@ class OrgPolicyTest extends TestCase {
 
 	public function test_global_path_uses_settings_when_no_context(): void {
 		update_option(
-			\Autorizenter\Core\Settings::OPTION,
+			\Authorizenter\Core\Settings::OPTION,
 			array( 'policy' => array( 'enabled' => true, 'allowed_domains' => array( 'psu.ac.th' ), 'require_verified_email' => true ) )
 		);
 		$id = $this->identity( array( 'email' => 'u@psu.ac.th', 'email_verified' => true ) );
@@ -144,14 +144,14 @@ class OrgPolicyTest extends TestCase {
 
 	public function test_blocked_list_denies_even_when_policy_disabled(): void {
 		update_option(
-			\Autorizenter\Core\Settings::OPTION,
+			\Authorizenter\Core\Settings::OPTION,
 			array( 'access' => array( 'blocked' => array( 'banned@psu.ac.th' ) ) )
 		);
 		$id     = $this->identity( array( 'email' => 'banned@psu.ac.th', 'email_verified' => true ) );
 		$result = $this->policy->is_allowed( $id );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_blocked', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_blocked', $result->get_error_code() );
 	}
 
 	public function test_capability_gate_allows_capable_user(): void {
@@ -167,7 +167,7 @@ class OrgPolicyTest extends TestCase {
 
 		$result = $this->policy->check_capability( $user, $ctx );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_insufficient_capability', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_insufficient_capability', $result->get_error_code() );
 	}
 
 	/**

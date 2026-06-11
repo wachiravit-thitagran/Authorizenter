@@ -2,17 +2,17 @@
 /**
  * Tests for provider adapters (presets, secure-URL guard, claim mapping).
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Providers\OIDC;
-use Autorizenter\Core\Providers\Google;
-use Autorizenter\Core\Providers\Line;
-use Autorizenter\Core\Providers\Facebook;
-use Autorizenter\Core\Identity;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Providers\OIDC;
+use Authorizenter\Core\Providers\Google;
+use Authorizenter\Core\Providers\Line;
+use Authorizenter\Core\Providers\Facebook;
+use Authorizenter\Core\Identity;
 use PHPUnit\Framework\TestCase;
 
 class ProvidersTest extends TestCase {
