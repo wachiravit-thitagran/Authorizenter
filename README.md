@@ -101,6 +101,16 @@ The UI plugin auto-creates a page per context for you. Access is enforced by
 **capability** after authentication, so a `subscriber` who opens `/auth-admin/`
 is refused even though the page is public. See [`docs/hooks.md`](docs/hooks.md).
 
+### Example: Admin Password Bypass
+
+If you have disabled password login but need to sign in as an administrator using a password (e.g. if the SSO provider is down), you can bypass the hidden login form by appending `?external=wordpress` to the login URL:
+
+```
+https://your-site.example/wp-login.php?external=wordpress
+```
+
+*Note: This bypass only works if the **"Administrator bypass"** option is enabled in the advanced settings. Normal users cannot bypass the restriction this way.*
+
 ## Redirect / Callback URL
 
 Register this callback in each provider's console:

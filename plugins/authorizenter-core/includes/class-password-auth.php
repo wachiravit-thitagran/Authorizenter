@@ -46,7 +46,6 @@ class Password_Auth {
 	public function hooks() {
 		// Run after WP's own username/password checks (priority 20).
 		add_filter( 'authenticate', array( $this, 'maybe_block' ), 30, 3 );
-		add_filter( 'login_message', array( $this, 'login_notice' ) );
 		add_action( 'login_head', array( $this, 'maybe_hide_form' ) );
 	}
 
@@ -136,30 +135,5 @@ class Password_Auth {
 			'authorizenter_password_disabled',
 			__( 'Password sign-in is disabled for this site. Please sign in with single sign-on.', 'authorizenter' )
 		);
-	}
-
-	/**
-	 * Show a notice on the WordPress login form when password auth is disabled.
-	 *
-	 * @param string $message Existing message HTML.
-	 * @return string
-	 */
-	public function login_notice( $message ) {
-		if ( ! $this->is_disabled() ) {
-			return $message;
-		}
-		$notice = '<p class="message">' . esc_html__( 'This site uses single sign-on. Password login is disabled.', 'authorizenter' ) . '</p>';
-
-		// Offer the admin escape hatch to the password form (for the bypass) when
-		// it is enabled and the form is currently hidden.
-		$adv = $this->settings->get( 'advanced' );
-		if ( ! empty( $adv['password_auth_admin_bypass'] ) && ! $this->form_revealed() ) {
-			$url     = add_query_arg( 'external', 'wordpress', wp_login_url() );
-			$notice .= '<p class="message"><a href="' . esc_url( $url ) . '">' .
-				esc_html__( 'Administrator? Sign in with a password.', 'authorizenter' ) .
-				'</a></p>';
-		}
-
-		return $message . $notice;
 	}
 }
