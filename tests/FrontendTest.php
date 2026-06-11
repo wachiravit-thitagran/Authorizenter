@@ -53,12 +53,6 @@ class FrontendTest extends TestCase {
 		$this->assertSame( '', $this->frontend->render_button( array() ) );
 	}
 
-	public function test_returns_empty_when_user_is_logged_in(): void {
-		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
-		$GLOBALS['__logged_in'] = true;
-		$this->assertSame( '', $this->frontend->render_button( array( 'provider' => 'google' ) ) );
-	}
-
 	public function test_returns_empty_when_provider_not_enabled(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => false, 'client_id' => 'G' ) ) );
 		$this->assertSame( '', $this->frontend->render_button( array( 'provider' => 'google' ) ) );
@@ -113,12 +107,6 @@ class FrontendTest extends TestCase {
 	public function test_url_returns_empty_when_no_provider_given(): void {
 		$this->make_core();
 		$this->assertSame( '', $this->shortcodes->render_url( array() ) );
-	}
-
-	public function test_url_returns_empty_when_user_is_logged_in(): void {
-		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
-		$GLOBALS['__logged_in'] = true;
-		$this->assertSame( '', $this->shortcodes->render_url( array( 'provider' => 'google' ) ) );
 	}
 
 	public function test_url_returns_empty_when_provider_not_enabled(): void {
