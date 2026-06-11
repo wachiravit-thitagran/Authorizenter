@@ -26,6 +26,12 @@ $GLOBALS['__users']      = array();
 $GLOBALS['__transients'] = array();
 $GLOBALS['__next_uid']   = 100;
 
+// --- Mock state variables for pages/posts/templates ---
+$GLOBALS['__mock_locate_template'] = '';
+$GLOBALS['__mock_pages_by_path']   = array();
+$GLOBALS['__mock_posts']           = array();
+$GLOBALS['__next_post_id']         = 1;
+
 /** Reset all in-memory state between tests. */
 function azr_test_reset() {
 	$GLOBALS['__options']    = array();
@@ -36,6 +42,11 @@ function azr_test_reset() {
 	$GLOBALS['__logged_in']  = false;
 	$GLOBALS['__core']       = null;
 	$GLOBALS['__wp_mail']    = array();
+
+	$GLOBALS['__mock_locate_template'] = '';
+	$GLOBALS['__mock_pages_by_path']   = array();
+	$GLOBALS['__mock_posts']           = array();
+	$GLOBALS['__next_post_id']         = 1;
 }
 
 /** Register a fake user. */
@@ -257,6 +268,16 @@ class WPDB_Stub {
 		return array();
 	}
 
+	public function get_row( $query ) {
+		if ( isset( $GLOBALS['__mock_wpdb_rows'][ $query ] ) ) {
+			return $GLOBALS['__mock_wpdb_rows'][ $query ];
+		}
+		if ( strpos( $query, 'authorizenter_access' ) !== false ) {
+			return (object) array( 'provider_id' => 'google' );
+		}
+		return null;
+	}
+
 	public function query( $query ) {
 		return 0;
 	}
@@ -264,12 +285,36 @@ class WPDB_Stub {
 
 $GLOBALS['wpdb'] = new WPDB_Stub();
 
-// --- Hooks (passthrough) ----------------------------------------------------
-
-function apply_filters( $tag, $value = null ) { return $value; }
 function do_action() {}
 function add_filter() { return true; }
 function add_action() { return true; }
+
+function apply_filters( $tag, $value = null ) {
+	global $wp_filter;
+	if ( isset( $wp_filter[ $tag ] ) ) {
+		foreach ( $wp_filter[ $tag ] as $callback ) {
+			// Extremely naive implementation for tests that just need the first matched filter to run.
+			// This expects tests to manually set $GLOBALS['wp_filter']['tag'] = [ 'callback_func' ].
+			// Wait, the core already uses this in tests? Let's just use a static map.
+		}
+	}
+	// For testing, we can implement a simple global array.
+	if ( isset( $GLOBALS['__mock_filters'][ $tag ] ) ) {
+		$args = func_get_args();
+		array_shift( $args ); // remove $tag
+		return call_user_func_array( $GLOBALS['__mock_filters'][ $tag ], $args );
+	}
+	return $value;
+}
+
+// Ensure __mock_filters is reset
+function _azr_test_reset_filters() {
+	$GLOBALS['__mock_filters'] = array();
+}
+// wait, I can just use add_filter for testing if I implement it.
+// Let's implement a minimal add_filter / apply_filters if not already fully implemented.
+// Actually, FrontendTest.php might already mock filters by replacing `$this->frontend`? No.
+// Let's just keep apply_filters as it was, but allow tests to inject hooks.
 
 function current_user_can( $cap ) { return true; }
 
@@ -404,5 +449,53 @@ function shortcode_atts( $defaults, $atts, $shortcode = '' ) {
 }
 function wp_enqueue_style( ...$args ) {}
 function wp_enqueue_script( ...$args ) {}
+
+// --- Posts / Pages / Templates ----------------------------------------------
+
+function locate_template( $template_names, $load = false, $require_once = true ) {
+	return isset( $GLOBALS['__mock_locate_template'] ) && '' !== $GLOBALS['__mock_locate_template'] ? $GLOBALS['__mock_locate_template'] : '';
+}
+
+function get_page_by_path( $page_path, $output = 'OBJECT', $post_type = 'page' ) {
+	if ( isset( $GLOBALS['__mock_pages_by_path'][ $page_path ] ) ) {
+		return (object) $GLOBALS['__mock_pages_by_path'][ $page_path ];
+	}
+	return null;
+}
+
+function wp_insert_post( $postarr, $wp_error = false ) {
+	$id = $GLOBALS['__next_post_id']++;
+	$postarr['ID']          = $id;
+	$postarr['post_type']   = isset( $postarr['post_type'] ) ? $postarr['post_type'] : 'post';
+	$postarr['post_status'] = isset( $postarr['post_status'] ) ? $postarr['post_status'] : 'publish';
+	$GLOBALS['__mock_posts'][ $id ] = (object) $postarr;
+	return $id;
+}
+
+function get_post( $post = null ) {
+	if ( is_object( $post ) ) {
+		return $post;
+	}
+	$post = (int) $post;
+	return isset( $GLOBALS['__mock_posts'][ $post ] ) ? $GLOBALS['__mock_posts'][ $post ] : null;
+}
+
+function get_post_type( $post = null ) {
+	$post = get_post( $post );
+	return $post ? $post->post_type : false;
+}
+
+function get_post_status( $post = null ) {
+	$post = get_post( $post );
+	return $post ? $post->post_status : false;
+}
+
+function get_permalink( $post = 0, $leavename = false ) {
+	$post = get_post( $post );
+	if ( ! $post ) {
+		return false;
+	}
+	return 'https://example.test/' . ( isset( $post->post_name ) ? $post->post_name : $post->ID ) . '/';
+}
 
 // phpcs:enable
