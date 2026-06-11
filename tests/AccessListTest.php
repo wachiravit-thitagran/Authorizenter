@@ -285,4 +285,32 @@ class AccessListTest extends TestCase {
 		$this->assertArrayNotHasKey( 'wait@example.com', $meta );
 		$this->assertContains( 'wait@example.com', $list->entries( 'approved' ) );
 	}
+
+	public function test_approve_sends_email_with_default_template(): void {
+		$list = $this->list_with( array( 'enabled' => true, 'pending' => array( 'wait@example.com' ) ) );
+		$list->approve( array( 'wait@example.com' ) );
+
+		$this->assertNotEmpty( $GLOBALS['__wp_mail'] );
+		$mail = $GLOBALS['__wp_mail'][0];
+		$this->assertSame( 'wait@example.com', $mail['to'] );
+		$this->assertSame( 'Your account has been approved', $mail['subject'] );
+		$this->assertStringContainsString( 'Test Site', $mail['message'] );
+		$this->assertStringContainsString( 'wp-login.php', $mail['message'] );
+	}
+
+	public function test_approve_sends_email_with_custom_template_and_placeholders(): void {
+		$list = $this->list_with( array(
+			'enabled' => true,
+			'pending' => array( 'custom@example.com' ),
+			'approval_subject' => 'Welcome!',
+			'approval_body' => 'Hello {user_email}, login here: {login_url} at {site_name}'
+		) );
+		$list->approve( array( 'custom@example.com' ) );
+
+		$this->assertNotEmpty( $GLOBALS['__wp_mail'] );
+		$mail = $GLOBALS['__wp_mail'][0];
+		$this->assertSame( 'custom@example.com', $mail['to'] );
+		$this->assertSame( 'Welcome!', $mail['subject'] );
+		$this->assertSame( 'Hello custom@example.com, login here: https://example.test/wp-login.php at Test Site', $mail['message'] );
+	}
 }
