@@ -236,9 +236,9 @@ class Access_List {
 	/**
 	 * Approve emails: add to approved, remove from pending/blocked.
 	 *
-	 * @param string[]              $emails Emails to approve.
-	 * @param array<string,string>  $roles  Optional email => role slug to assign
-	 *                                       that user when they are provisioned.
+	 * @param string[]             $emails Emails to approve.
+	 * @param array<string,string> $roles  Optional email => role slug to assign
+	 *                                      that user when they are provisioned.
 	 * @return void
 	 */
 	public function approve( array $emails, array $roles = array() ) {

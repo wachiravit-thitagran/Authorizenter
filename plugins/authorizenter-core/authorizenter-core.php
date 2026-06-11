@@ -34,6 +34,7 @@ if ( ! defined( 'AUTHORIZENTER_GITHUB_REPO' ) ) {
 }
 define( 'AUTHORIZENTER_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AUTHORIZENTER_CORE_URL', plugin_dir_url( __FILE__ ) );
+
 /*
  * REST namespace is intentionally kept as the legacy "autorizenter/v1": it is the
  * provider redirect/callback URI registered with Google/LINE/OIDC consoles, so

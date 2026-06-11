@@ -78,8 +78,7 @@ class Password_Auth {
 		}
 		?>
 		<style id="authorizenter-hide-login">
-			/* Hide every credential row on wp-login.php (and wp_login_form output):
-			   username, password, remember-me and submit — without relying on :has(). */
+			/* Hide credential rows (username/password/remember/submit) on wp-login.php and wp_login_form output, without relying on :has(). */
 			#loginform > p,
 			#loginform .user-pass-wrap,
 			#loginform .forgetmenot,

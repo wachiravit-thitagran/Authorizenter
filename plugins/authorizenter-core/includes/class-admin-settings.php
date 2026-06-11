@@ -190,6 +190,7 @@ class Admin_Settings {
 		$approve_roles = isset( $_POST['approve_role'] ) && is_array( $_POST['approve_role'] )
 			? array_map( 'sanitize_key', wp_unslash( $_POST['approve_role'] ) )
 			: array();
+
 		$pending = isset( $all['access']['pending'] ) ? (array) $all['access']['pending'] : array();
 		if ( ! empty( $approve ) ) {
 			$all['access']['approved'] = array_values( array_unique( array_merge( $all['access']['approved'], $approve ) ) );

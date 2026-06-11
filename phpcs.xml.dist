@@ -19,6 +19,9 @@
         <exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>
         <!-- Reserved words like $default/$list are valid, readable parameter names. -->
         <exclude name="Universal.NamingConventions.NoReservedKeywordParameterNames"/>
+        <!-- The Authorizer-style ?external=wordpress escape hatch is a literal query
+             value, not the "WordPress" brand name. -->
+        <exclude name="WordPress.WP.CapitalPDangit"/>
     </rule>
 
     <config name="minimum_supported_wp_version" value="6.0"/>
