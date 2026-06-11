@@ -205,6 +205,18 @@ class Admin_Settings {
 				if ( isset( $all['access']['pending_meta'] ) && is_array( $all['access']['pending_meta'] ) ) {
 					unset( $all['access']['pending_meta'][ $a_email ] );
 				}
+
+				// Send approval email.
+				$subject = __( 'Your account has been approved', 'authorizenter' );
+				$message = sprintf(
+					/* translators: 1: double newline, 2: newline, 3: site name, 4: login url */
+					__( 'Hello,%1$sYour request to access %3$s has been approved.%2$sYou can now log in at: %4$s', 'authorizenter' ),
+					"\r\n\r\n",
+					"\r\n",
+					get_bloginfo( 'name' ),
+					wp_login_url()
+				);
+				wp_mail( $a_email, $subject, $message );
 			}
 			$all['access']['approved_roles'] = $approved_roles;
 		}

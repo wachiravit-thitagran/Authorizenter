@@ -250,6 +250,9 @@ class Access_List {
 		$approved = isset( $all['access']['approved'] ) ? array_map( array( $this, 'normalize' ), (array) $all['access']['approved'] ) : array();
 		$pending  = isset( $all['access']['pending'] ) ? array_map( array( $this, 'normalize' ), (array) $all['access']['pending'] ) : array();
 
+		// Determine which emails are newly approved to send notifications.
+		$newly_approved = array_diff( $emails, $approved );
+
 		$approved = array_merge( $approved, $emails );
 		$pending  = array_diff( $pending, $emails );
 
@@ -275,6 +278,20 @@ class Access_List {
 		}
 
 		$this->settings->save( $all );
+
+		// Send approval email.
+		foreach ( $newly_approved as $a_email ) {
+			$subject = __( 'Your account has been approved', 'authorizenter' );
+			$message = sprintf(
+				/* translators: 1: double newline, 2: newline, 3: site name, 4: login url */
+				__( 'Hello,%1$sYour request to access %3$s has been approved.%2$sYou can now log in at: %4$s', 'authorizenter' ),
+				"\r\n\r\n",
+				"\r\n",
+				get_bloginfo( 'name' ),
+				wp_login_url()
+			);
+			wp_mail( $a_email, $subject, $message );
+		}
 	}
 
 	/**
