@@ -46,6 +46,40 @@ class Questions {
 	}
 
 	/**
+	 * Register WordPress hooks.
+	 *
+	 * @return void
+	 */
+	public function hooks() {
+		add_action( 'authorizenter_login_success', array( $this, 'migrate_pending_answers' ), 10, 3 );
+	}
+
+	/**
+	 * Migrate pending answers to the user upon successful login.
+	 *
+	 * @param \WP_User $user     The logged-in user.
+	 * @param string   $provider Provider id.
+	 * @param Identity $identity The identity used.
+	 * @return void
+	 */
+	public function migrate_pending_answers( \WP_User $user, $provider, Identity $identity ) {
+		$access = new Access_List( $this->settings );
+		$pending_meta = $access->get_pending_meta();
+		$email = strtolower( trim( $identity->email ) );
+
+		if ( isset( $pending_meta[ $email ]['answers'] ) && is_array( $pending_meta[ $email ]['answers'] ) ) {
+			$this->save_answers( $user->ID, $pending_meta[ $email ]['answers'] );
+
+			// Clean up pending_meta now that it's migrated.
+			$all = $this->settings->all();
+			if ( isset( $all['access']['pending_meta'][ $email ] ) ) {
+				unset( $all['access']['pending_meta'][ $email ] );
+				$this->settings->save( $all );
+			}
+		}
+	}
+
+	/**
 	 * Allowed question types.
 	 *
 	 * @return string[]

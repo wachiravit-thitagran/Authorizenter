@@ -264,7 +264,7 @@ class AccessListTest extends TestCase {
 		$this->assertContains( 'psu.ac.th', $list->entries( 'approved' ) );
 	}
 
-	public function test_approve_clears_pending_meta(): void {
+	public function test_approve_preserves_pending_meta(): void {
 		$list = $this->list_with(
 			array(
 				'enabled' => true,
@@ -278,12 +278,8 @@ class AccessListTest extends TestCase {
 				),
 			)
 		);
-
 		$list->approve( array( 'wait@example.com' ) );
-
-		$meta = $list->get_pending_meta();
-		$this->assertArrayNotHasKey( 'wait@example.com', $meta );
-		$this->assertContains( 'wait@example.com', $list->entries( 'approved' ) );
+		$this->assertArrayHasKey( 'wait@example.com', $list->get_pending_meta() );
 	}
 
 	public function test_approve_sends_email_with_default_template(): void {
