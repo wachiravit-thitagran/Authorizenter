@@ -278,6 +278,48 @@ class Access_List {
 	}
 
 	/**
+	 * After a user is provisioned, drop their exact email from the approved list to
+	 * keep it clean — but only when existing WordPress accounts skip approval, so
+	 * they are not parked in pending again on their next login. Domain entries and
+	 * approvals matched by domain are left untouched.
+	 *
+	 * @param string $email Provisioned user's email.
+	 * @return void
+	 */
+	public function release_after_provision( $email ) {
+		$email = $this->normalize( $email );
+		if ( '' === $email ) {
+			return;
+		}
+
+		$access         = $this->settings->get( 'access' );
+		$allow_existing = ! isset( $access['allow_existing'] ) || ! empty( $access['allow_existing'] );
+
+		/**
+		 * Filter whether to remove an email from the approved list once the user has
+		 * a WordPress account.
+		 *
+		 * @param bool   $allow_existing Whether removal is safe (existing-account bypass on).
+		 * @param string $email          The provisioned email.
+		 */
+		if ( ! (bool) apply_filters( 'autorizenter_release_approved_after_provision', $allow_existing, $email ) ) {
+			return;
+		}
+
+		$all      = $this->settings->all();
+		$approved = isset( $all['access']['approved'] ) ? array_map( array( $this, 'normalize' ), (array) $all['access']['approved'] ) : array();
+		if ( ! in_array( $email, $approved, true ) ) {
+			return; // Approved via a domain entry, not an exact email — keep the list.
+		}
+
+		$all['access']['approved'] = array_values( array_diff( $approved, array( $email ) ) );
+		if ( isset( $all['access']['approved_roles'][ $email ] ) ) {
+			unset( $all['access']['approved_roles'][ $email ] ); // Role is now on the user.
+		}
+		$this->settings->save( $all );
+	}
+
+	/**
 	 * Role assigned to a specific approved email, if any.
 	 *
 	 * @param string $email Email.
