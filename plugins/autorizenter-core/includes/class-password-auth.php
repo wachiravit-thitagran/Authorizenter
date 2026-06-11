@@ -78,14 +78,16 @@ class Password_Auth {
 		}
 		?>
 		<style id="autorizenter-hide-login">
-			#loginform p:has(> #user_login),
-			#loginform p:has(> #user_pass),
+			/* Hide every credential row on wp-login.php (and wp_login_form output):
+			   username, password, remember-me and submit — without relying on :has(). */
+			#loginform > p,
 			#loginform .user-pass-wrap,
 			#loginform .forgetmenot,
-			#loginform p.submit { display: none !important; }
-			/* Fallback for browsers without :has(). */
-			#loginform #user_login,
-			#loginform #user_pass { display: none !important; }
+			#loginform .submit,
+			#loginform .login-username,
+			#loginform .login-password,
+			#loginform .login-remember,
+			#loginform .login-submit { display: none !important; }
 		</style>
 		<?php
 	}
