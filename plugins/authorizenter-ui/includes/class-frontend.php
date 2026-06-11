@@ -280,9 +280,12 @@ class Frontend {
 			? '<img src="' . esc_url( $logo ) . '" alt="" width="20" height="20" loading="lazy" />'
 			: \Authorizenter\UI\Logos::svg( $provider_id );
 
-		$onclick = "document.cookie='authorizenter_redirect=' + encodeURIComponent(window.location.href) + '; path=/';";
+		$onclick = '';
+		if ( '' === $return_to ) {
+			$onclick = ' onclick="document.cookie=\'authorizenter_redirect=\' + encodeURIComponent(window.location.href) + \'; path=/\';"';
+		}
 
-		return '<a class="authorizenter-btn authorizenter-btn--' . esc_attr( $provider_id ) . '" href="' . esc_url( $url ) . '" onclick="' . esc_attr( $onclick ) . '">' .
+		return '<a class="authorizenter-btn authorizenter-btn--' . esc_attr( $provider_id ) . '" href="' . esc_url( $url ) . '"' . $onclick . '>' .
 			'<span class="authorizenter-btn__icon">' . $icon . '</span>' .
 			'<span class="authorizenter-btn__label">' .
 				/* translators: %s: provider label */

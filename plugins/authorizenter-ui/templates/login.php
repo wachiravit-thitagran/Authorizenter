@@ -36,9 +36,14 @@ $authorizenter_ctx = isset( $context_id ) ? $context_id : 'default';
 					$query_args,
 					rest_url( 'authorizenter/v1/authorize/' . $provider_id )
 				);
+				
+				$onclick = '';
+				if ( '' === $return_to ) {
+					$onclick = ' onclick="document.cookie=\'authorizenter_redirect=\' + encodeURIComponent(window.location.href) + \'; path=/\';"';
+				}
 				?>
 				<li class="authorizenter-login__item">
-					<a class="authorizenter-btn authorizenter-btn--<?php echo esc_attr( $provider_id ); ?>" href="<?php echo esc_url( $url ); ?>" onclick="document.cookie='authorizenter_redirect=' + encodeURIComponent(window.location.href) + '; path=/';">
+					<a class="authorizenter-btn authorizenter-btn--<?php echo esc_attr( $provider_id ); ?>" href="<?php echo esc_url( $url ); ?>"<?php echo $onclick; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 						<span class="authorizenter-btn__icon">
 							<?php
 							$authorizenter_logo = $provider->logo_url();
