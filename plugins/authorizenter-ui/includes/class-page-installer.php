@@ -89,9 +89,17 @@ class Page_Installer {
 			if ( $existing && 'page' === get_post_type( $existing ) && 'trash' !== get_post_status( $existing ) ) {
 				continue;
 			}
+
+			$slug  = 'authorizenter-login-' . $id;
+			$found = get_page_by_path( $slug );
+			if ( $found && 'trash' !== get_post_status( $found ) ) {
+				$map[ $id ] = $found->ID;
+				continue;
+			}
+
 			$page_id = self::create_page(
 				$label,
-				'authorizenter-login-' . $id,
+				$slug,
 				'[authorizenter_login context="' . esc_attr( $id ) . '"]'
 			);
 			if ( $page_id ) {
@@ -138,6 +146,14 @@ class Page_Installer {
 	private static function ensure_page( $option, $title, $slug, $content ) {
 		$existing = (int) get_option( $option, 0 );
 		if ( $existing && 'page' === get_post_type( $existing ) && 'trash' !== get_post_status( $existing ) ) {
+			return;
+		}
+
+		// Try to recover an existing page by slug to prevent duplicates (e.g. slug-2)
+		// if the option was cleared but the page remained.
+		$found = get_page_by_path( $slug );
+		if ( $found && 'trash' !== get_post_status( $found ) ) {
+			update_option( $option, $found->ID, false );
 			return;
 		}
 
