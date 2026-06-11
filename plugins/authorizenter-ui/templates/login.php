@@ -28,16 +28,17 @@ $authorizenter_ctx = isset( $context_id ) ? $context_id : 'default';
 		<ul class="authorizenter-login__list">
 			<?php foreach ( $providers as $provider_id => $provider ) : ?>
 				<?php
+				$query_args = array( 'context' => $authorizenter_ctx );
+				if ( '' !== $return_to ) {
+					$query_args['return_to'] = rawurlencode( $return_to );
+				}
 				$url = add_query_arg(
-					array(
-						'context'   => $authorizenter_ctx,
-						'return_to' => rawurlencode( $return_to ),
-					),
+					$query_args,
 					rest_url( 'authorizenter/v1/authorize/' . $provider_id )
 				);
 				?>
 				<li class="authorizenter-login__item">
-					<a class="authorizenter-btn authorizenter-btn--<?php echo esc_attr( $provider_id ); ?>" href="<?php echo esc_url( $url ); ?>">
+					<a class="authorizenter-btn authorizenter-btn--<?php echo esc_attr( $provider_id ); ?>" href="<?php echo esc_url( $url ); ?>" onclick="document.cookie='authorizenter_redirect=' + encodeURIComponent(window.location.href) + '; path=/';">
 						<span class="authorizenter-btn__icon">
 							<?php
 							$authorizenter_logo = $provider->logo_url();
