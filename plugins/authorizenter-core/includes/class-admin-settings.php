@@ -732,6 +732,7 @@ class Admin_Settings {
 			'policy'    => __( 'Organization policy', 'authorizenter' ),
 			'users'     => __( 'User provisioning', 'authorizenter' ),
 			'access'    => __( 'Access control', 'authorizenter' ),
+			'pending'   => __( 'Pending Approval', 'authorizenter' ),
 			'security'  => __( 'Login security', 'authorizenter' ),
 			'questions' => __( 'Questions', 'authorizenter' ),
 			'contexts'  => __( 'Login contexts', 'authorizenter' ),
@@ -1188,6 +1189,11 @@ class Admin_Settings {
 							<p class="description"><?php esc_html_e( 'Available placeholders: {site_name}, {login_url}, {user_email}. Leave both fields blank to use the default message.', 'authorizenter' ); ?></p>
 						</td>
 					</tr>
+				</table>
+
+				<?php $this->close_tab_panel(); ?>
+				<?php $this->open_tab_panel( 'pending', $tabs['pending'] ); ?>
+				<table class="form-table" role="presentation">
 					<?php
 					$pending      = isset( $access['pending'] ) ? (array) $access['pending'] : array();
 					$pending_meta = isset( $access['pending_meta'] ) && is_array( $access['pending_meta'] ) ? $access['pending_meta'] : array();
@@ -1243,6 +1249,13 @@ class Admin_Settings {
 								</div>
 							<?php endforeach; ?>
 							<p class="description"><?php esc_html_e( 'Tick to approve and save. Unticked entries remain pending.', 'authorizenter' ); ?></p>
+						</td>
+					</tr>
+					<?php else : ?>
+					<tr>
+						<th scope="row"></th>
+						<td>
+							<p class="description"><?php esc_html_e( 'No users are currently pending approval.', 'authorizenter' ); ?></p>
 						</td>
 					</tr>
 					<?php endif; ?>
