@@ -150,6 +150,8 @@ function username_exists( $login ) {
 	return $u ? $u->ID : false;
 }
 
+function _deprecated_function( $function, $version, $replacement = '' ) {} // phpcs:ignore
+
 function wp_list_pluck( $list, $field ) {
 	$out = array();
 	foreach ( (array) $list as $item ) {
