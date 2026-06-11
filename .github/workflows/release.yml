@@ -1,22 +1,73 @@
 name: Release
 
-# Build per-plugin ZIPs and attach them to the GitHub Release when a version tag
-# is pushed (e.g. v0.2.0). The Authorizenter plugins' self-updater downloads these
-# assets (authorizenter-core.zip / authorizenter-ui.zip).
+# Auto-release on every push to main (BIA-Learn-WPTheme style). The dev workflow
+# is: edit code, push. This job computes the next version, stamps it into both
+# plugins, builds authorizenter-core.zip / authorizenter-ui.zip and publishes a
+# GitHub Release. The plugins' self-updater then offers that release to sites.
+#
+# Versioning: the PATCH number is auto-bumped from the latest git tag. To release
+# a new MAJOR/MINOR, bump the Version header in
+# plugins/authorizenter-core/authorizenter-core.php manually and push — the
+# workflow honors the higher header value and resets patch. Both plugins share one
+# version. The repo files are not committed back; the git tag + release are the
+# source of truth, and the version is stamped only into the packaged ZIPs.
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+
+# Serialize runs so each sees the previous release's tag (keeps versions unique).
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  release:
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0  # full history + tags to compute the next version
+
+      - name: Compute next version
+        id: ver
+        run: |
+          set -euo pipefail
+          # Strict semver token from the Core plugin Version header. grep -oE only
+          # yields digits/dots, so a malformed header cannot leak shell metachars.
+          current=$(grep -iE '^[[:space:]]*\*?[[:space:]]*Version:' plugins/authorizenter-core/authorizenter-core.php | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+          latest_tag=$(git tag --list 'v*' --sort=-v:refname | grep -oE '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 | sed 's/^v//' || true)
+          echo "header=${current:-none}  latest_tag=${latest_tag:-none}"
+
+          if [ -z "${latest_tag}" ]; then
+            next="${current:-0.1.0}"                       # first release: use the header as-is
+          else
+            higher=$(printf '%s\n%s\n' "$current" "$latest_tag" | sort -V | tail -1)
+            if [ -n "$current" ] && [ "$higher" = "$current" ] && [ "$current" != "$latest_tag" ]; then
+              next="$current"                              # dev manually bumped minor/major
+            else
+              IFS=. read -r MA MI PA <<< "$latest_tag"     # otherwise auto patch-bump
+              next="${MA}.${MI}.$((PA + 1))"
+            fi
+          fi
+
+          # Defence in depth: refuse anything that is not strict semver.
+          if ! printf '%s' "$next" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Computed version '$next' is not valid semver; aborting." >&2
+            exit 1
+          fi
+
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=v$next" >> "$GITHUB_OUTPUT"
+          echo "Next version: $next (tag v$next)"
 
       - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
         with:
@@ -31,21 +82,39 @@ jobs:
           rm -rf plugins/authorizenter-core/vendor
           cp -R vendor plugins/authorizenter-core/vendor
 
+      - name: Stamp version into both plugins
+        env:
+          NEXT: ${{ steps.ver.outputs.next }}   # validated semver, read via env (never inlined)
+        run: |
+          set -euo pipefail
+          # Plugin headers.
+          sed -i -E "s/^([[:space:]]*\*[[:space:]]*Version:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-core/authorizenter-core.php
+          sed -i -E "s/^([[:space:]]*\*[[:space:]]*Version:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-ui/authorizenter-ui.php
+          # Version constants.
+          sed -i -E "s/(AUTHORIZENTER_CORE_VERSION', ')[0-9.]+(')/\1${NEXT}\2/" plugins/authorizenter-core/authorizenter-core.php
+          sed -i -E "s/(AUTHORIZENTER_UI_VERSION', ')[0-9.]+(')/\1${NEXT}\2/" plugins/authorizenter-ui/authorizenter-ui.php
+          # readme.txt Stable tag.
+          sed -i -E "s/^(Stable tag:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-core/readme.txt
+          sed -i -E "s/^(Stable tag:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-ui/readme.txt
+          echo "Stamped ${NEXT}:"
+          grep -REn 'Version:|_VERSION|Stable tag:' plugins/authorizenter-core/authorizenter-core.php plugins/authorizenter-ui/authorizenter-ui.php plugins/authorizenter-core/readme.txt plugins/authorizenter-ui/readme.txt | grep -F "${NEXT}"
+
       - name: Build plugin ZIPs
         run: |
           mkdir -p dist
           cd plugins
-          zip -rq ../dist/authorizenter-core.zip authorizenter-core \
-            -x '*/.git/*' '*/node_modules/*'
-          zip -rq ../dist/authorizenter-ui.zip authorizenter-ui \
-            -x '*/.git/*' '*/node_modules/*'
+          zip -rq ../dist/authorizenter-core.zip authorizenter-core -x '*/.git/*' '*/node_modules/*'
+          zip -rq ../dist/authorizenter-ui.zip authorizenter-ui -x '*/.git/*' '*/node_modules/*'
           cd ..
           ls -la dist
 
-      - name: Create / update GitHub Release with assets
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
-        with:
-          files: |
-            dist/authorizenter-core.zip
-            dist/authorizenter-ui.zip
-          generate_release_notes: true
+      - name: Publish GitHub Release with assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}    # validated semver tag, read via env
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" dist/authorizenter-core.zip dist/authorizenter-ui.zip \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --generate-notes
