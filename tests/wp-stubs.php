@@ -35,6 +35,7 @@ function azr_test_reset() {
 	$GLOBALS['__next_uid']   = 100;
 	$GLOBALS['__logged_in']  = false;
 	$GLOBALS['__core']       = null;
+	$GLOBALS['__wp_mail']    = array();
 }
 
 /** Register a fake user. */
@@ -317,6 +318,22 @@ function get_plugin_data( $file, $markup = true, $translate = true ) {
 		'Author'      => 'Authorizenter contributors',
 		'Version'     => '0.1.0',
 	);
+}
+
+function get_bloginfo( $show = '', $filter = 'raw' ) {
+	if ( 'name' === $show ) {
+		return 'Test Site';
+	}
+	return '';
+}
+
+function wp_login_url( $redirect = '', $force_reauth = false ) {
+	return 'https://example.test/wp-login.php' . ( $redirect ? '?redirect_to=' . urlencode( $redirect ) : '' );
+}
+
+function wp_mail( $to, $subject, $message, $headers = '', $attachments = array() ) {
+	$GLOBALS['__wp_mail'][] = compact( 'to', 'subject', 'message', 'headers', 'attachments' );
+	return true;
 }
 
 function home_url( $path = '/' ) {
