@@ -95,7 +95,7 @@ class FrontendTest extends TestCase {
 	public function test_button_href_contains_provider_and_context(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
 		$html = $this->frontend->render_button( array( 'provider' => 'google', 'context' => 'default' ) );
-		$this->assertStringContainsString( 'autorizenter/v1/authorize/google', $html );
+		$this->assertStringContainsString( 'authorizenter/v1/authorize/google', $html );
 		$this->assertStringContainsString( 'context=default', $html );
 	}
 
@@ -129,7 +129,7 @@ class FrontendTest extends TestCase {
 	public function test_url_returns_authorize_url_without_markup(): void {
 		$this->make_core( array( 'google' => array( 'enabled' => true, 'client_id' => 'G' ) ) );
 		$url = $this->shortcodes->render_url( array( 'provider' => 'google', 'context' => 'default' ) );
-		$this->assertStringContainsString( 'autorizenter/v1/authorize/google', $url );
+		$this->assertStringContainsString( 'authorizenter/v1/authorize/google', $url );
 		$this->assertStringContainsString( 'context=default', $url );
 		$this->assertStringNotContainsString( '<a', $url );
 	}

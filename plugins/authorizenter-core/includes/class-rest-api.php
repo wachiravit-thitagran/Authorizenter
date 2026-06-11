@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Exposes the contract the UI (or any front-end) consumes.
  *
- * Routes (namespace autorizenter/v1):
+ * Routes (namespace authorizenter/v1):
  *   GET  /providers          List enabled providers + their authorize URLs.
  *   GET  /authorize/{id}     302 redirect into the provider (browser entry point).
  *   GET  /callback           Provider redirect target; completes login.

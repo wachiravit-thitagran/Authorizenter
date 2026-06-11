@@ -22,7 +22,7 @@ class OAuthEngineTest extends TestCase {
 	protected function setUp(): void {
 		azr_test_reset();
 		if ( ! defined( 'AUTHORIZENTER_REST_NAMESPACE' ) ) {
-			define( 'AUTHORIZENTER_REST_NAMESPACE', 'autorizenter/v1' );
+			define( 'AUTHORIZENTER_REST_NAMESPACE', 'authorizenter/v1' );
 		}
 	}
 
@@ -83,7 +83,7 @@ class OAuthEngineTest extends TestCase {
 
 	public function test_redirect_uri_points_at_callback_route(): void {
 		$this->assertSame(
-			'https://example.test/wp-json/autorizenter/v1/callback',
+			'https://example.test/wp-json/authorizenter/v1/callback',
 			$this->engine()->redirect_uri()
 		);
 	}

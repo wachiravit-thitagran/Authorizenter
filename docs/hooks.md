@@ -5,7 +5,7 @@ only depend on what is documented here.
 
 ## REST API
 
-Namespace: `autorizenter/v1`
+Namespace: `authorizenter/v1`
 
 | Method | Route | Auth | Purpose |
 |--------|-------|------|---------|
@@ -25,7 +25,7 @@ The `context` parameter is read on `/authorize` and stored server-side; the
 ### Example: list providers
 
 ```js
-fetch('/wp-json/autorizenter/v1/providers')
+fetch('/wp-json/authorizenter/v1/providers')
   .then(r => r.json())
   .then(d => console.log(d.providers));
 // [{ id:'google', label:'Google', authorize_url:'…/authorize/google' }, …]

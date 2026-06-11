@@ -33,7 +33,7 @@ $authorizenter_ctx = isset( $context_id ) ? $context_id : 'default';
 						'context'   => $authorizenter_ctx,
 						'return_to' => rawurlencode( $return_to ),
 					),
-					rest_url( 'autorizenter/v1/authorize/' . $provider_id )
+					rest_url( 'authorizenter/v1/authorize/' . $provider_id )
 				);
 				?>
 				<li class="authorizenter-login__item">

@@ -17,7 +17,7 @@ if ( file_exists( dirname( __DIR__ ) . '/vendor/autoload.php' ) ) {
 $inc = dirname( __DIR__ ) . '/plugins/authorizenter-core/includes/';
 
 if ( ! defined( 'Authorizenter\Core\AUTHORIZENTER_REST_NAMESPACE' ) ) {
-	define( 'Authorizenter\Core\AUTHORIZENTER_REST_NAMESPACE', 'autorizenter/v1' );
+	define( 'Authorizenter\Core\AUTHORIZENTER_REST_NAMESPACE', 'authorizenter/v1' );
 }
 
 require $inc . 'class-identity.php';

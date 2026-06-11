@@ -17,9 +17,7 @@ Google, LINE, Facebook, or any generic OAuth2/OIDC provider (Azure AD, Keycloak,
 Okta, university SSO, ...), can restrict sign-in to your organization, and can gate
 access behind customizable questions.
 
-Core ships no opinionated front-end — it exposes a REST API (namespace
-`autorizenter/v1`) plus action/filter hooks. Install **Authorizenter UI** for ready
-login buttons and a question form, or build your own.
+Core ships no opinionated front-end — it exposes a REST API (namespace `authorizenter/v1`) plus action/filter hooks. Install **Authorizenter UI** for ready login buttons and a question form, or build your own.
 
 Features:
 
@@ -79,5 +77,5 @@ the internet, sign-in will fail regardless of configuration.
 * Organization policy: email-domain allowlist, Google `hd` claim, trust-by-IdP.
 * User mapper with auto-provisioning and account linking by verified email.
 * Customizable post-login question system stored in user meta.
-* REST API (`autorizenter/v1`) and action/filter hooks.
+* REST API (`authorizenter/v1`) and action/filter hooks.
 * Admin settings page.
