@@ -38,9 +38,11 @@ class FrontendTest extends TestCase {
 		);
 		$settings          = new Settings();
 		$providers         = new Provider_Registry( $settings );
+		$questions         = new \Authorizenter\Core\Questions( $settings );
 		$core              = new \stdClass();
 		$core->settings    = $settings;
 		$core->providers   = $providers;
+		$core->questions   = $questions;
 		$GLOBALS['__core'] = $core;
 
 		$this->shortcodes = new Shortcodes( $settings, $providers );
@@ -143,5 +145,72 @@ class FrontendTest extends TestCase {
 			'return_to' => 'https://example.test/dashboard/',
 		) );
 		$this->assertStringContainsString( 'return_to=', $url );
+	}
+
+	// --- UI Templates & Pending Form -----------------------------------------
+
+	public function test_template_override_used_when_available(): void {
+		$this->make_core();
+		if ( ! file_exists( __DIR__ . '/fixtures' ) ) {
+			mkdir( __DIR__ . '/fixtures' );
+		}
+		$mock_file = __DIR__ . '/fixtures/mock-login.php';
+		file_put_contents( $mock_file, 'MOCK_LOGIN_OUTPUT' );
+		$GLOBALS['__mock_locate_template'] = $mock_file;
+
+		$output = $this->frontend->render_login( array() );
+		$this->assertStringContainsString( 'MOCK_LOGIN_OUTPUT', $output );
+
+		// Cleanup
+		unlink( $mock_file );
+		$GLOBALS['__mock_locate_template'] = '';
+	}
+
+	public function test_pending_message_is_filterable(): void {
+		$this->make_core();
+		$GLOBALS['__mock_filters']['authorizenter_pending_message'] = function( $message ) {
+			return 'CUSTOM PENDING MESSAGE';
+		};
+		$_GET['azr_pending_token'] = 'fake_token';
+
+		// No questions registered, so it will fall back to the message block.
+		$output = $this->frontend->render_pending_form( array() );
+		$this->assertStringContainsString( 'CUSTOM PENDING MESSAGE', $output );
+
+		unset( $_GET['azr_pending_token'] );
+		_azr_test_reset_filters();
+	}
+
+	public function test_pending_form_redirects_to_configured_path(): void {
+		// Verify that $redirect is passed correctly to the template, using the context configuration
+		// and NOT the return_to parameter.
+		$this->make_core( array(
+			'google' => array( 'enabled' => true, 'client_id' => 'G', 'questions' => array( 'q1' ) ),
+		) );
+		$opts = get_option( \Authorizenter\Core\Settings::OPTION, array() );
+		$opts['questions'] = array( array( 'id' => 'q1', 'label' => 'Q1' ) );
+		update_option( \Authorizenter\Core\Settings::OPTION, $opts );
+		$_GET['azr_pending_token'] = 'fake_token';
+		$_GET['return_to']         = 'https://login.page.test/'; // Should be ignored
+
+		// Update default context pending_redirect
+		$opts = get_option( \Authorizenter\Core\Settings::OPTION, array() );
+		$opts['contexts']['default']['pending_redirect'] = '/custom-waiting-room/';
+		update_option( \Authorizenter\Core\Settings::OPTION, $opts );
+
+		if ( ! file_exists( __DIR__ . '/fixtures' ) ) {
+			mkdir( __DIR__ . '/fixtures' );
+		}
+		$mock_file = __DIR__ . '/fixtures/mock-pending.php';
+		file_put_contents( $mock_file, 'REDIRECT_URL: <?php echo esc_url_raw( $redirect ); ?>' );
+		$GLOBALS['__mock_locate_template'] = $mock_file;
+
+		$output = $this->frontend->render_pending_form( array() );
+		$this->assertStringContainsString( 'REDIRECT_URL: /custom-waiting-room/', $output );
+
+		// Cleanup
+		unset( $_GET['azr_pending_token'], $_GET['return_to'] );
+		unlink( $mock_file );
+		$GLOBALS['__mock_locate_template'] = '';
 	}
 }

@@ -51,5 +51,6 @@ if ( ! defined( 'AUTHORIZENTER_UI_DIR' ) ) {
 	define( 'AUTHORIZENTER_UI_DIR', __DIR__ . '/fixtures/' );
 }
 require $ui_inc . 'class-logos.php';
+require $ui_inc . 'class-page-installer.php';
 require $ui_inc . 'class-frontend.php';
 require __DIR__ . '/core-namespace-stub.php';
