@@ -49,20 +49,6 @@ class Shortcodes {
 	 */
 	public function hooks() {
 		add_shortcode( 'authorizenter_url', array( $this, 'render_url' ) );
-		// Deprecated alias for the previous "autorizenter" spelling — still works,
-		// but emits a deprecation notice under WP_DEBUG.
-		add_shortcode( 'autorizenter_url', array( $this, 'render_url_legacy' ) );
-	}
-
-	/**
-	 * Deprecated [autorizenter_url] alias: notice then delegate to render_url().
-	 *
-	 * @param array $atts Shortcode attributes.
-	 * @return string
-	 */
-	public function render_url_legacy( $atts ) {
-		_deprecated_function( '[autorizenter_url] shortcode', 'Authorizenter 0.2.0', '[authorizenter_url]' );
-		return $this->render_url( $atts );
 	}
 
 	/**

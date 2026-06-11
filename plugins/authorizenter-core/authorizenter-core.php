@@ -36,12 +36,9 @@ define( 'AUTHORIZENTER_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AUTHORIZENTER_CORE_URL', plugin_dir_url( __FILE__ ) );
 
 /*
- * REST namespace is intentionally kept as the legacy "autorizenter/v1": it is the
- * provider redirect/callback URI registered with Google/LINE/OIDC consoles, so
- * renaming it would break every configured provider (redirect_uri_mismatch).
- * Change it only if you also update the redirect URI at every IdP.
+ * REST namespace.
  */
-define( 'AUTHORIZENTER_REST_NAMESPACE', 'autorizenter/v1' );
+define( 'AUTHORIZENTER_REST_NAMESPACE', 'authorizenter/v1' );
 
 /**
  * Minimal PSR-4-ish autoloader for the Authorizenter\Core namespace.
@@ -148,45 +145,7 @@ function authorizenter_is_builder_preview() {
 	return (bool) apply_filters( 'authorizenter_is_builder_preview', false );
 }
 
-/**
- * One-time migration from the old "autorizenter" slug to "authorizenter".
- *
- * Copies the settings option, the page-id options, and renames all user meta
- * keys (account links, answers, last provider) so existing installs keep working
- * after the rename. Runs once, guarded by the authorizenter_migrated option.
- *
- * @return void
- */
-function authorizenter_migrate_legacy() {
-	// Settings + page-id options. Idempotent and unguarded: copies each old key to
-	// the new key only while the new key is missing, so it self-heals (e.g. if an
-	// earlier build set a "migrated" flag without copying) and no-ops once done.
-	$option_keys = array(
-		'autorizenter_settings'          => 'authorizenter_settings',
-		'autorizenter_login_page_id'     => 'authorizenter_login_page_id',
-		'autorizenter_questions_page_id' => 'authorizenter_questions_page_id',
-		'autorizenter_pending_page_id'   => 'authorizenter_pending_page_id',
-		'autorizenter_context_pages'     => 'authorizenter_context_pages',
-	);
-	foreach ( $option_keys as $old_key => $new_key ) {
-		$old_val = get_option( $old_key, null );
-		if ( null !== $old_val && false === get_option( $new_key, false ) ) {
-			update_option( $new_key, $old_val );
-		}
-	}
 
-	// User meta: rename every autorizenter_* key to authorizenter_*. Guarded so the
-	// table scan runs only once; re-running would be a harmless no-op anyway.
-	if ( ! get_option( 'authorizenter_meta_migrated' ) ) {
-		global $wpdb;
-		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			"UPDATE {$wpdb->usermeta} SET meta_key = REPLACE( meta_key, 'autorizenter_', 'authorizenter_' ) WHERE meta_key LIKE 'autorizenter\\_%'"
-		);
-		update_option( 'authorizenter_meta_migrated', time() );
-	}
-}
-
-add_action( 'plugins_loaded', __NAMESPACE__ . '\\authorizenter_migrate_legacy', 1 );
 add_action( 'plugins_loaded', __NAMESPACE__ . '\\authorizenter_core' );
 
 // Lifecycle hooks.

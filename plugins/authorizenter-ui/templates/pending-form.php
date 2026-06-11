@@ -74,7 +74,7 @@ defined( 'ABSPATH' ) || exit;
 	// AuthorizenterUI object (which is printed after this inline script and would
 	// otherwise be undefined here, causing a native form submit that drops the
 	// token from the URL).
-	var restUrl = <?php echo wp_json_encode( esc_url_raw( rest_url( 'autorizenter/v1' ) ) ); ?>;
+	var restUrl = <?php echo wp_json_encode( esc_url_raw( rest_url( 'authorizenter/v1' ) ) ); ?>;
 	var doneMessage = <?php echo wp_json_encode( isset( $done_message ) ? (string) $done_message : '' ); ?>;
 	var redirectTo = <?php echo wp_json_encode( isset( $redirect ) ? (string) $redirect : '' ); ?>;
 	var form = document.getElementById( 'authorizenter-pending-form' );

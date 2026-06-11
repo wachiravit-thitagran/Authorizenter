@@ -9,9 +9,9 @@ disclosure.
 
 ## Threat model & design notes
 
-Autorizenter authenticates users against external identity providers and maps them
+Authorizenter authenticates users against external identity providers and maps them
 to WordPress accounts. The security-critical surface lives entirely in
-**Autorizenter Core**; the UI plugin only renders buttons and forms.
+**Authorizenter Core**; the UI plugin only renders buttons and forms.
 
 ### Authentication flow
 

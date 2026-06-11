@@ -31,12 +31,6 @@ class Frontend {
 		add_shortcode( 'authorizenter_stats', array( $this, 'render_stats' ) );
 		add_shortcode( 'authorizenter_pending_form', array( $this, 'render_pending_form' ) );
 
-		// Deprecated aliases for the previous "autorizenter" spelling: still work so
-		// existing pages don't break, but emit a deprecation notice under WP_DEBUG.
-		foreach ( array_keys( $this->legacy_shortcodes() ) as $legacy_tag ) {
-			add_shortcode( $legacy_tag, array( $this, 'legacy_shortcode' ) );
-		}
-
 		add_action( 'wp_enqueue_scripts', array( $this, 'assets' ) );
 
 		// Tell Core where the questions page lives, so it can redirect there.
@@ -62,42 +56,6 @@ class Frontend {
 	}
 
 	/**
-	 * Map of deprecated (old-spelling) shortcode tag => current render method.
-	 *
-	 * @return array<string,string>
-	 */
-	private function legacy_shortcodes() {
-		return array(
-			'autorizenter_login'        => 'render_login',
-			'autorizenter_button'       => 'render_button',
-			'autorizenter_logout'       => 'render_logout',
-			'autorizenter_questions'    => 'render_questions',
-			'autorizenter_answers'      => 'render_answers',
-			'autorizenter_stats'        => 'render_stats',
-			'autorizenter_pending_form' => 'render_pending_form',
-		);
-	}
-
-	/**
-	 * Render a deprecated alias shortcode: emit a deprecation notice (WP_DEBUG)
-	 * then delegate to the current handler so existing pages keep working.
-	 *
-	 * @param array|string $atts    Shortcode attributes.
-	 * @param string|null  $content Enclosed content (unused).
-	 * @param string       $tag     The shortcode tag used.
-	 * @return string
-	 */
-	public function legacy_shortcode( $atts, $content, $tag ) {
-		$map = $this->legacy_shortcodes();
-		if ( ! isset( $map[ $tag ] ) ) {
-			return '';
-		}
-		$new = str_replace( 'autorizenter_', 'authorizenter_', $tag );
-		_deprecated_function( esc_html( "[{$tag}] shortcode" ), 'Authorizenter 0.2.0', esc_html( "[{$new}]" ) );
-		return $this->{ $map[ $tag ] }( (array) $atts );
-	}
-
-	/**
 	 * Enqueue assets.
 	 *
 	 * @return void
@@ -109,7 +67,7 @@ class Frontend {
 			'authorizenter-ui',
 			'AuthorizenterUI',
 			array(
-				'restUrl' => esc_url_raw( rest_url( 'autorizenter/v1' ) ),
+				'restUrl' => esc_url_raw( rest_url( 'authorizenter/v1' ) ),
 				'nonce'   => wp_create_nonce( 'wp_rest' ),
 			)
 		);
@@ -309,7 +267,7 @@ class Frontend {
 				'context'   => $context_id,
 				'return_to' => rawurlencode( $return_to ),
 			),
-			rest_url( 'autorizenter/v1/authorize/' . $provider_id )
+			rest_url( 'authorizenter/v1/authorize/' . $provider_id )
 		);
 
 		wp_enqueue_style( 'authorizenter-ui' );
@@ -354,7 +312,7 @@ class Frontend {
 		$url       = add_query_arg(
 			'return_to',
 			rawurlencode( $return_to ),
-			rest_url( 'autorizenter/v1/logout' )
+			rest_url( 'authorizenter/v1/logout' )
 		);
 
 		return '<a class="authorizenter-btn authorizenter-btn--logout" href="' . esc_url( $url ) . '">' .

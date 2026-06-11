@@ -8,10 +8,10 @@ This guide covers configuring each supported provider. In every case you will:
 
 ## Callback / redirect URI
 
-All providers use the **same** callback URL:
+The redirect URI is always:
 
 ```
-https://YOUR-SITE/wp-json/autorizenter/v1/callback
+https://YOUR-SITE/wp-json/authorizenter/v1/callback
 ```
 
 Replace `YOUR-SITE` with your domain. The exact URL is also shown at the top of
