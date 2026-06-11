@@ -281,14 +281,16 @@ class Access_List {
 
 		// Send approval email.
 		foreach ( $newly_approved as $a_email ) {
-			$subject = __( 'Your account has been approved', 'authorizenter' );
-			$message = sprintf(
-				/* translators: 1: double newline, 2: newline, 3: site name, 4: login url */
-				__( 'Hello,%1$sYour request to access %3$s has been approved.%2$sYou can now log in at: %4$s', 'authorizenter' ),
+			$subject = ! empty( $all['access']['approval_subject'] ) ? $all['access']['approval_subject'] : __( 'Your account has been approved', 'authorizenter' );
+			$body_tpl = ! empty( $all['access']['approval_body'] ) ? $all['access']['approval_body'] : sprintf(
+				__( 'Hello,%1$sYour request to access {site_name} has been approved.%2$sYou can now log in at: {login_url}', 'authorizenter' ),
 				"\r\n\r\n",
-				"\r\n",
-				get_bloginfo( 'name' ),
-				wp_login_url()
+				"\r\n"
+			);
+			$message = str_replace(
+				array( '{site_name}', '{login_url}', '{user_email}' ),
+				array( get_bloginfo( 'name' ), wp_login_url(), $a_email ),
+				$body_tpl
 			);
 			wp_mail( $a_email, $subject, $message );
 		}
