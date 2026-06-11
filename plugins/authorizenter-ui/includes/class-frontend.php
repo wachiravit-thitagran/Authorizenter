@@ -210,7 +210,7 @@ class Frontend {
 		$error = isset( $_GET['authorizenter_error'] ) ? sanitize_text_field( wp_unslash( $_GET['authorizenter_error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		ob_start();
-		include AUTHORIZENTER_UI_DIR . 'templates/login.php';
+		$this->load_template( 'login.php' );
 		return ob_get_clean();
 	}
 
@@ -359,7 +359,7 @@ class Frontend {
 		$done_message = (string) $atts['message'];
 
 		ob_start();
-		include AUTHORIZENTER_UI_DIR . 'templates/questions.php';
+		$this->load_template( 'questions.php' );
 		return ob_get_clean();
 	}
 
@@ -544,8 +544,18 @@ class Frontend {
 		$questions = $core->questions->for_provider( $provider );
 
 		if ( empty( $questions ) ) {
+			/**
+			 * Filter the message shown to users waiting for approval.
+			 *
+			 * @param string $message Default message.
+			 */
+			$message = apply_filters(
+				'authorizenter_pending_message',
+				__( 'Your request is pending approval. An administrator will review it shortly.', 'authorizenter' )
+			);
+
 			return '<div class="authorizenter-pending-form">' .
-				esc_html__( 'Your request is pending approval. An administrator will review it shortly.', 'authorizenter' ) .
+				wp_kses_post( $message ) .
 				'</div>';
 		}
 
@@ -553,7 +563,7 @@ class Frontend {
 		wp_enqueue_script( 'authorizenter-ui' );
 
 		ob_start();
-		include AUTHORIZENTER_UI_DIR . 'templates/pending-form.php';
+		$this->load_template( 'pending-form.php' );
 		return ob_get_clean();
 	}
 
@@ -565,5 +575,22 @@ class Frontend {
 	private function current_url() {
 		$path = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '/'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		return home_url( esc_url_raw( $path ) );
+	}
+
+	/**
+	 * Load a template, allowing themes to override it.
+	 *
+	 * Themes can place a file at `authorizenter/{name}` to override the default.
+	 *
+	 * @param string $name Template filename (e.g. 'login.php').
+	 * @return void
+	 */
+	private function load_template( $name ) {
+		$theme_file = locate_template( 'authorizenter/' . $name );
+		if ( $theme_file ) {
+			include $theme_file;
+		} else {
+			include AUTHORIZENTER_UI_DIR . 'templates/' . $name;
+		}
 	}
 }
