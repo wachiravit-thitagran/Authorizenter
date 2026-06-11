@@ -63,9 +63,9 @@ class Questions {
 	 * @return void
 	 */
 	public function migrate_pending_answers( \WP_User $user, $provider, Identity $identity ) {
-		$access = new Access_List( $this->settings );
+		$access       = new Access_List( $this->settings );
 		$pending_meta = $access->get_pending_meta();
-		$email = strtolower( trim( $identity->email ) );
+		$email        = strtolower( trim( $identity->email ) );
 
 		if ( isset( $pending_meta[ $email ]['answers'] ) && is_array( $pending_meta[ $email ]['answers'] ) ) {
 			$this->save_answers( $user->ID, $pending_meta[ $email ]['answers'] );
