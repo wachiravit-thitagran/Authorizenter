@@ -210,7 +210,7 @@ class Frontend {
 		$error = isset( $_GET['authorizenter_error'] ) ? sanitize_text_field( wp_unslash( $_GET['authorizenter_error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		ob_start();
-		$this->load_template( 'login.php' );
+		$this->load_template( 'login.php', compact( 'providers', 'return_to', 'error', 'context_id' ) );
 		return ob_get_clean();
 	}
 
@@ -359,7 +359,11 @@ class Frontend {
 		$done_message = (string) $atts['message'];
 
 		ob_start();
-		$this->load_template( 'questions.php' );
+		$this->load_template( 'questions.php', array(
+			'questions'    => $questions,
+			'done_message' => $done_message,
+			'redirect'     => $return_to,
+		) );
 		return ob_get_clean();
 	}
 
@@ -563,7 +567,7 @@ class Frontend {
 		wp_enqueue_script( 'authorizenter-ui' );
 
 		ob_start();
-		$this->load_template( 'pending-form.php' );
+		$this->load_template( 'pending-form.php', compact( 'questions', 'token', 'done_message', 'redirect' ) );
 		return ob_get_clean();
 	}
 
@@ -583,9 +587,11 @@ class Frontend {
 	 * Themes can place a file at `authorizenter/{name}` to override the default.
 	 *
 	 * @param string $name Template filename (e.g. 'login.php').
+	 * @param array  $args Variables to make available to the template.
 	 * @return void
 	 */
-	private function load_template( $name ) {
+	private function load_template( $name, $args = array() ) {
+		extract( $args );
 		$theme_file = locate_template( 'authorizenter/' . $name );
 		if ( $theme_file ) {
 			include $theme_file;
