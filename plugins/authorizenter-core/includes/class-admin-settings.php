@@ -181,6 +181,8 @@ class Admin_Settings {
 		$all['access']['allow_existing'] = ! empty( $_POST['access_allow_existing'] );
 		$all['access']['approved']       = $this->split_lines( isset( $_POST['access_approved'] ) ? wp_unslash( $_POST['access_approved'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		$all['access']['blocked']        = $this->split_lines( isset( $_POST['access_blocked'] ) ? wp_unslash( $_POST['access_blocked'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$all['access']['approval_subject'] = isset( $_POST['access_approval_subject'] ) ? sanitize_text_field( wp_unslash( $_POST['access_approval_subject'] ) ) : '';
+		$all['access']['approval_body']    = isset( $_POST['access_approval_body'] ) ? sanitize_textarea_field( wp_unslash( $_POST['access_approval_body'] ) ) : '';
 
 		// Approve selected pending identities.
 		$approve = isset( $_POST['approve_pending'] ) && is_array( $_POST['approve_pending'] )
@@ -207,14 +209,16 @@ class Admin_Settings {
 				}
 
 				// Send approval email.
-				$subject = __( 'Your account has been approved', 'authorizenter' );
-				$message = sprintf(
-					/* translators: 1: double newline, 2: newline, 3: site name, 4: login url */
-					__( 'Hello,%1$sYour request to access %3$s has been approved.%2$sYou can now log in at: %4$s', 'authorizenter' ),
+				$subject = ! empty( $all['access']['approval_subject'] ) ? $all['access']['approval_subject'] : __( 'Your account has been approved', 'authorizenter' );
+				$body_tpl = ! empty( $all['access']['approval_body'] ) ? $all['access']['approval_body'] : sprintf(
+					__( 'Hello,%1$sYour request to access {site_name} has been approved.%2$sYou can now log in at: {login_url}', 'authorizenter' ),
 					"\r\n\r\n",
-					"\r\n",
-					get_bloginfo( 'name' ),
-					wp_login_url()
+					"\r\n"
+				);
+				$message = str_replace(
+					array( '{site_name}', '{login_url}', '{user_email}' ),
+					array( get_bloginfo( 'name' ), wp_login_url(), $a_email ),
+					$body_tpl
 				);
 				wp_mail( $a_email, $subject, $message );
 			}
@@ -1162,6 +1166,26 @@ class Admin_Settings {
 						<td>
 							<textarea name="access_blocked" rows="3" class="large-text" placeholder="spammer@example.com"><?php echo esc_textarea( implode( "\n", (array) ( isset( $access['blocked'] ) ? $access['blocked'] : array() ) ) ); ?></textarea>
 							<p class="description"><?php esc_html_e( 'Always denied, regardless of any other setting.', 'authorizenter' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Approval Email Subject', 'authorizenter' ); ?></th>
+						<td>
+							<input type="text" class="large-text" name="access_approval_subject" value="<?php echo esc_attr( isset( $access['approval_subject'] ) ? $access['approval_subject'] : '' ); ?>" placeholder="<?php esc_attr_e( 'Your account has been approved', 'authorizenter' ); ?>" />
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Approval Email Body', 'authorizenter' ); ?></th>
+						<td>
+							<?php
+							$default_body = sprintf(
+								__( 'Hello,%1$sYour request to access {site_name} has been approved.%2$sYou can now log in at: {login_url}', 'authorizenter' ),
+								"\n\n",
+								"\n"
+							);
+							?>
+							<textarea name="access_approval_body" rows="4" class="large-text" placeholder="<?php echo esc_attr( $default_body ); ?>"><?php echo esc_textarea( isset( $access['approval_body'] ) ? $access['approval_body'] : '' ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'Available placeholders: {site_name}, {login_url}, {user_email}. Leave both fields blank to use the default message.', 'authorizenter' ); ?></p>
 						</td>
 					</tr>
 					<?php
