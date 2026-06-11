@@ -534,8 +534,9 @@ class Frontend {
 
 		// Inherit the return_to passed from the OAuth engine to the pending page,
 		// so the JS redirect knows where to send them after successful submission.
-		if ( '' === $redirect && isset( $_GET['return_to'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$redirect = wp_validate_redirect( esc_url_raw( wp_unslash( $_GET['return_to'] ) ), '' );
+		$get_return_to = isset( $_GET['return_to'] ) ? esc_url_raw( wp_unslash( $_GET['return_to'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( '' === $redirect && '' !== $get_return_to ) {
+			$redirect = wp_validate_redirect( $get_return_to, '' );
 		}
 
 		$core      = \Authorizenter\Core\authorizenter_core();

@@ -265,8 +265,8 @@ class Rest_Api {
 			setcookie( 'authorizenter_redirect', '', time() - 3600, '/' );
 		}
 
-		$context   = (string) $request->get_param( 'context' );
-		$context   = '' !== $context ? $context : 'default';
+		$context = (string) $request->get_param( 'context' );
+		$context = '' !== $context ? $context : 'default';
 
 		$url = $this->engine->begin( $provider, $return_to, $context );
 		if ( is_wp_error( $url ) ) {

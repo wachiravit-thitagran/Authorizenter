@@ -521,8 +521,9 @@ class OAuth_Engine {
 	 * Fallback chain: context deny_redirect → global deny_redirect (already merged
 	 * into the resolved context) → context login page (via filter) with an error.
 	 *
-	 * @param \WP_Error $error   Denial error.
-	 * @param array     $context Resolved context.
+	 * @param \WP_Error $error     Denial error.
+	 * @param array     $context   Resolved context.
+	 * @param string    $return_to Optional return_to target.
 	 * @return \WP_Error
 	 */
 	private function attach_deny_redirect( \WP_Error $error, array $context, $return_to = '' ) {
@@ -552,8 +553,8 @@ class OAuth_Engine {
 				if ( '' !== $return_to ) {
 					$args['return_to'] = rawurlencode( $return_to );
 				}
-				
-				$url = ! empty( $args ) ? add_query_arg( $args, $pending ) : $pending;
+
+				$url              = ! empty( $args ) ? add_query_arg( $args, $pending ) : $pending;
 				$data['redirect'] = $url;
 				$error->add_data( $data );
 				return $error;
