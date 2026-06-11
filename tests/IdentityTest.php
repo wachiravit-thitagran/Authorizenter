@@ -2,12 +2,12 @@
 /**
  * Tests for the Identity value object.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Identity;
+use Authorizenter\Core\Identity;
 use PHPUnit\Framework\TestCase;
 
 class IdentityTest extends TestCase {

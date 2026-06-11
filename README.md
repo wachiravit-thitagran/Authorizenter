@@ -1,18 +1,18 @@
-# Autorizenter
+# Authorizenter
 
-[![CI](https://github.com/autorizenter/autorizenter/actions/workflows/ci.yml/badge.svg)](https://github.com/autorizenter/autorizenter/actions/workflows/ci.yml)
+[![CI](https://github.com/authorizenter/authorizenter/actions/workflows/ci.yml/badge.svg)](https://github.com/authorizenter/authorizenter/actions/workflows/ci.yml)
 [![License: GPL v2+](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)
 
 > Flexible OAuth2 / OIDC Single Sign-On for WordPress — with organization restriction and customizable post-login questions.
 
-Autorizenter lets a WordPress site authenticate users via **Google, Facebook, LINE, or any generic OAuth2/OIDC provider** (Azure AD, Keycloak, Google Workspace, university SSO such as PSU Passport, etc.). It can **restrict sign-in to your organization** (by email domain, Google `hd` claim, or by trusting your org's own IdP) and can **gate access behind a customizable question form** after login (e.g. checkboxes, radios, free text).
+Authorizenter lets a WordPress site authenticate users via **Google, Facebook, LINE, or any generic OAuth2/OIDC provider** (Azure AD, Keycloak, Google Workspace, university SSO such as PSU Passport, etc.). It can **restrict sign-in to your organization** (by email domain, Google `hd` claim, or by trusting your org's own IdP) and can **gate access behind a customizable question form** after login (e.g. checkboxes, radios, free text).
 
 It is built as a **monorepo with two plugins**:
 
 | Plugin | Folder | Required | Responsibility |
 |--------|--------|----------|----------------|
-| **Autorizenter Core** | `plugins/autorizenter-core` | ✅ | OAuth2/OIDC engine, providers, org policy, user provisioning, questions, REST API + hooks. No opinionated UI. |
-| **Autorizenter UI** | `plugins/autorizenter-ui` | optional | Login buttons, question form, shortcodes/blocks, settings convenience pages — consumes Core only. |
+| **Authorizenter Core** | `plugins/authorizenter-core` | ✅ | OAuth2/OIDC engine, providers, org policy, user provisioning, questions, REST API + hooks. No opinionated UI. |
+| **Authorizenter UI** | `plugins/authorizenter-ui` | optional | Login buttons, question form, shortcodes/blocks, settings convenience pages — consumes Core only. |
 
 This separation means you can ship the Core engine and build your **own** front-end (React, Elementor, a custom theme) on top of the documented hooks and REST API, or just install the UI plugin for a working experience out of the box.
 
@@ -30,19 +30,19 @@ This separation means you can ship the Core engine and build your **own** front-
 ## Installation (development)
 
 ```bash
-git clone https://github.com/<you>/autorizenter.git
+git clone https://github.com/<you>/authorizenter.git
 # Symlink or copy the plugin you want into wp-content/plugins/
-ln -s "$(pwd)/autorizenter/plugins/autorizenter-core" /path/to/wp-content/plugins/autorizenter-core
-ln -s "$(pwd)/autorizenter/plugins/autorizenter-ui"   /path/to/wp-content/plugins/autorizenter-ui
+ln -s "$(pwd)/authorizenter/plugins/authorizenter-core" /path/to/wp-content/plugins/authorizenter-core
+ln -s "$(pwd)/authorizenter/plugins/authorizenter-ui"   /path/to/wp-content/plugins/authorizenter-ui
 # Install dev dependencies (JWT lib + tooling)
 composer install
 ```
 
-Activate **Autorizenter Core** first, then **Autorizenter UI** (optional).
+Activate **Authorizenter Core** first, then **Authorizenter UI** (optional).
 
 ## Configuration
 
-All configuration lives in **Settings → Autorizenter** (added by Core). Nothing is hardcoded to any single organization.
+All configuration lives in **Settings → Authorizenter** (added by Core). Nothing is hardcoded to any single organization.
 
 ### Example: restrict to a university domain
 
@@ -65,7 +65,7 @@ policy on one context and leave another open.
 
 ### Example: a custom question
 
-In **Settings → Autorizenter → Questions**, add:
+In **Settings → Authorizenter → Questions**, add:
 
 ```json
 {
@@ -80,11 +80,11 @@ After login, users must answer required questions before reaching the site.
 
 ### Example: separate login pages (`/auth/` and `/auth-admin/`)
 
-Autorizenter supports **login contexts** — named profiles you attach to any page.
+Authorizenter supports **login contexts** — named profiles you attach to any page.
 Each context can show different providers, apply its own policy, require a
 capability, and redirect differently.
 
-1. In **Settings → Autorizenter → Login contexts**, configure two contexts using
+1. In **Settings → Authorizenter → Login contexts**, configure two contexts using
    the form (each context is a fieldset; blank rows add new ones):
 
    - `default` — providers Google/LINE/Facebook, required capability `read`, redirect `/`
@@ -93,8 +93,8 @@ capability, and redirect differently.
 2. Place each on its own page:
 
    ```
-   /auth/        →  [autorizenter_login context="default"]
-   /auth-admin/  →  [autorizenter_login context="admin"]
+   /auth/        →  [authorizenter_login context="default"]
+   /auth-admin/  →  [authorizenter_login context="admin"]
    ```
 
 The UI plugin auto-creates a page per context for you. Access is enforced by
@@ -106,7 +106,7 @@ is refused even though the page is public. See [`docs/hooks.md`](docs/hooks.md).
 Register this callback in each provider's console:
 
 ```
-https://your-site.example/wp-json/autorizenter/v1/callback
+https://your-site.example/wp-json/authorizenter/v1/callback
 ```
 
 ## For developers
@@ -115,18 +115,18 @@ See [`docs/`](docs/) for the full hook & REST reference. Quick taste:
 
 ```php
 // React to a successful login
-add_action( 'autorizenter_login_success', function ( $user, $provider ) {
+add_action( 'authorizenter_login_success', function ( $user, $provider ) {
     // ...
 }, 10, 2 );
 
 // Programmatically extend allowed domains
-add_filter( 'autorizenter_allowed_domains', function ( $domains ) {
+add_filter( 'authorizenter_allowed_domains', function ( $domains ) {
     $domains[] = 'alumni.psu.ac.th';
     return $domains;
 } );
 ```
 
-REST endpoints (namespace `autorizenter/v1`): `GET /providers`, `GET /authorize/{provider}`, `GET /callback`, `GET /questions`, `POST /answers`.
+REST endpoints (namespace `authorizenter/v1`): `GET /providers`, `GET /authorize/{provider}`, `GET /callback`, `GET /questions`, `POST /answers`.
 
 ## Updates from GitHub Releases
 
@@ -136,17 +136,17 @@ exists, and installs it like any other plugin.
 
 Setup:
 
-1. Point the plugins at your repository. Either edit the `AUTORIZENTER_GITHUB_REPO`
-   constant in `autorizenter-core.php` (default `autorizenter/autorizenter`), or
+1. Point the plugins at your repository. Either edit the `AUTHORIZENTER_GITHUB_REPO`
+   constant in `authorizenter-core.php` (default `authorizenter/authorizenter`), or
    filter it:
 
    ```php
-   add_filter( 'autorizenter_github_repo', fn() => 'your-org/your-repo' );
+   add_filter( 'authorizenter_github_repo', fn() => 'your-org/your-repo' );
    ```
 
 2. Cut a release with a version tag (e.g. `v0.2.0`). The bundled workflow
-   (`.github/workflows/release.yml`) builds and attaches `autorizenter-core.zip`
-   and `autorizenter-ui.zip` (with `vendor/` bundled) to the release. The updater
+   (`.github/workflows/release.yml`) builds and attaches `authorizenter-core.zip`
+   and `authorizenter-ui.zip` (with `vendor/` bundled) to the release. The updater
    downloads the asset matching each plugin's slug.
 
 3. Bump the `Version:` header in each plugin's main file to match the tag so
@@ -155,7 +155,7 @@ Setup:
 For private repos or higher API rate limits, add a token:
 
 ```php
-add_filter( 'autorizenter_github_request_args', function ( $args ) {
+add_filter( 'authorizenter_github_request_args', function ( $args ) {
     $args['headers']['Authorization'] = 'Bearer ' . MY_GITHUB_TOKEN;
     return $args;
 } );
@@ -192,7 +192,7 @@ Planned but not yet implemented. Contributions welcome.
       publishing.
 - [ ] Run `composer test` and `composer lint` on a real PHP environment and wire up
       green CI badges.
-- [ ] Set `AUTORIZENTER_GITHUB_REPO` to the canonical repository.
+- [ ] Set `AUTHORIZENTER_GITHUB_REPO` to the canonical repository.
 
 ## License
 

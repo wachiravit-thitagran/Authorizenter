@@ -2,13 +2,13 @@
 /**
  * Tests for disabling username/password sign-in.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Password_Auth;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Password_Auth;
 use PHPUnit\Framework\TestCase;
 
 class PasswordAuthTest extends TestCase {
@@ -35,7 +35,7 @@ class PasswordAuthTest extends TestCase {
 
 		$result = $auth->maybe_block( $user, 'user2', 'secret' );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_password_disabled', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_password_disabled', $result->get_error_code() );
 	}
 
 	public function test_admin_bypass_lets_admins_in(): void {

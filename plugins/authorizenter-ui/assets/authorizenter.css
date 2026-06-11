@@ -1,0 +1,119 @@
+/* Authorizenter UI — minimal, themeable styles. Override freely in your theme. */
+
+.authorizenter-login__list,
+.authorizenter-questions__form {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	max-width: 28rem;
+}
+
+.authorizenter-login__item {
+	margin: 0 0 0.75rem;
+}
+
+.authorizenter-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	position: relative;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0.7rem 1rem;
+	border: 1px solid #d0d5dd;
+	border-radius: 8px;
+	background: #fff;
+	color: #1a1a1a;
+	font-weight: 600;
+	text-align: center;
+	text-decoration: none;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.authorizenter-btn:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(53, 122, 221, 0.35);
+}
+
+.authorizenter-btn__icon {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	line-height: 0;
+}
+
+.authorizenter-btn__icon svg,
+.authorizenter-btn__icon img {
+	display: block;
+	width: 20px;
+	height: 20px;
+	object-fit: contain;
+}
+
+.authorizenter-btn:hover {
+	background: #f5f7fa;
+}
+
+.authorizenter-btn--google { border-color: #4285f4; }
+.authorizenter-btn--facebook { border-color: #1877f2; }
+.authorizenter-btn--line { border-color: #06c755; }
+.authorizenter-btn--oidc { border-color: #6b46c1; }
+.authorizenter-btn--logout { width: auto; border-color: #98a2b3; }
+
+.authorizenter-login__error {
+	padding: 0.6rem 0.8rem;
+	border-radius: 6px;
+	background: #fdecea;
+	color: #b3261e;
+}
+
+.authorizenter-field {
+	margin: 0 0 1rem;
+}
+
+.authorizenter-field__label {
+	display: block;
+	margin-bottom: 0.35rem;
+	font-weight: 600;
+}
+
+.authorizenter-field input[type="text"],
+.authorizenter-field select,
+.authorizenter-field textarea {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid #d0d5dd;
+	border-radius: 6px;
+}
+
+.authorizenter-req { color: #b3261e; }
+
+.authorizenter-answers {
+	margin: 0;
+}
+
+.authorizenter-answers__label {
+	font-weight: 600;
+	margin-top: 0.6rem;
+}
+
+.authorizenter-answers__value {
+	margin: 0 0 0.3rem;
+}
+
+.authorizenter-answers--empty,
+.authorizenter-answer--empty {
+	color: #6b7280;
+	font-style: italic;
+}
+
+
+.authorizenter-questions__message {
+	min-height: 1.2em;
+}
+
+.authorizenter-questions__message.is-error { color: #b3261e; }
+.authorizenter-questions__message.is-ok { color: #1a7f37; }

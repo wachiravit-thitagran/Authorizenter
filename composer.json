@@ -1,5 +1,5 @@
 {
-    "name": "autorizenter/autorizenter",
+    "name": "authorizenter/authorizenter",
     "description": "Flexible OAuth2/OIDC Single Sign-On for WordPress with organization restriction and customizable post-login questions.",
     "type": "project",
     "license": "GPL-2.0-or-later",

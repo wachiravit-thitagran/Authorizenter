@@ -5,24 +5,24 @@
  * The happy path (begin -> provider redirect -> callback) requires live network
  * calls to the provider, so these tests focus on the branches that do not.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Provider_Registry;
-use Autorizenter\Core\Org_Policy;
-use Autorizenter\Core\User_Mapper;
-use Autorizenter\Core\OAuth_Engine;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Provider_Registry;
+use Authorizenter\Core\Org_Policy;
+use Authorizenter\Core\User_Mapper;
+use Authorizenter\Core\OAuth_Engine;
 use PHPUnit\Framework\TestCase;
 
 class OAuthEngineTest extends TestCase {
 
 	protected function setUp(): void {
 		azr_test_reset();
-		if ( ! defined( 'AUTORIZENTER_REST_NAMESPACE' ) ) {
-			define( 'AUTORIZENTER_REST_NAMESPACE', 'autorizenter/v1' );
+		if ( ! defined( 'AUTHORIZENTER_REST_NAMESPACE' ) ) {
+			define( 'AUTHORIZENTER_REST_NAMESPACE', 'autorizenter/v1' );
 		}
 	}
 
@@ -43,14 +43,14 @@ class OAuthEngineTest extends TestCase {
 	public function test_begin_unknown_provider_errors(): void {
 		$result = $this->engine()->begin( 'does-not-exist', '' );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_provider_disabled', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_provider_disabled', $result->get_error_code() );
 	}
 
 	public function test_begin_disabled_provider_errors(): void {
 		// google known but not enabled/configured.
 		$result = $this->engine()->begin( 'google', '' );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_provider_disabled', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_provider_disabled', $result->get_error_code() );
 	}
 
 	public function test_begin_provider_not_allowed_in_context(): void {
@@ -66,19 +66,19 @@ class OAuthEngineTest extends TestCase {
 
 		$result = $this->engine()->begin( 'google', '', 'admin' );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_provider_not_in_context', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_provider_not_in_context', $result->get_error_code() );
 	}
 
 	public function test_callback_missing_params_errors(): void {
 		$result = $this->engine()->handle_callback( '', '' );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_callback_missing', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_callback_missing', $result->get_error_code() );
 	}
 
 	public function test_callback_invalid_state_errors(): void {
 		$result = $this->engine()->handle_callback( 'some-code', 'unknown-state' );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_state_invalid', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_state_invalid', $result->get_error_code() );
 	}
 
 	public function test_redirect_uri_points_at_callback_route(): void {
@@ -101,7 +101,7 @@ class OAuthEngineTest extends TestCase {
 			'deny_redirect'    => 'https://example.test/denied/',
 			'pending_redirect' => 'https://example.test/waiting/',
 		);
-		$error   = new \WP_Error( 'autorizenter_not_approved', 'Awaiting approval.', array( 'status' => 403 ) );
+		$error   = new \WP_Error( 'authorizenter_not_approved', 'Awaiting approval.', array( 'status' => 403 ) );
 
 		$result = $this->invoke( $this->engine(), 'attach_deny_redirect', array( $error, $context ) );
 		$data   = $result->get_error_data();
@@ -114,7 +114,7 @@ class OAuthEngineTest extends TestCase {
 			'deny_redirect'    => 'https://example.test/denied/',
 			'pending_redirect' => 'https://example.test/waiting/',
 		);
-		$error   = new \WP_Error( 'autorizenter_denied', 'Domain not allowed.', array( 'status' => 403 ) );
+		$error   = new \WP_Error( 'authorizenter_denied', 'Domain not allowed.', array( 'status' => 403 ) );
 
 		$result = $this->invoke( $this->engine(), 'attach_deny_redirect', array( $error, $context ) );
 		$data   = $result->get_error_data();
@@ -127,7 +127,7 @@ class OAuthEngineTest extends TestCase {
 			'deny_redirect'    => 'https://example.test/denied/',
 			'pending_redirect' => '',
 		);
-		$error   = new \WP_Error( 'autorizenter_not_approved', 'Awaiting approval.', array( 'status' => 403 ) );
+		$error   = new \WP_Error( 'authorizenter_not_approved', 'Awaiting approval.', array( 'status' => 403 ) );
 
 		$result = $this->invoke( $this->engine(), 'attach_deny_redirect', array( $error, $context ) );
 		$data   = $result->get_error_data();
@@ -141,7 +141,7 @@ class OAuthEngineTest extends TestCase {
 			'pending_redirect' => 'https://example.test/waiting/',
 		);
 		$error = new \WP_Error(
-			'autorizenter_not_approved',
+			'authorizenter_not_approved',
 			'Awaiting approval.',
 			array( 'status' => 403, 'pending_token' => 'abc123' )
 		);

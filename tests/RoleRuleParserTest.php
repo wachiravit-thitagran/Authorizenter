@@ -7,15 +7,15 @@
  *   -> domain:psu.ac.th TRUE, domain:gmail.com FALSE
  *   -> local:^\d{10}$ TRUE, local:^\d{13}$ FALSE
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Org_Policy;
-use Autorizenter\Core\User_Mapper;
-use Autorizenter\Core\Identity;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Org_Policy;
+use Authorizenter\Core\User_Mapper;
+use Authorizenter\Core\Identity;
 use PHPUnit\Framework\TestCase;
 
 class RoleRuleParserTest extends TestCase {

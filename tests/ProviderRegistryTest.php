@@ -2,13 +2,13 @@
 /**
  * Tests for Provider_Registry context filtering.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Provider_Registry;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Provider_Registry;
 use PHPUnit\Framework\TestCase;
 
 class ProviderRegistryTest extends TestCase {
@@ -60,7 +60,7 @@ class ProviderRegistryTest extends TestCase {
 	}
 
 	public function test_get_returns_correct_class(): void {
-		$this->assertInstanceOf( \Autorizenter\Core\Providers\Google::class, $this->registry->get( 'google' ) );
-		$this->assertInstanceOf( \Autorizenter\Core\Providers\Facebook::class, $this->registry->get( 'facebook' ) );
+		$this->assertInstanceOf( \Authorizenter\Core\Providers\Google::class, $this->registry->get( 'google' ) );
+		$this->assertInstanceOf( \Authorizenter\Core\Providers\Facebook::class, $this->registry->get( 'facebook' ) );
 	}
 }

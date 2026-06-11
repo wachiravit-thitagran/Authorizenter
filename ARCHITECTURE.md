@@ -1,9 +1,9 @@
-# Autorizenter Architecture
+# Authorizenter Architecture
 
-Autorizenter is a WordPress monorepo that ships two plugins:
+Authorizenter is a WordPress monorepo that ships two plugins:
 
-- `plugins/autorizenter-core`: the security-critical authentication engine, settings store, provider adapters, REST API, access policy, user mapping, post-login questions, reports, admin screens, and GitHub release updater.
-- `plugins/autorizenter-ui`: an optional front-end layer with login/logout shortcodes, dynamic blocks, auto-created pages, question forms, and assets. It depends on Core and contains no OAuth exchange or policy logic.
+- `plugins/authorizenter-core`: the security-critical authentication engine, settings store, provider adapters, REST API, access policy, user mapping, post-login questions, reports, admin screens, and GitHub release updater.
+- `plugins/authorizenter-ui`: an optional front-end layer with login/logout shortcodes, dynamic blocks, auto-created pages, question forms, and assets. It depends on Core and contains no OAuth exchange or policy logic.
 
 The main architectural rule is that Core owns the authentication contract. UI, custom themes, React apps, Elementor pages, or other integrations should consume Core through its REST API, helper functions, and documented action/filter hooks.
 
@@ -12,14 +12,14 @@ The main architectural rule is that Core owns the authentication contract. UI, c
 ```text
 .
 |-- plugins/
-|   |-- autorizenter-core/
-|   |   |-- autorizenter-core.php
+|   |-- authorizenter-core/
+|   |   |-- authorizenter-core.php
 |   |   |-- includes/
 |   |   |-- includes/providers/
 |   |   |-- languages/
 |   |   `-- readme.txt
-|   `-- autorizenter-ui/
-|       |-- autorizenter-ui.php
+|   `-- authorizenter-ui/
+|       |-- authorizenter-ui.php
 |       |-- includes/
 |       |-- templates/
 |       |-- assets/
@@ -42,8 +42,8 @@ flowchart LR
   Browser["Browser / site visitor"]
   Admin["WordPress admin"]
   CustomUI["Custom front-end or theme"]
-  UI["Autorizenter UI plugin"]
-  Core["Autorizenter Core plugin"]
+  UI["Authorizenter UI plugin"]
+  Core["Authorizenter Core plugin"]
   IdP["External identity providers<br/>Google, LINE, Facebook, OIDC"]
   Store["WordPress data store<br/>options, posts, transients, user meta"]
   GH["GitHub Releases"]
@@ -60,15 +60,15 @@ flowchart LR
   UI --> GH
 ```
 
-Core exposes REST routes under `autorizenter/v1`, WordPress hooks for extension, and `Autorizenter\Core\autorizenter_core()` for PHP integrations. The UI plugin renders Core-backed shortcodes and blocks, creates pages for configured login contexts, and posts question answers back to Core through REST.
+Core exposes REST routes under `authorizenter/v1`, WordPress hooks for extension, and `Authorizenter\Core\authorizenter_core()` for PHP integrations. The UI plugin renders Core-backed shortcodes and blocks, creates pages for configured login contexts, and posts question answers back to Core through REST.
 
 ## Core Runtime Object Graph
 
-`plugins/autorizenter-core/autorizenter-core.php` registers a lightweight namespace autoloader, loads Composer dependencies from either the plugin or monorepo root, and boots `Autorizenter\Core\Plugin` on `plugins_loaded`.
+`plugins/authorizenter-core/authorizenter-core.php` registers a lightweight namespace autoloader, loads Composer dependencies from either the plugin or monorepo root, and boots `Authorizenter\Core\Plugin` on `plugins_loaded`.
 
 ```mermaid
 flowchart TD
-  Entry["autorizenter-core.php"]
+  Entry["authorizenter-core.php"]
   Plugin["Plugin"]
   Settings["Settings"]
   Providers["Provider_Registry"]
@@ -123,8 +123,8 @@ flowchart TD
 
 Key responsibilities:
 
-- `Settings` reads and writes the single `autorizenter_settings` option, merges defaults, resolves login contexts, and encrypts provider secrets using WordPress salts when OpenSSL is available.
-- `Provider_Registry` maps provider ids to provider adapter classes and filters the class map through `autorizenter_provider_classes`.
+- `Settings` reads and writes the single `authorizenter_settings` option, merges defaults, resolves login contexts, and encrypts provider secrets using WordPress salts when OpenSSL is available.
+- `Provider_Registry` maps provider ids to provider adapter classes and filters the class map through `authorizenter_provider_classes`.
 - `OAuth_Engine` owns Authorization Code + PKCE flow orchestration, state/nonce storage, callback handling, policy checks, user resolution, capability checks, session creation, and logout.
 - `Org_Policy` enforces access lists, trusted providers, email-domain rules, verified-email requirements, Google `hd` checks, and context capability gates.
 - `User_Mapper` links identities to WordPress users by provider subject or verified email, then auto-provisions users when allowed.
@@ -138,7 +138,7 @@ Key responsibilities:
 All providers share one callback URL:
 
 ```text
-https://YOUR-SITE/wp-json/autorizenter/v1/callback
+https://YOUR-SITE/wp-json/authorizenter/v1/callback
 ```
 
 ```mermaid
@@ -233,7 +233,7 @@ Built-in providers are:
 - `facebook`: OAuth2 + Graph API provider. Facebook email is treated as unverified because there is no standard verified-email claim.
 - `oidc`: generic OIDC provider for Azure AD / Entra ID, Keycloak, Okta, Auth0, university SSO, and other compliant IdPs.
 
-Custom providers extend `Provider_Base` or `Providers\OIDC` and are registered with the `autorizenter_provider_classes` filter.
+Custom providers extend `Provider_Base` or `Providers\OIDC` and are registered with the `authorizenter_provider_classes` filter.
 
 ## Policy And User Mapping
 
@@ -270,7 +270,7 @@ Login contexts are resolved by `Settings::get_context()`. A context can restrict
 
 ## REST API
 
-Core registers routes in the `autorizenter/v1` namespace.
+Core registers routes in the `authorizenter/v1` namespace.
 
 | Method | Route | Auth | Responsibility |
 | --- | --- | --- | --- |
@@ -286,18 +286,18 @@ The complete extension contract is documented in `docs/hooks.md`.
 
 ## UI Plugin
 
-`plugins/autorizenter-ui/autorizenter-ui.php` boots after Core. If Core is missing, it shows an admin notice and does not register front-end behavior.
+`plugins/authorizenter-ui/authorizenter-ui.php` boots after Core. If Core is missing, it shows an admin notice and does not register front-end behavior.
 
 ```mermaid
 flowchart TD
-  UIEntry["autorizenter-ui.php"]
+  UIEntry["authorizenter-ui.php"]
   Frontend["Frontend"]
   Blocks["Blocks"]
   Pages["Page_Installer"]
   Assets["CSS and JS assets"]
   LoginTpl["templates/login.php"]
   QuestionsTpl["templates/questions.php"]
-  Core["Autorizenter Core"]
+  Core["Authorizenter Core"]
   REST["Core REST API"]
   Posts["WordPress pages"]
 
@@ -316,11 +316,11 @@ flowchart TD
 
 UI behavior:
 
-- `[autorizenter_login]` renders provider buttons for a resolved context.
-- `[autorizenter_logout]` renders a logout link to Core's REST logout endpoint.
-- `[autorizenter_questions]` renders pending question inputs and enqueues `assets/autorizenter.js`.
-- The JavaScript submits answers to `POST /wp-json/autorizenter/v1/answers` with the WordPress REST nonce.
-- Dynamic blocks `autorizenter/login` and `autorizenter/logout` server-render through the same shortcodes, keeping markup in one path.
+- `[authorizenter_login]` renders provider buttons for a resolved context.
+- `[authorizenter_logout]` renders a logout link to Core's REST logout endpoint.
+- `[authorizenter_questions]` renders pending question inputs and enqueues `assets/authorizenter.js`.
+- The JavaScript submits answers to `POST /wp-json/authorizenter/v1/answers` with the WordPress REST nonce.
+- Dynamic blocks `authorizenter/login` and `authorizenter/logout` server-render through the same shortcodes, keeping markup in one path.
 - `Page_Installer` creates a questions page and one login page per configured context, stores their page ids in WordPress options, and leaves pages in place on deactivation.
 - UI supplies Core with login and questions URLs through filters so Core can redirect users to the right front-end pages.
 
@@ -331,7 +331,7 @@ sequenceDiagram
   autonumber
   participant B as Browser
   participant UI as Questions shortcode
-  participant JS as autorizenter.js
+  participant JS as authorizenter.js
   participant REST as Core REST API
   participant Q as Questions
   participant UM as User meta
@@ -344,8 +344,8 @@ sequenceDiagram
   B->>JS: Submit answers
   JS->>REST: POST /answers with X-WP-Nonce
   REST->>Q: save_answers(user_id, answers)
-  Q->>UM: Store autorizenter_answers blob
-  Q->>UM: Store autorizenter_answer_{id} mirror keys
+  Q->>UM: Store authorizenter_answers blob
+  Q->>UM: Store authorizenter_answer_{id} mirror keys
   REST-->>JS: saved and pending questions
   Admin->>R: summary(), respondents(), matrix()
   R->>UM: Query mirror keys
@@ -354,37 +354,37 @@ sequenceDiagram
 
 Answers are stored twice:
 
-- `autorizenter_answers`: one user-meta array holding the full answer map.
-- `autorizenter_answer_{id}`: one scalar mirror key per question, allowing reports and user queries to use indexed meta lookups instead of scanning serialized blobs.
+- `authorizenter_answers`: one user-meta array holding the full answer map.
+- `authorizenter_answer_{id}`: one scalar mirror key per question, allowing reports and user queries to use indexed meta lookups instead of scanning serialized blobs.
 
 ## Data Stores
 
 | Storage | Keys / objects | Owner | Purpose |
 | --- | --- | --- | --- |
-| WordPress option | `autorizenter_settings` | Core `Settings` | Provider config, encrypted secrets, policy, users, access lists, throttle, private-site mode, questions, contexts, advanced settings. |
-| WordPress options | `autorizenter_login_page_id`, `autorizenter_questions_page_id`, `autorizenter_context_pages` | UI `Page_Installer` | Tracks auto-created front-end pages. |
-| Transients | `autorizenter_flow_{sha256(state)}` | Core `OAuth_Engine` | Short-lived OAuth flow state with provider, context, nonce, PKCE verifier, and safe return URL. |
-| Transients | `autorizenter_oidc_disc_*`, `autorizenter_jwks_*` | OIDC / `JWT_Verifier` | Caches OIDC discovery documents and JWKS responses. |
-| Transients | `autorizenter_lockout_*` | `Login_Throttle` | Tracks failed password-login attempts per client IP. |
-| Transients | `autorizenter_gh_*` | `Github_Updater` | Caches GitHub latest-release responses. |
-| User meta | `autorizenter_link_{provider}` | `User_Mapper` | Links a WordPress user to a provider subject id. |
-| User meta | `autorizenter_last_provider` | `OAuth_Engine` | Remembers the last SSO provider for optional RP-initiated logout. |
-| User meta | `autorizenter_answers`, `autorizenter_answer_{id}` | `Questions` | Stores post-login question answers and report-friendly mirrors. |
+| WordPress option | `authorizenter_settings` | Core `Settings` | Provider config, encrypted secrets, policy, users, access lists, throttle, private-site mode, questions, contexts, advanced settings. |
+| WordPress options | `authorizenter_login_page_id`, `authorizenter_questions_page_id`, `authorizenter_context_pages` | UI `Page_Installer` | Tracks auto-created front-end pages. |
+| Transients | `authorizenter_flow_{sha256(state)}` | Core `OAuth_Engine` | Short-lived OAuth flow state with provider, context, nonce, PKCE verifier, and safe return URL. |
+| Transients | `authorizenter_oidc_disc_*`, `authorizenter_jwks_*` | OIDC / `JWT_Verifier` | Caches OIDC discovery documents and JWKS responses. |
+| Transients | `authorizenter_lockout_*` | `Login_Throttle` | Tracks failed password-login attempts per client IP. |
+| Transients | `authorizenter_gh_*` | `Github_Updater` | Caches GitHub latest-release responses. |
+| User meta | `authorizenter_link_{provider}` | `User_Mapper` | Links a WordPress user to a provider subject id. |
+| User meta | `authorizenter_last_provider` | `OAuth_Engine` | Remembers the last SSO provider for optional RP-initiated logout. |
+| User meta | `authorizenter_answers`, `authorizenter_answer_{id}` | `Questions` | Stores post-login question answers and report-friendly mirrors. |
 | Posts | Published pages | UI `Page_Installer` | Holds generated login and question shortcodes. |
 
 ## Extension Points
 
 The primary extension points are WordPress actions and filters. Common examples:
 
-- Add providers with `autorizenter_provider_classes`.
-- Adjust authorization query args with `autorizenter_authorization_args`.
-- Inspect or modify identities with `autorizenter_identity`.
-- Extend domain policy with `autorizenter_allowed_domains` or final allow/deny logic with `autorizenter_is_allowed`.
-- Override context resolution and capability decisions with `autorizenter_context` and `autorizenter_context_capability`.
-- Customize redirects with `autorizenter_post_login_redirect`, `autorizenter_questions_url`, `autorizenter_login_url`, and `autorizenter_context_login_url`.
-- Enable provider SSO logout with `autorizenter_sso_logout`.
-- Disable password login programmatically with `autorizenter_disable_password_auth`.
-- React to lifecycle events such as `autorizenter_login_success`, `autorizenter_user_provisioned`, `autorizenter_answers_saved`, and `autorizenter_questions_completed`.
+- Add providers with `authorizenter_provider_classes`.
+- Adjust authorization query args with `authorizenter_authorization_args`.
+- Inspect or modify identities with `authorizenter_identity`.
+- Extend domain policy with `authorizenter_allowed_domains` or final allow/deny logic with `authorizenter_is_allowed`.
+- Override context resolution and capability decisions with `authorizenter_context` and `authorizenter_context_capability`.
+- Customize redirects with `authorizenter_post_login_redirect`, `authorizenter_questions_url`, `authorizenter_login_url`, and `authorizenter_context_login_url`.
+- Enable provider SSO logout with `authorizenter_sso_logout`.
+- Disable password login programmatically with `authorizenter_disable_password_auth`.
+- React to lifecycle events such as `authorizenter_login_success`, `authorizenter_user_provisioned`, `authorizenter_answers_saved`, and `authorizenter_questions_completed`.
 
 Keep new integrations dependent on those contracts instead of reaching into private class internals.
 
@@ -410,7 +410,7 @@ Both plugins can update themselves from GitHub Releases through `Github_Updater`
 ```mermaid
 flowchart LR
   Release["GitHub release tag<br/>for example v0.2.0"]
-  Assets["Release assets<br/>autorizenter-core.zip<br/>autorizenter-ui.zip"]
+  Assets["Release assets<br/>authorizenter-core.zip<br/>authorizenter-ui.zip"]
   WPCheck["WordPress update check"]
   Updater["Github_Updater"]
   Plugins["Installed plugins"]
@@ -422,7 +422,7 @@ flowchart LR
   Assets --> Plugins
 ```
 
-The updater expects the configured repository to expose a latest release and prefers a ZIP asset matching each plugin slug. Update checks are cached for six hours. Private repositories or higher API rate limits can be supported through the `autorizenter_github_request_args` filter.
+The updater expects the configured repository to expose a latest release and prefers a ZIP asset matching each plugin slug. Update checks are cached for six hours. Private repositories or higher API rate limits can be supported through the `authorizenter_github_request_args` filter.
 
 ## Development And Verification
 

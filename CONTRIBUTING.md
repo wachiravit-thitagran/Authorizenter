@@ -1,16 +1,16 @@
-# Contributing to Autorizenter
+# Contributing to Authorizenter
 
-Thanks for your interest in improving Autorizenter!
+Thanks for your interest in improving Authorizenter!
 
 ## Repository layout
 
 This is a **monorepo** containing two WordPress plugins under `plugins/`:
 
-- `autorizenter-core` — the engine (required)
-- `autorizenter-ui` — optional front-end
+- `authorizenter-core` — the engine (required)
+- `authorizenter-ui` — optional front-end
 
-The Core exposes a stable **contract** (REST endpoints under `autorizenter/v1`,
-plus action/filter hooks prefixed `autorizenter_`). The UI must only ever talk to
+The Core exposes a stable **contract** (REST endpoints under `authorizenter/v1`,
+plus action/filter hooks prefixed `authorizenter_`). The UI must only ever talk to
 Core through that contract — never reach into Core internals. Changes that alter
 the contract must update **both** plugins and the docs in the same PR.
 
@@ -26,10 +26,10 @@ Symlink the plugin(s) you are working on into a local WordPress
 ## Coding standards
 
 - Follow the **WordPress Coding Standards** (WPCS). Run `composer lint`.
-- Prefix everything: functions/options `autorizenter_`, internal classes
-  `Autorizenter\\` namespace.
+- Prefix everything: functions/options `authorizenter_`, internal classes
+  `Authorizenter\\` namespace.
 - **Sanitize all input, escape all output.** Use nonces on state-changing requests.
-- Keep all user-facing strings translatable with the `autorizenter` text domain.
+- Keep all user-facing strings translatable with the `authorizenter` text domain.
 - Never commit secrets. Configuration is entered via the admin UI / DB only.
 
 ## Security

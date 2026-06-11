@@ -2,14 +2,14 @@
 /**
  * Tests for approved/blocked/pending access lists.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Access_List;
-use Autorizenter\Core\Identity;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Access_List;
+use Authorizenter\Core\Identity;
 use PHPUnit\Framework\TestCase;
 
 class AccessListTest extends TestCase {
@@ -31,7 +31,7 @@ class AccessListTest extends TestCase {
 		$list   = $this->list_with( array( 'blocked' => array( 'bad@psu.ac.th' ) ) );
 		$result = $list->evaluate( $this->id( 'bad@psu.ac.th' ) );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_blocked', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_blocked', $result->get_error_code() );
 	}
 
 	public function test_blocked_domain_is_denied(): void {
@@ -60,7 +60,7 @@ class AccessListTest extends TestCase {
 		$result = $list->evaluate( $this->id( 'outsider@gmail.com' ) );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_not_approved', $result->get_error_code() );
 		$this->assertContains( 'outsider@gmail.com', $list->entries( 'pending' ) );
 	}
 
@@ -94,7 +94,7 @@ class AccessListTest extends TestCase {
 
 		$result = $list->evaluate( $id );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_not_approved', $result->get_error_code() );
 		$this->assertSame( array(), $list->entries( 'pending' ) );
 	}
 
@@ -121,7 +121,7 @@ class AccessListTest extends TestCase {
 		// Without trust: denied and added to pending.
 		$result = $list->evaluate( $id );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_not_approved', $result->get_error_code() );
 
 		// With trust: allowed outright, not added to pending again.
 		azr_test_reset();
@@ -141,7 +141,7 @@ class AccessListTest extends TestCase {
 		$id     = new Identity( 'oidc', array( 'email' => 'banned@gmail.com', 'email_verified' => true ) );
 		$result = $list->evaluate( $id, array( 'oidc' ) );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_blocked', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_blocked', $result->get_error_code() );
 	}
 
 	public function test_add_pending_returns_token(): void {
@@ -180,7 +180,7 @@ class AccessListTest extends TestCase {
 		$list   = $this->list_with( array( 'enabled' => true ) );
 		$result = $list->save_pending_answers( 'totally-invalid-token', array( 'role' => 'x' ) );
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_invalid_token', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_invalid_token', $result->get_error_code() );
 	}
 
 	public function test_existing_account_skips_approval(): void {
@@ -198,7 +198,7 @@ class AccessListTest extends TestCase {
 		$result = $list->evaluate( $this->id( 'member2@gmail.com' ) );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_not_approved', $result->get_error_code() );
 	}
 
 	public function test_blocked_beats_existing_account_bypass(): void {
@@ -207,7 +207,7 @@ class AccessListTest extends TestCase {
 		$result = $list->evaluate( $this->id( 'member3@gmail.com' ) );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_blocked', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_blocked', $result->get_error_code() );
 	}
 
 	public function test_no_existing_account_still_pending_when_default_on(): void {
@@ -215,7 +215,7 @@ class AccessListTest extends TestCase {
 		$result = $list->evaluate( $this->id( 'noaccount@gmail.com' ) );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'autorizenter_not_approved', $result->get_error_code() );
+		$this->assertSame( 'authorizenter_not_approved', $result->get_error_code() );
 	}
 
 	public function test_approve_stores_per_email_role(): void {

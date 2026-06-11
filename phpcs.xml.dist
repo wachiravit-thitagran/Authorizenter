@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<ruleset name="Autorizenter">
-    <description>Coding standards for Autorizenter.</description>
+<ruleset name="Authorizenter">
+    <description>Coding standards for Authorizenter.</description>
 
     <file>plugins/</file>
 
@@ -28,7 +28,7 @@
     <rule ref="WordPress.WP.I18n">
         <properties>
             <property name="text_domain" type="array">
-                <element value="autorizenter"/>
+                <element value="authorizenter"/>
             </property>
         </properties>
     </rule>

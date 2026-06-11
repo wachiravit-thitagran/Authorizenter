@@ -2,14 +2,14 @@
 /**
  * Tests for the Reports aggregator (counts, breakdown, respondents, matrix).
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
-namespace Autorizenter\Core\Tests;
+namespace Authorizenter\Core\Tests;
 
-use Autorizenter\Core\Settings;
-use Autorizenter\Core\Questions;
-use Autorizenter\Core\Reports;
+use Authorizenter\Core\Settings;
+use Authorizenter\Core\Questions;
+use Authorizenter\Core\Reports;
 use PHPUnit\Framework\TestCase;
 
 class ReportsTest extends TestCase {

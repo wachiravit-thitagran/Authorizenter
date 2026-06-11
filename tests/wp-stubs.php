@@ -1,10 +1,10 @@
 <?php
 /**
- * Minimal WordPress function/class stubs for unit testing Autorizenter Core
+ * Minimal WordPress function/class stubs for unit testing Authorizenter Core
  * without a full WordPress install. Backed by in-memory global state that tests
  * can manipulate via the helpers near the bottom.
  *
- * @package Autorizenter\Core\Tests
+ * @package Authorizenter\Core\Tests
  */
 
 // phpcs:disable
@@ -310,9 +310,9 @@ function plugin_basename( $file ) {
 
 function get_plugin_data( $file, $markup = true, $translate = true ) {
 	return array(
-		'Name'        => 'Autorizenter Core',
+		'Name'        => 'Authorizenter Core',
 		'Description' => 'Test description.',
-		'Author'      => 'Autorizenter contributors',
+		'Author'      => 'Authorizenter contributors',
 		'Version'     => '0.1.0',
 	);
 }

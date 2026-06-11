@@ -3,8 +3,8 @@
 This guide covers configuring each supported provider. In every case you will:
 
 1. Create an OAuth client / app in the provider's console.
-2. Register Autorizenter's **callback (redirect) URI**.
-3. Paste the **Client ID** and **Client Secret** into **Settings → Autorizenter**.
+2. Register Authorizenter's **callback (redirect) URI**.
+3. Paste the **Client ID** and **Client Secret** into **Settings → Authorizenter**.
 
 ## Callback / redirect URI
 
@@ -15,7 +15,7 @@ https://YOUR-SITE/wp-json/autorizenter/v1/callback
 ```
 
 Replace `YOUR-SITE` with your domain. The exact URL is also shown at the top of
-the Autorizenter settings screen. It must be served over **HTTPS** in production.
+the Authorizenter settings screen. It must be served over **HTTPS** in production.
 
 ---
 
@@ -64,7 +64,7 @@ Scopes used: `openid profile email`.
    (Client Secret).
 
 **Note:** Facebook does not assert a standardized verified-email claim, so
-Autorizenter treats Facebook emails as **unverified**. They will not satisfy an
+Authorizenter treats Facebook emails as **unverified**. They will not satisfy an
 email-domain policy or auto-link to existing accounts unless you explicitly trust
 Facebook. Prefer Facebook only for non-org, public sign-in.
 
