@@ -26,7 +26,17 @@
 			if ( parsed.protocol !== 'http:' && parsed.protocol !== 'https:' ) {
 				return '/';
 			}
-			return parsed.pathname + parsed.search + parsed.hash;
+			var safePath = parsed.pathname + parsed.search + parsed.hash;
+			if ( safePath.charAt( 0 ) !== '/' ) {
+				return '/';
+			}
+			if ( safePath.indexOf( '//' ) === 0 ) {
+				return '/';
+			}
+			if ( /%0d|%0a/i.test( safePath ) ) {
+				return '/';
+			}
+			return safePath;
 		} catch ( e ) {
 			return '/';
 		}
