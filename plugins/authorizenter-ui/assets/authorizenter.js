@@ -14,6 +14,24 @@
 	var returnTo = container ? container.getAttribute( 'data-return-to' ) : '/';
 	var doneMessage = container ? container.getAttribute( 'data-done-message' ) : '';
 
+	function getSafeReturnTo( raw ) {
+		if ( ! raw ) {
+			return '/';
+		}
+		try {
+			var parsed = new URL( raw, window.location.origin );
+			if ( parsed.origin !== window.location.origin ) {
+				return '/';
+			}
+			if ( parsed.protocol !== 'http:' && parsed.protocol !== 'https:' ) {
+				return '/';
+			}
+			return parsed.pathname + parsed.search + parsed.hash;
+		} catch ( e ) {
+			return '/';
+		}
+	}
+
 	function setMessage( text, kind ) {
 		if ( ! message ) {
 			return;
@@ -77,7 +95,7 @@
 					return;
 				}
 				setMessage( 'Saved. Redirecting…', 'ok' );
-				window.location.href = returnTo || '/';
+				window.location.href = getSafeReturnTo( returnTo );
 			} )
 			.catch( function () {
 				setMessage( 'Network error. Please try again.', 'error' );
