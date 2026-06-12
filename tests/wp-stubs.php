@@ -373,6 +373,9 @@ function get_bloginfo( $show = '', $filter = 'raw' ) {
 }
 
 function wp_login_url( $redirect = '', $force_reauth = false ) {
+	if ( isset( $GLOBALS['__mock_wp_login_url'] ) ) {
+		return $GLOBALS['__mock_wp_login_url'] . ( $redirect ? '?redirect_to=' . urlencode( $redirect ) : '' );
+	}
 	return 'https://example.test/wp-login.php' . ( $redirect ? '?redirect_to=' . urlencode( $redirect ) : '' );
 }
 
@@ -442,7 +445,19 @@ function get_editable_roles() {
 	);
 }
 
-function is_user_logged_in() { return (bool) ( $GLOBALS['__logged_in'] ?? false ); }
+function is_user_logged_in() {
+	return ! empty( $GLOBALS['__logged_in'] );
+}
+
+if ( ! function_exists( 'is_page' ) ) {
+	function is_page( $page = '' ) {
+		if ( isset( $GLOBALS['__mock_is_page'] ) ) {
+			return $GLOBALS['__mock_is_page'] === $page;
+		}
+		return false;
+	}
+}
+
 function shortcode_atts( $defaults, $atts, $shortcode = '' ) {
 	$atts = (array) $atts;
 	return array_merge( $defaults, array_intersect_key( $atts, $defaults ) );
