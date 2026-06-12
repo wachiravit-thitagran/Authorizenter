@@ -305,6 +305,14 @@ class Frontend {
 			return true;
 		}
 
+		// Support custom login URLs (e.g. from WPS Hide Login).
+		$login_url    = wp_login_url();
+		$login_path   = wp_parse_url( $login_url, PHP_URL_PATH );
+		$current_path = isset( $_SERVER['REQUEST_URI'] ) ? wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		if ( $login_path && $current_path && rtrim( $login_path, '/' ) === rtrim( $current_path, '/' ) ) {
+			return true;
+		}
+
 		if ( ! function_exists( 'Authorizenter\\Core\\authorizenter_core' ) ) {
 			return false;
 		}
