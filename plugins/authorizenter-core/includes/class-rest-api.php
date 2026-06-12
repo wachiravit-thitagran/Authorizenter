@@ -305,7 +305,7 @@ class Rest_Api {
 		// Provider-reported error (user denied, etc.).
 		$provider_error = $request->get_param( 'error' );
 		if ( $provider_error ) {
-			return $this->redirect_with_error( sanitize_text_field( $provider_error ) );
+			$this->redirect_with_error( sanitize_text_field( $provider_error ) );
 		}
 
 		$code  = (string) $request->get_param( 'code' );
@@ -318,7 +318,7 @@ class Rest_Api {
 			if ( ! empty( $data['redirect'] ) ) {
 				$this->redirect_to( $data['redirect'], true );
 			}
-			return $this->redirect_with_error( $result->get_error_code() );
+			$this->redirect_with_error( $result->get_error_code() );
 		}
 
 		$user      = $result['user'];
@@ -431,7 +431,7 @@ class Rest_Api {
 	 * Redirect the browser back to the login page with an error code.
 	 *
 	 * @param string $error_code Error code.
-	 * @return void
+	 * @return never
 	 */
 	private function redirect_with_error( $error_code ) {
 		$base = apply_filters( 'authorizenter_login_url', wp_login_url() );
@@ -449,7 +449,7 @@ class Rest_Api {
 	 *
 	 * @param string $url  Destination URL.
 	 * @param bool   $safe Restrict to allowed hosts (wp_safe_redirect) when true.
-	 * @return void
+	 * @return never
 	 */
 	private function redirect_to( $url, $safe = false ) {
 		$url = (string) $url;

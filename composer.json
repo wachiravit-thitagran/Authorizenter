@@ -14,7 +14,9 @@
         "wp-coding-standards/wpcs": "^3.1",
         "phpcompatibility/phpcompatibility-wp": "^2.1",
         "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
-        "phpunit/phpunit": "^9.6"
+        "phpunit/phpunit": "^9.6",
+        "phpstan/phpstan": "^2.2",
+        "szepeviktor/phpstan-wordpress": "^2.0"
     },
     "config": {
         "platform": {
@@ -27,6 +29,7 @@
     "scripts": {
         "lint": "phpcs --standard=phpcs.xml.dist plugins/",
         "lint:fix": "phpcbf --standard=phpcs.xml.dist plugins/",
+        "analyze": "phpstan analyze --memory-limit=1G",
         "test": "phpunit",
         "syntax": "find plugins tests -name '*.php' -print0 | xargs -0 -n1 -P4 php -l"
     }
