@@ -1,0 +1,16 @@
+includes:
+	- vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+	level: 5
+	bootstrapFiles:
+		- plugins/authorizenter-core/authorizenter-core.php
+		- plugins/authorizenter-ui/authorizenter-ui.php
+	paths:
+		- plugins/
+	excludePaths:
+		- plugins/*/vendor/*
+		- plugins/*/tests/*
+	treatPhpDocTypesAsCertain: false
+	ignoreErrors:
+		- '#Property .* is never read, only written.#'

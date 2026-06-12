@@ -146,7 +146,9 @@ function authorizenter_is_builder_preview() {
 }
 
 
-add_action( 'plugins_loaded', __NAMESPACE__ . '\\authorizenter_core' );
+add_action( 'plugins_loaded', function() {
+	authorizenter_core();
+} );
 
 // Lifecycle hooks.
 register_activation_hook( __FILE__, array( Plugin::class, 'activate' ) );

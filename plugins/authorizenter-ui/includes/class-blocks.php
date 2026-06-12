@@ -49,7 +49,7 @@ class Blocks {
 		register_block_type(
 			'authorizenter/login',
 			array(
-				'api_version'     => 2,
+				'api_version'     => '2',
 				'editor_script'   => 'authorizenter-blocks',
 				'render_callback' => array( $this, 'render_login' ),
 				'attributes'      => array(
@@ -64,7 +64,7 @@ class Blocks {
 		register_block_type(
 			'authorizenter/logout',
 			array(
-				'api_version'     => 2,
+				'api_version'     => '2',
 				'editor_script'   => 'authorizenter-blocks',
 				'render_callback' => array( $this, 'render_logout' ),
 				'attributes'      => array(
