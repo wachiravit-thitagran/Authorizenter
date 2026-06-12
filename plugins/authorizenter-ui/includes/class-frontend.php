@@ -209,8 +209,10 @@ class Frontend {
 
 		$error = isset( $_GET['authorizenter_error'] ) ? sanitize_text_field( wp_unslash( $_GET['authorizenter_error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
+		$is_login_page = $this->is_login_page();
+
 		ob_start();
-		$this->load_template( 'login.php', compact( 'providers', 'return_to', 'error', 'context_id' ) );
+		$this->load_template( 'login.php', compact( 'providers', 'return_to', 'error', 'context_id', 'is_login_page' ) );
 		return ob_get_clean();
 	}
 
@@ -275,7 +277,7 @@ class Frontend {
 			: \Authorizenter\UI\Logos::svg( $provider_id );
 
 		$onclick = '';
-		if ( '' === $return_to ) {
+		if ( '' === $return_to && ! $this->is_login_page() ) {
 			$onclick = ' onclick="document.cookie=\'authorizenter_redirect=\' + encodeURIComponent(window.location.href) + \'; path=/\';"';
 		}
 
@@ -286,6 +288,43 @@ class Frontend {
 				sprintf( esc_html__( 'Continue with %s', 'authorizenter' ), esc_html( $provider->label() ) ) .
 			'</span>' .
 			'</a>';
+	}
+
+	/**
+	 * Check if the current page is intended solely as a login page.
+	 *
+	 * Includes wp-login.php and all configured Authorizenter context login pages.
+	 * When true, buttons will not save the current URL to auto-return after login,
+	 * preventing users from getting stuck in a login page loop.
+	 *
+	 * @return bool
+	 */
+	public function is_login_page() {
+		global $pagenow;
+		if ( 'wp-login.php' === $pagenow ) {
+			return true;
+		}
+
+		if ( ! function_exists( 'Authorizenter\\Core\\authorizenter_core' ) ) {
+			return false;
+		}
+		$core     = \Authorizenter\Core\authorizenter_core();
+		$contexts = $core->settings->get( 'contexts' );
+
+		if ( is_array( $contexts ) ) {
+			foreach ( $contexts as $ctx ) {
+				if ( ! empty( $ctx['login_page_id'] ) && is_page( $ctx['login_page_id'] ) ) {
+					return true;
+				}
+			}
+		}
+
+		$default_login = get_option( \Authorizenter\UI\Page_Installer::OPT_LOGIN_PAGE );
+		if ( $default_login && is_page( $default_login ) ) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**

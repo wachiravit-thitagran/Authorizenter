@@ -38,7 +38,8 @@ $authorizenter_ctx = isset( $context_id ) ? $context_id : 'default';
 				);
 
 				$onclick = '';
-				if ( '' === $return_to ) {
+				$authorizenter_is_login = isset( $is_login_page ) ? $is_login_page : false;
+				if ( '' === $return_to && ! $authorizenter_is_login ) {
 					$onclick = ' onclick="document.cookie=\'authorizenter_redirect=\' + encodeURIComponent(window.location.href) + \'; path=/\';"';
 				}
 				?>
