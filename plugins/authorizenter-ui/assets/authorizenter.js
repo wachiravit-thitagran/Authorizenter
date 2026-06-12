@@ -14,6 +14,34 @@
 	var returnTo = container ? container.getAttribute( 'data-return-to' ) : '/';
 	var doneMessage = container ? container.getAttribute( 'data-done-message' ) : '';
 
+	function getSafeReturnTo( raw ) {
+		if ( ! raw ) {
+			return '/';
+		}
+		try {
+			var parsed = new URL( raw, window.location.origin );
+			if ( parsed.origin !== window.location.origin ) {
+				return '/';
+			}
+			if ( parsed.protocol !== 'http:' && parsed.protocol !== 'https:' ) {
+				return '/';
+			}
+			var safePath = parsed.pathname + parsed.search + parsed.hash;
+			if ( safePath.charAt( 0 ) !== '/' ) {
+				return '/';
+			}
+			if ( safePath.indexOf( '//' ) === 0 ) {
+				return '/';
+			}
+			if ( /%0d|%0a/i.test( safePath ) ) {
+				return '/';
+			}
+			return safePath;
+		} catch ( e ) {
+			return '/';
+		}
+	}
+
 	function setMessage( text, kind ) {
 		if ( ! message ) {
 			return;
@@ -77,7 +105,7 @@
 					return;
 				}
 				setMessage( 'Saved. Redirecting…', 'ok' );
-				window.location.href = returnTo || '/';
+				window.location.href = getSafeReturnTo( returnTo );
 			} )
 			.catch( function () {
 				setMessage( 'Network error. Please try again.', 'error' );
