@@ -105,11 +105,29 @@ class Admin_Settings {
 
 		// Providers.
 		$posted_providers = isset( $_POST['providers'] ) && is_array( $_POST['providers'] ) ? wp_unslash( $_POST['providers'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		foreach ( array_keys( $this->providers->classes() ) as $id ) {
+		
+		// Handle "Add New Provider"
+		if ( ! empty( $_POST['new_provider_id'] ) ) {
+			$new_id   = sanitize_key( wp_unslash( $_POST['new_provider_id'] ) );
+			$new_type = isset( $_POST['new_provider_type'] ) ? sanitize_key( wp_unslash( $_POST['new_provider_type'] ) ) : 'oidc';
+			if ( $new_id && ! isset( $posted_providers[ $new_id ] ) ) {
+				$posted_providers[ $new_id ] = array( 'type' => $new_type );
+			}
+		}
+
+		$provider_ids = array_unique( array_merge( array_keys( $this->providers->classes() ), array_keys( $posted_providers ) ) );
+		foreach ( $provider_ids as $id ) {
+			$id = sanitize_key( $id );
+			if ( '' === $id ) {
+				continue;
+			}
 			$p   = isset( $posted_providers[ $id ] ) && is_array( $posted_providers[ $id ] ) ? $posted_providers[ $id ] : array();
 			$cur = isset( $all['providers'][ $id ] ) && is_array( $all['providers'][ $id ] ) ? $all['providers'][ $id ] : array();
 
+			$type = isset( $p['type'] ) ? sanitize_key( $p['type'] ) : ( isset( $cur['type'] ) ? $cur['type'] : $id );
+
 			$entry = array(
+				'type'          => $type,
 				'enabled'       => ! empty( $p['enabled'] ),
 				'client_id'     => isset( $p['client_id'] ) ? sanitize_text_field( $p['client_id'] ) : '',
 				'discovery_url' => isset( $p['discovery_url'] ) ? esc_url_raw( $p['discovery_url'] ) : '',
@@ -131,7 +149,7 @@ class Admin_Settings {
 			}
 
 			// OIDC-only extended fields.
-			if ( 'oidc' === $id ) {
+			if ( 'oidc' === $type ) {
 				$entry['issuer_url']                  = isset( $p['issuer_url'] ) ? esc_url_raw( $p['issuer_url'] ) : '';
 				$entry['attr_username']               = isset( $p['attr_username'] ) ? sanitize_key( $p['attr_username'] ) : '';
 				$entry['attr_email']                  = isset( $p['attr_email'] ) ? sanitize_key( $p['attr_email'] ) : '';
@@ -953,14 +971,23 @@ class Admin_Settings {
 						<p><?php esc_html_e( 'Install and activate the Authorizenter UI plugin to customize the button label and icon. Core handles authentication only and does not render the SSO button, so these display settings are hidden until the UI plugin is active.', 'authorizenter' ); ?></p>
 					</div>
 				<?php endif; ?>
-				<?php foreach ( $classes as $id => $class ) : ?>
-					<?php
+				<?php 
+				$all_provider_ids = array_unique( array_merge( array_keys( $classes ), array_keys( $all['providers'] ) ) );
+				foreach ( $all_provider_ids as $id ) : 
 					$p          = isset( $all['providers'][ $id ] ) ? $all['providers'][ $id ] : array();
+					$type       = isset( $p['type'] ) ? $p['type'] : $id;
+					if ( ! isset( $classes[ $type ] ) ) {
+						continue;
+					}
 					$has_secret = ! empty( $p['client_secret'] );
-					$is_generic = ( 'oidc' === $id );
+					$is_generic = ( 'oidc' === $type );
+					$is_builtin = isset( $classes[ $id ] ) && $id === $type;
 					?>
-					<h3><?php echo esc_html( ucfirst( $id ) ); ?></h3>
+					<h3><?php echo esc_html( $is_builtin ? ucfirst( $id ) : $id . ' (' . ucfirst( $type ) . ')' ); ?></h3>
 					<table class="form-table" role="presentation">
+						<?php if ( ! $is_builtin ) : ?>
+							<input type="hidden" name="providers[<?php echo esc_attr( $id ); ?>][type]" value="<?php echo esc_attr( $type ); ?>" />
+						<?php endif; ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Enabled', 'authorizenter' ); ?></th>
 							<td><label><input type="checkbox" name="providers[<?php echo esc_attr( $id ); ?>][enabled]" value="1" <?php checked( ! empty( $p['enabled'] ) ); ?> /> <?php esc_html_e( 'Allow sign-in with this provider', 'authorizenter' ); ?></label></td>
@@ -1072,6 +1099,29 @@ class Admin_Settings {
 						<?php endif; ?>
 					</table>
 				<?php endforeach; ?>
+
+				<hr />
+				<h3><?php esc_html_e( 'Add New Provider', 'authorizenter' ); ?></h3>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'ID (slug)', 'authorizenter' ); ?></th>
+						<td>
+							<input type="text" class="regular-text" name="new_provider_id" placeholder="e.g. azuread" />
+							<p class="description"><?php esc_html_e( 'Alphanumeric and underscores only. Leave blank if not adding.', 'authorizenter' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Type', 'authorizenter' ); ?></th>
+						<td>
+							<select name="new_provider_type">
+								<?php foreach ( array_keys( $classes ) as $t ) : ?>
+									<option value="<?php echo esc_attr( $t ); ?>"><?php echo esc_html( ucfirst( $t ) ); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<p class="description"><?php esc_html_e( 'Fill ID and Type, then Save Changes to reveal configuration fields for this new provider.', 'authorizenter' ); ?></p>
+						</td>
+					</tr>
+				</table>
 
 				<?php $this->close_tab_panel(); ?>
 				<?php $this->open_tab_panel( 'policy', $tabs['policy'] ); ?>

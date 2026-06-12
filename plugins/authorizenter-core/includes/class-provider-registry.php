@@ -36,7 +36,7 @@ class Provider_Registry {
 	}
 
 	/**
-	 * Map of built-in provider id => class.
+	 * Map of built-in provider types => class.
 	 *
 	 * @return array
 	 */
@@ -51,7 +51,7 @@ class Provider_Registry {
 		/**
 		 * Filter the available provider classes. Add your own adapters here.
 		 *
-		 * @param array $classes Map of id => class-string extending Provider_Base.
+		 * @param array $classes Map of type => class-string extending Provider_Base.
 		 */
 		return apply_filters( 'authorizenter_provider_classes', $classes );
 	}
@@ -63,14 +63,31 @@ class Provider_Registry {
 	 * @return Provider_Base|null
 	 */
 	public function get( $id ) {
+		$all = $this->settings->get( 'providers' );
+		
+		// Ensure the provider is at least configured in settings
+		if ( ! isset( $all[ $id ] ) || ! is_array( $all[ $id ] ) ) {
+			// For backward compatibility: if a built-in provider isn't strictly in settings yet
+			// but matches a built-in type, we can return a blank configuration.
+			$classes = $this->classes();
+			if ( ! isset( $classes[ $id ] ) ) {
+				return null;
+			}
+			$config = array();
+			$type   = $id;
+		} else {
+			$config = $all[ $id ];
+			// Determine the type. If 'type' is not explicitly set, default to $id.
+			$type = isset( $config['type'] ) && '' !== $config['type'] ? $config['type'] : $id;
+		}
+
 		$classes = $this->classes();
-		if ( ! isset( $classes[ $id ] ) ) {
+		if ( ! isset( $classes[ $type ] ) ) {
 			return null;
 		}
-		$all          = $this->settings->get( 'providers' );
-		$config       = isset( $all[ $id ] ) && is_array( $all[ $id ] ) ? $all[ $id ] : array();
+
 		$config['id'] = $id;
-		$class        = $classes[ $id ];
+		$class        = $classes[ $type ];
 		return new $class( $this->settings, $config );
 	}
 
@@ -81,7 +98,12 @@ class Provider_Registry {
 	 */
 	public function enabled() {
 		$out = array();
-		foreach ( array_keys( $this->classes() ) as $id ) {
+		$all = $this->settings->get( 'providers' );
+		
+		// Standard built-in ids are always checked, plus any custom ids found in settings
+		$ids = array_unique( array_merge( array_keys( $this->classes() ), array_keys( $all ) ) );
+		
+		foreach ( $ids as $id ) {
 			$provider = $this->get( $id );
 			if ( $provider && $provider->is_enabled() ) {
 				$out[ $id ] = $provider;
