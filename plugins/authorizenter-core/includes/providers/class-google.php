@@ -20,7 +20,7 @@ class Google extends OIDC {
 	 * {@inheritDoc}
 	 */
 	public function id() {
-		return 'google';
+		return isset( $this->config['id'] ) ? (string) $this->config['id'] : 'google';
 	}
 
 	/**
