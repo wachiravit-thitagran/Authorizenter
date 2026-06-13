@@ -27,7 +27,7 @@ class Facebook extends Provider_Base {
 	 * {@inheritDoc}
 	 */
 	public function id() {
-		return 'facebook';
+		return isset( $this->config['id'] ) ? (string) $this->config['id'] : 'facebook';
 	}
 
 	/**
@@ -99,7 +99,7 @@ class Facebook extends Provider_Base {
 		}
 
 		return new Identity(
-			'facebook',
+			$this->id(),
 			array(
 				'sub'            => isset( $info['id'] ) ? $info['id'] : '',
 				'email'          => isset( $info['email'] ) ? $info['email'] : '',

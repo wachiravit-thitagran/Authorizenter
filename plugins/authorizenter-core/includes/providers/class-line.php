@@ -22,7 +22,7 @@ class Line extends OIDC {
 	 * {@inheritDoc}
 	 */
 	public function id() {
-		return 'line';
+		return isset( $this->config['id'] ) ? (string) $this->config['id'] : 'line';
 	}
 
 	/**
