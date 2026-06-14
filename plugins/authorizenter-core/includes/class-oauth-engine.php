@@ -126,9 +126,25 @@ class OAuth_Engine {
 			'return_to'     => $return_to,
 			'created'       => time(),
 		);
-		set_transient( $this->flow_key( $state ), $flow, self::FLOW_TTL );
 
-		return $provider->authorization_url( $state, $this->redirect_uri(), $code_challenge, $nonce );
+		/**
+		 * Filter the time-to-live (in seconds) for the transient OAuth flow state.
+		 *
+		 * @param int $ttl Default TTL (10 minutes).
+		 */
+		$ttl = apply_filters( 'authorizenter_flow_ttl', self::FLOW_TTL );
+		set_transient( $this->flow_key( $state ), $flow, $ttl );
+
+		$url = $provider->authorization_url( $state, $this->redirect_uri(), $code_challenge, $nonce );
+
+		/**
+		 * Filter the authorization URL before redirecting the user.
+		 *
+		 * @param string $url         The generated authorization URL.
+		 * @param string $provider_id Provider id.
+		 * @param array  $context     Resolved login context.
+		 */
+		return apply_filters( 'authorizenter_authorization_url', $url, $provider_id, $context );
 	}
 
 	/**
@@ -213,6 +229,13 @@ class OAuth_Engine {
 					'message'  => $identity->get_error_message(),
 				)
 			);
+			/**
+			 * Fires when login fails at the provider level.
+			 *
+			 * @param \WP_Error $identity Error object.
+			 * @param string    $provider Provider id.
+			 */
+			do_action( 'authorizenter_login_failed', $identity, $flow['provider'] );
 			return $identity;
 		}
 
@@ -262,6 +285,7 @@ class OAuth_Engine {
 					'message'  => $claims->get_error_message(),
 				)
 			);
+			do_action( 'authorizenter_login_failed', $claims, $provider->id() );
 			return $claims;
 		}
 
@@ -276,6 +300,7 @@ class OAuth_Engine {
 					'error'    => $identity->get_error_code(),
 				)
 			);
+			do_action( 'authorizenter_login_failed', $identity, $provider->id() );
 			return $identity;
 		}
 
@@ -303,6 +328,15 @@ class OAuth_Engine {
 	 * @return array|\WP_Error
 	 */
 	private function finish_login( Identity $identity, array $context, Provider_Base $provider, $return_to ) {
+		/**
+		 * Filter the initial post-login return destination.
+		 *
+		 * @param string        $return_to Destination URL.
+		 * @param array         $context   Resolved context.
+		 * @param Provider_Base $provider  Provider instance.
+		 */
+		$return_to = apply_filters( 'authorizenter_login_return_to', $return_to, $context, $provider );
+
 		/**
 		 * Inspect/short-circuit a freshly obtained identity.
 		 *
@@ -374,6 +408,16 @@ class OAuth_Engine {
 				'is_ssl'       => is_ssl(),
 			)
 		);
+
+		/**
+		 * Fires immediately before a user is signed into WordPress.
+		 *
+		 * @param \WP_User $user     WP_User object.
+		 * @param string   $provider Provider id.
+		 * @param Identity $identity The identity used.
+		 * @param array    $context  Resolved context.
+		 */
+		do_action( 'authorizenter_before_login', $user, $provider->id(), $identity, $context );
 
 		wp_set_current_user( $user->ID );
 		wp_set_auth_cookie( $user->ID, true );
@@ -489,6 +533,14 @@ class OAuth_Engine {
 
 		$destination = $this->sanitize_return_to( $return_to );
 		$destination = '' !== $destination ? $destination : home_url( '/' );
+
+		/**
+		 * Fires before the local WP logout and SSO logout process.
+		 *
+		 * @param int    $user_id     WP User ID.
+		 * @param string $provider_id Last used provider ID.
+		 */
+		do_action( 'authorizenter_before_logout', $user_id, $provider_id );
 
 		wp_logout();
 
