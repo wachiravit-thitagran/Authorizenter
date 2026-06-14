@@ -145,6 +145,35 @@ function authorizenter_is_builder_preview() {
 	return (bool) apply_filters( 'authorizenter_is_builder_preview', false );
 }
 
+/**
+ * Retrieve the stored provider identity data for a user.
+ *
+ * @param int    $user_id     WP User ID.
+ * @param string $provider_id Optional. Specific provider ID (e.g. 'google'). If empty, uses the user's last logged in provider.
+ * @return array|false The stored identity data, or false if not found.
+ */
+function authorizenter_get_provider_data( $user_id, $provider_id = '' ) {
+	if ( empty( $provider_id ) ) {
+		$provider_id = get_user_meta( $user_id, 'authorizenter_last_provider', true );
+	}
+	if ( empty( $provider_id ) ) {
+		return false;
+	}
+	$data = get_user_meta( $user_id, 'authorizenter_provider_data_' . $provider_id, true );
+	return is_array( $data ) ? $data : false;
+}
+
+/**
+ * Filter hook to retrieve provider data without directly calling the function.
+ * Enables other plugins to safely fetch data even if Authorizenter is deactivated.
+ *
+ * Usage:
+ * $data = apply_filters( 'authorizenter_get_provider_data', null, $user_id, $provider_id );
+ */
+add_filter( 'authorizenter_get_provider_data', function( $data, $user_id, $provider_id = '' ) {
+	$provider_data = authorizenter_get_provider_data( $user_id, $provider_id );
+	return false !== $provider_data ? $provider_data : $data;
+}, 10, 3 );
 
 add_action( 'plugins_loaded', function() {
 	authorizenter_core();
