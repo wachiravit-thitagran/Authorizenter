@@ -51,6 +51,18 @@ class User_Mapper {
 	 * @return \WP_User|\WP_Error
 	 */
 	public function resolve( Identity $identity, $context = null ) {
+		/**
+		 * Short-circuit user resolution. Return WP_User or WP_Error to bypass default logic.
+		 *
+		 * @param \WP_User|\WP_Error|null $user     Resolved user or error.
+		 * @param Identity                $identity Identity.
+		 * @param array|null              $context  Context.
+		 */
+		$pre = apply_filters( 'authorizenter_pre_resolve_user', null, $identity, $context );
+		if ( $pre instanceof \WP_User || is_wp_error( $pre ) ) {
+			return $pre;
+		}
+
 		$cfg = $this->settings->get( 'users' );
 		if ( is_array( $context ) && array_key_exists( 'auto_provision', $context ) ) {
 			$cfg['auto_provision'] = (bool) $context['auto_provision'];
@@ -117,15 +129,25 @@ class User_Mapper {
 
 		$role = $this->resolve_role( $identity, $cfg );
 
-		$user_id = wp_insert_user(
+		/**
+		 * Filter the arguments used to create a new user.
+		 *
+		 * @param array    $userdata User data array for wp_insert_user.
+		 * @param Identity $identity Source identity.
+		 */
+		$userdata = apply_filters(
+			'authorizenter_provision_userdata',
 			array(
 				'user_login'   => $username,
 				'user_email'   => $email,
 				'display_name' => '' !== $identity->name ? $identity->name : $username,
 				'user_pass'    => wp_generate_password( 32, true, true ),
 				'role'         => $role,
-			)
+			),
+			$identity
 		);
+
+		$user_id = wp_insert_user( $userdata );
 
 		if ( is_wp_error( $user_id ) ) {
 			return $user_id;
@@ -471,7 +493,15 @@ class User_Mapper {
 			case 'local':
 				return $this->regex_match( $value, (string) $local );
 			default:
-				return false;
+				/**
+				 * Allow custom role matchers (e.g. custom_type:value)
+				 *
+				 * @param bool     $matched  Whether the condition matched.
+				 * @param string   $type     The condition type.
+				 * @param string   $value    The condition value.
+				 * @param Identity $identity The user identity.
+				 */
+				return apply_filters( 'authorizenter_custom_role_condition', false, $type, $value, $identity );
 		}
 	}
 
@@ -521,7 +551,18 @@ class User_Mapper {
 	 * @return void
 	 */
 	private function store_link( $user_id, Identity $identity ) {
-		update_user_meta( $user_id, self::META_LINK_PREFIX . $identity->provider, $identity->sub );
+		$meta_key = self::META_LINK_PREFIX . $identity->provider;
+		$existing = get_user_meta( $user_id, $meta_key, true );
+		if ( $existing !== $identity->sub ) {
+			update_user_meta( $user_id, $meta_key, $identity->sub );
+			/**
+			 * Fires when a WordPress user is linked to a new provider identity.
+			 *
+			 * @param int      $user_id  WP_User ID.
+			 * @param Identity $identity Source identity.
+			 */
+			do_action( 'authorizenter_user_linked', $user_id, $identity );
+		}
 	}
 
 	/**
@@ -535,7 +576,15 @@ class User_Mapper {
 		$local = strstr( $email, '@', true );
 		$base  = sanitize_user( $local ? $local : ( $identity->provider . '_' . $identity->sub ), true );
 		$base  = $base ? $base : 'user_' . substr( md5( $identity->sub . $identity->provider ), 0, 8 );
-		return $base;
+
+		/**
+		 * Filter the generated base username.
+		 *
+		 * @param string   $base     The derived base username.
+		 * @param Identity $identity Source identity.
+		 * @param string   $email    Email address used for generation.
+		 */
+		return apply_filters( 'authorizenter_generate_username', $base, $identity, $email );
 	}
 
 	/**
@@ -576,8 +625,28 @@ class User_Mapper {
 				$update['last_name'] = $identity->last_name;
 			}
 		}
+
+		/**
+		 * Filter the user data to update when syncing names.
+		 *
+		 * @param array    $update   User data array.
+		 * @param \WP_User $user     WP_User object.
+		 * @param Identity $identity Source identity.
+		 * @param string   $mode     Name update mode (e.g., 'always', 'if_empty').
+		 */
+		$update = apply_filters( 'authorizenter_sync_user_name_data', $update, $user, $identity, $mode );
+
 		if ( count( $update ) > 1 ) {
 			wp_update_user( $update );
+
+			/**
+			 * Fires after user name data is updated from identity.
+			 *
+			 * @param \WP_User $user     WP_User object.
+			 * @param Identity $identity Source identity.
+			 * @param array    $update   The updated fields.
+			 */
+			do_action( 'authorizenter_user_name_updated', $user, $identity, $update );
 		}
 	}
 }
