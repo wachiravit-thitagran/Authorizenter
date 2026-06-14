@@ -185,4 +185,39 @@ class OAuthEngineTest extends TestCase {
 		$this->engine()->logout();
 		$this->assertTrue( $fired );
 	}
+
+	public function test_finish_login_saves_provider_data(): void {
+		update_option( Settings::OPTION, array( 'providers' => array( 'google' => array( 'enabled' => true, 'client_id' => 'g', 'client_secret' => 's' ) ) ) );
+		
+		$engine = $this->engine();
+		
+		$ref = new \ReflectionProperty( $engine, 'providers' );
+		$ref->setAccessible( true );
+		$providers = $ref->getValue( $engine );
+		$provider = $providers->get( 'google' );
+
+		$identity = new \Authorizenter\Core\Identity( 'google', array(
+			'sub'   => '123',
+			'email' => 'test@example.com',
+			'raw'   => array( 'raw_key' => 'raw_value' ),
+		) );
+
+		azr_test_make_user( 10, array( 'read' => true ), 'test@example.com' );
+		
+		// Map the user to skip provisioning since we made the user.
+		update_user_meta( 10, 'authorizenter_link_google', '123' );
+
+		$context = array( 'id' => 'default', 'redirect' => '' );
+
+		$result = $this->invoke( $engine, 'finish_login', array( $identity, $context, $provider, '' ) );
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 10, $result['user']->ID );
+
+		$saved_raw = get_user_meta( 10, 'authorizenter_provider_data_google', true );
+		$this->assertSame( array( 'raw_key' => 'raw_value' ), $saved_raw );
+		
+		$last_provider = get_user_meta( 10, 'authorizenter_last_provider', true );
+		$this->assertSame( 'google', $last_provider );
+	}
 }

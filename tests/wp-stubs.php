@@ -473,6 +473,9 @@ function shortcode_atts( $defaults, $atts, $shortcode = '' ) {
 }
 function wp_enqueue_style( ...$args ) {}
 function wp_enqueue_script( ...$args ) {}
+function is_ssl() { return false; }
+function wp_set_current_user( $id, $name = '' ) { return get_userdata( $id ); }
+function wp_set_auth_cookie( $user_id, $remember = false, $secure = '', $token = '' ) {}
 
 // --- Posts / Pages / Templates ----------------------------------------------
 
