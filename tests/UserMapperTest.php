@@ -245,4 +245,91 @@ class UserMapperTest extends TestCase {
 		$this->assertSame( 'Stay', get_user_meta( 32, 'first_name', true ) );
 		$this->assertSame( 'Same', get_user_meta( 32, 'last_name', true ) );
 	}
+
+	public function test_custom_role_condition_filter(): void {
+		$GLOBALS['__mock_filters']['authorizenter_custom_role_condition'] = function( $matched, $type, $value, $identity ) {
+			if ( 'group' === $type && 'admin' === $value && 'expected_sub' === $identity->sub ) {
+				return true;
+			}
+			return $matched;
+		};
+
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		
+		$ref = new \ReflectionMethod( $mapper, 'role_condition' );
+		$ref->setAccessible( true );
+		
+		$matched_true = $ref->invoke( $mapper, 'group:admin', new Identity( 'oidc', array( 'sub' => 'expected_sub' ) ) );
+		$this->assertTrue( $matched_true );
+		
+		$matched_false = $ref->invoke( $mapper, 'group:admin', new Identity( 'oidc', array( 'sub' => 'other' ) ) );
+		$this->assertFalse( $matched_false );
+	}
+
+	public function test_generate_username_filter(): void {
+		$GLOBALS['__mock_filters']['authorizenter_generate_username'] = function( $base, $identity, $email ) {
+			return 'custom_' . $identity->provider;
+		};
+
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		$identity = new Identity( 'github', array( 'sub' => '123' ) );
+
+		$ref = new \ReflectionMethod( $mapper, 'username_from' );
+		$ref->setAccessible( true );
+		$base = $ref->invoke( $mapper, $identity, 'test@example.com' );
+
+		$this->assertSame( 'custom_github', $base );
+	}
+
+	public function test_sync_user_name_data_filter(): void {
+		azr_test_make_user( 40, array( 'read' => true ), 'u40@example.test' );
+		
+		$GLOBALS['__mock_filters']['authorizenter_sync_user_name_data'] = function( $update, $user, $identity, $mode ) {
+			$update['first_name'] = 'FilteredFirst';
+			$update['last_name']  = 'FilteredLast';
+			return $update;
+		};
+
+		$identity = new Identity( 'oidc', array(
+			'sub'        => 'SUB-40',
+			'first_name' => 'OriginalFirst',
+			'last_name'  => 'OriginalLast',
+		) );
+		
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		
+		$ref = new \ReflectionMethod( $mapper, 'maybe_update_name' );
+		$ref->setAccessible( true );
+		$ref->invoke( $mapper, get_user_by( 'id', 40 ), $identity, array( 'name_update' => 'always' ) );
+
+		$this->assertSame( 'FilteredFirst', get_user_meta( 40, 'first_name', true ) );
+		$this->assertSame( 'FilteredLast', get_user_meta( 40, 'last_name', true ) );
+	}
+
+	public function test_user_name_updated_action_fires(): void {
+		azr_test_make_user( 41, array( 'read' => true ), 'u41@example.test' );
+
+		$fired = false;
+		$GLOBALS['__mock_actions']['authorizenter_user_name_updated'] = function( $user, $identity, $update ) use ( &$fired ) {
+			$fired = true;
+		};
+
+		$identity = new Identity( 'oidc', array(
+			'sub'        => 'SUB-41',
+			'first_name' => 'NewFirst',
+			'last_name'  => 'NewLast',
+		) );
+		
+		$settings = new Settings();
+		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
+		
+		$ref = new \ReflectionMethod( $mapper, 'maybe_update_name' );
+		$ref->setAccessible( true );
+		$ref->invoke( $mapper, get_user_by( 'id', 41 ), $identity, array( 'name_update' => 'always' ) );
+
+		$this->assertTrue( $fired );
+	}
 }

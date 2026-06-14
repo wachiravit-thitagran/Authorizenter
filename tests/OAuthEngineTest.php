@@ -151,4 +151,38 @@ class OAuthEngineTest extends TestCase {
 		$this->assertStringContainsString( 'azr_pending_token=', $data['redirect'] );
 		$this->assertStringContainsString( 'abc123', $data['redirect'] );
 	}
+
+	public function test_flow_ttl_filter_applied(): void {
+		update_option( Settings::OPTION, array( 'providers' => array( 'facebook' => array( 'enabled' => true, 'client_id' => 'f' ) ) ) );
+		
+		$filter_ran = false;
+		$GLOBALS['__mock_filters']['authorizenter_flow_ttl'] = function( $ttl ) use ( &$filter_ran ) {
+			$filter_ran = true;
+			return $ttl;
+		};
+
+		$this->engine()->begin( 'facebook', '' );
+		$this->assertTrue( $filter_ran );
+	}
+
+	public function test_authorization_url_filter(): void {
+		update_option( Settings::OPTION, array( 'providers' => array( 'facebook' => array( 'enabled' => true, 'client_id' => 'f' ) ) ) );
+		
+		$GLOBALS['__mock_filters']['authorizenter_authorization_url'] = function( $url ) {
+			return $url . '&custom_hook=1';
+		};
+
+		$result = $this->engine()->begin( 'facebook', '' );
+		$this->assertStringContainsString( '&custom_hook=1', $result );
+	}
+
+	public function test_before_logout_action_fires(): void {
+		$fired = false;
+		$GLOBALS['__mock_actions']['authorizenter_before_logout'] = function( $user_id, $provider_id ) use ( &$fired ) {
+			$fired = true;
+		};
+
+		$this->engine()->logout();
+		$this->assertTrue( $fired );
+	}
 }
