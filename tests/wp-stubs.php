@@ -47,6 +47,8 @@ function azr_test_reset() {
 	$GLOBALS['__mock_pages_by_path']   = array();
 	$GLOBALS['__mock_posts']           = array();
 	$GLOBALS['__next_post_id']         = 1;
+	$GLOBALS['__mock_filters']         = array();
+	$GLOBALS['__mock_actions']         = array();
 }
 
 /** Register a fake user. */
@@ -285,9 +287,16 @@ class WPDB_Stub {
 
 $GLOBALS['wpdb'] = new WPDB_Stub();
 
-function do_action() {}
+function do_action( $tag, ...$args ) {
+	if ( isset( $GLOBALS['__mock_actions'][ $tag ] ) ) {
+		call_user_func_array( $GLOBALS['__mock_actions'][ $tag ], $args );
+	}
+}
 function add_filter() { return true; }
 function add_action() { return true; }
+
+function get_current_user_id() { return 0; }
+function wp_logout() {}
 
 function apply_filters( $tag, $value = null ) {
 	global $wp_filter;
