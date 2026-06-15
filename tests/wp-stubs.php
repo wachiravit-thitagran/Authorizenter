@@ -20,6 +20,38 @@ if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 	define( 'HOUR_IN_SECONDS', 3600 );
 }
 
+if ( ! function_exists( 'trailingslashit' ) ) {
+	function trailingslashit( $string ) {
+		return rtrim( $string, '/\\' ) . '/';
+	}
+}
+
+if ( ! function_exists( 'plugin_dir_path' ) ) {
+	function plugin_dir_path( $file ) {
+		return trailingslashit( dirname( $file ) );
+	}
+}
+
+if ( ! function_exists( 'register_activation_hook' ) ) {
+	function register_activation_hook( $file, $function ) {}
+}
+
+if ( ! function_exists( 'register_deactivation_hook' ) ) {
+	function register_deactivation_hook( $file, $function ) {}
+}
+
+if ( ! function_exists( 'plugin_dir_path' ) ) {
+	function plugin_dir_path( $file ) {
+		return trailingslashit( dirname( $file ) );
+	}
+}
+
+if ( ! function_exists( 'plugin_dir_url' ) ) {
+	function plugin_dir_url( $file ) {
+		return 'https://example.test/wp-content/plugins/authorizenter/';
+	}
+}
+
 $GLOBALS['__options']    = array();
 $GLOBALS['__usermeta']   = array();
 $GLOBALS['__users']      = array();

@@ -78,89 +78,96 @@ foreach ( array( AUTHORIZENTER_CORE_DIR . 'vendor/autoload.php', dirname( AUTHOR
 	}
 }
 
-/**
- * Boot the plugin once all plugins are loaded.
- *
- * @return Plugin
- */
-function authorizenter_core() {
-	static $instance = null;
-	if ( null === $instance ) {
-		$instance = new Plugin();
-	}
-	return $instance;
-}
-
-/**
- * Write a diagnostic line to the PHP error log when WordPress debugging is on.
- *
- * Gated on WP_DEBUG, so it uses the standard WordPress debug switch — set
- * `define( 'WP_DEBUG', true );` (and `WP_DEBUG_LOG` to capture it in
- * wp-content/debug.log). Lines are prefixed with [authorizenter] for easy
- * grepping. Never logs secrets or tokens — only flow state useful for diagnosing
- * login issues.
- *
- * @param string $message Message.
- * @param array  $context Optional key/value context appended as JSON.
- * @return void
- */
-function authorizenter_log( $message, array $context = array() ) {
-	if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
-		return;
-	}
-	$line = '[authorizenter] ' . $message;
-	if ( ! empty( $context ) ) {
-		$line .= ' ' . wp_json_encode( $context );
-	}
-	error_log( $line ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-}
-
-/**
- * Whether the current request is a page-builder editor/preview, where the
- * logged-in admin should still see login UI (buttons/URLs) so they can design
- * with it — otherwise those shortcodes render nothing for logged-in users.
- *
- * Detects Elementor out of the box; other builders can opt in via the
- * `authorizenter_is_builder_preview` filter.
- *
- * @return bool
- */
-function authorizenter_is_builder_preview() {
-	if ( class_exists( '\\Elementor\\Plugin' ) ) {
-		$elementor = \Elementor\Plugin::instance();
-		if ( isset( $elementor->editor ) && method_exists( $elementor->editor, 'is_edit_mode' ) && $elementor->editor->is_edit_mode() ) {
-			return true;
-		}
-		if ( isset( $elementor->preview ) && method_exists( $elementor->preview, 'is_preview_mode' ) && $elementor->preview->is_preview_mode() ) {
-			return true;
-		}
-	}
-
+if ( ! function_exists( __NAMESPACE__ . '\authorizenter_core' ) ) {
 	/**
-	 * Filter whether to treat this request as a builder preview (force-render the
-	 * login button/URL even for logged-in users).
+	 * Boot the plugin once all plugins are loaded.
 	 *
-	 * @param bool $is_preview Current decision.
+	 * @return Plugin
 	 */
-	return (bool) apply_filters( 'authorizenter_is_builder_preview', false );
+	function authorizenter_core() {
+		static $instance = null;
+		if ( null === $instance ) {
+			$instance = new Plugin();
+		}
+		return $instance;
+	}
 }
 
-/**
- * Retrieve the stored provider identity data for a user.
- *
- * @param int    $user_id     WP User ID.
- * @param string $provider_id Optional. Specific provider ID (e.g. 'google'). If empty, uses the user's last logged in provider.
- * @return array|false The stored identity data, or false if not found.
- */
-function authorizenter_get_provider_data( $user_id, $provider_id = '' ) {
-	if ( empty( $provider_id ) ) {
-		$provider_id = get_user_meta( $user_id, 'authorizenter_last_provider', true );
+if ( ! function_exists( __NAMESPACE__ . '\authorizenter_log' ) ) {
+	/**
+	 * Write a diagnostic line to the PHP error log when WordPress debugging is on.
+	 *
+	 * Gated on WP_DEBUG, so it uses the standard WordPress debug switch — set
+	 * `define( 'WP_DEBUG', true );` (and `WP_DEBUG_LOG` to capture it in
+	 * wp-content/debug.log). Lines are prefixed with [authorizenter] for easy
+	 * grepping. Never logs secrets or tokens — only flow state useful for diagnosing
+	 * issues in production.
+	 *
+	 * @param string $message Message.
+	 * @param array  $context Optional structured context array.
+	 */
+	function authorizenter_log( $message, array $context = array() ) {
+		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+			return;
+		}
+		$line = '[authorizenter] ' . $message;
+		if ( ! empty( $context ) ) {
+			$line .= ' ' . wp_json_encode( $context );
+		}
+		error_log( $line ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	}
-	if ( empty( $provider_id ) ) {
-		return false;
+}
+
+if ( ! function_exists( __NAMESPACE__ . '\authorizenter_is_builder_preview' ) ) {
+	/**
+	 * Whether the current request is a page-builder editor/preview, where the
+	 * logged-in admin should still see login UI (buttons/URLs) so they can design
+	 * with it — otherwise those shortcodes render nothing for logged-in users.
+	 *
+	 * Detects Elementor out of the box; other builders can opt in via the
+	 * `authorizenter_is_builder_preview` filter.
+	 *
+	 * @return bool
+	 */
+	function authorizenter_is_builder_preview() {
+		if ( class_exists( '\\Elementor\\Plugin' ) ) {
+			$elementor = \Elementor\Plugin::instance();
+			if ( isset( $elementor->editor ) && method_exists( $elementor->editor, 'is_edit_mode' ) && $elementor->editor->is_edit_mode() ) {
+				return true;
+			}
+			if ( isset( $elementor->preview ) && method_exists( $elementor->preview, 'is_preview_mode' ) && $elementor->preview->is_preview_mode() ) {
+				return true;
+			}
+		}
+
+		/**
+		 * Filter whether to treat this request as a builder preview (force-render the
+		 * login button/URL even for logged-in users).
+		 *
+		 * @param bool $is_preview Current decision.
+		 */
+		return (bool) apply_filters( 'authorizenter_is_builder_preview', false );
 	}
-	$data = get_user_meta( $user_id, 'authorizenter_provider_data_' . $provider_id, true );
-	return is_array( $data ) ? $data : false;
+}
+
+if ( ! function_exists( __NAMESPACE__ . '\authorizenter_get_provider_data' ) ) {
+	/**
+	 * Retrieve the stored provider identity data for a user.
+	 *
+	 * @param int    $user_id     WP User ID.
+	 * @param string $provider_id Optional. Specific provider ID (e.g. 'google'). If empty, uses the user's last logged in provider.
+	 * @return array|false The stored identity data, or false if not found.
+	 */
+	function authorizenter_get_provider_data( $user_id, $provider_id = '' ) {
+		if ( empty( $provider_id ) ) {
+			$provider_id = get_user_meta( $user_id, 'authorizenter_last_provider', true );
+		}
+		if ( empty( $provider_id ) ) {
+			return false;
+		}
+		$data = get_user_meta( $user_id, 'authorizenter_provider_data_' . $provider_id, true );
+		return is_array( $data ) ? $data : false;
+	}
 }
 
 /**
