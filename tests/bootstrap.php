@@ -26,6 +26,7 @@ require $inc . 'class-provider-base.php';
 require $inc . 'class-jwt-verifier.php';
 require $inc . 'class-oidc-client.php';
 require $inc . 'providers/class-oidc.php';
+require $inc . 'providers/class-oauth2.php';
 require $inc . 'providers/class-google.php';
 require $inc . 'providers/class-line.php';
 require $inc . 'providers/class-facebook.php';

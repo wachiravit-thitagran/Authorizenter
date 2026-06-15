@@ -981,6 +981,7 @@ class Admin_Settings {
 					}
 					$has_secret = ! empty( $p['client_secret'] );
 					$is_generic = ( 'oidc' === $type );
+					$is_oauth2  = ( 'oauth2' === $type );
 					$is_builtin = isset( $classes[ $id ] ) && $id === $type;
 					?>
 					<h3><?php echo esc_html( $is_builtin ? ucfirst( $id ) : $id . ' (' . ucfirst( $type ) . ')' ); ?></h3>
@@ -1016,9 +1017,25 @@ class Admin_Settings {
 								<p class="description"><?php esc_html_e( 'Your organization IdP (Azure AD, Keycloak, Okta, university SSO, ...).', 'authorizenter' ); ?></p>
 							</td>
 						</tr>
+						<?php endif; ?>
+						<?php if ( $is_oauth2 ) : ?>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Authorization Endpoint', 'authorizenter' ); ?></th>
+							<td><input type="url" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][authorization_endpoint]" value="<?php echo esc_attr( isset( $p['authorization_endpoint'] ) ? $p['authorization_endpoint'] : '' ); ?>" placeholder="https://provider.example.org/oauth/authorize" /></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Token Endpoint', 'authorizenter' ); ?></th>
+							<td><input type="url" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][token_endpoint]" value="<?php echo esc_attr( isset( $p['token_endpoint'] ) ? $p['token_endpoint'] : '' ); ?>" placeholder="https://provider.example.org/oauth/token" /></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'User Info Endpoint', 'authorizenter' ); ?></th>
+							<td><input type="url" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][userinfo_endpoint]" value="<?php echo esc_attr( isset( $p['userinfo_endpoint'] ) ? $p['userinfo_endpoint'] : '' ); ?>" placeholder="https://provider.example.org/api/user" /></td>
+						</tr>
+						<?php endif; ?>
+						<?php if ( $is_generic || $is_oauth2 ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Scopes', 'authorizenter' ); ?></th>
-							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][scopes]" value="<?php echo esc_attr( isset( $p['scopes'] ) ? $p['scopes'] : '' ); ?>" placeholder="openid email profile" /></td>
+							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][scopes]" value="<?php echo esc_attr( isset( $p['scopes'] ) ? $p['scopes'] : '' ); ?>" placeholder="<?php echo esc_attr( $is_generic ? 'openid email profile' : '' ); ?>" /></td>
 						</tr>
 							<?php if ( $ui_active ) : ?>
 						<tr>
@@ -1029,6 +1046,7 @@ class Admin_Settings {
 							</td>
 						</tr>
 						<?php endif; ?>
+						<?php if ( $is_generic ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Issuer URL', 'authorizenter' ); ?></th>
 							<td>
@@ -1036,6 +1054,7 @@ class Admin_Settings {
 								<p class="description"><?php esc_html_e( 'Override the issuer from the discovery document. Leave blank to use the discovery value.', 'authorizenter' ); ?></p>
 							</td>
 						</tr>
+						<?php endif; ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Username attribute', 'authorizenter' ); ?></th>
 							<td><input type="text" class="regular-text" name="providers[<?php echo esc_attr( $id ); ?>][attr_username]" value="<?php echo esc_attr( isset( $p['attr_username'] ) ? $p['attr_username'] : '' ); ?>" placeholder="sub" /></td>
@@ -1081,10 +1100,12 @@ class Admin_Settings {
 								<p class="description"><?php esc_html_e( 'Stored encrypted. Leave blank to keep the existing key.', 'authorizenter' ); ?></p>
 							</td>
 						</tr>
+						<?php if ( $is_generic ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Require verified email', 'authorizenter' ); ?></th>
 							<td><label><input type="checkbox" name="providers[<?php echo esc_attr( $id ); ?>][oidc_require_verified_email]" value="1" <?php checked( ! empty( $p['oidc_require_verified_email'] ) ); ?> /> <?php esc_html_e( 'User must have a verified email address (email_verified claim) to sign in.', 'authorizenter' ); ?></label></td>
 						</tr>
+						<?php endif; ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Trust email from this IdP', 'authorizenter' ); ?></th>
 							<td>
@@ -1114,9 +1135,8 @@ class Admin_Settings {
 						<th scope="row"><?php esc_html_e( 'Type', 'authorizenter' ); ?></th>
 						<td>
 							<select name="new_provider_type">
-								<?php foreach ( array_keys( $classes ) as $t ) : ?>
-									<option value="<?php echo esc_attr( $t ); ?>"><?php echo esc_html( ucfirst( $t ) ); ?></option>
-								<?php endforeach; ?>
+								<option value="oauth2"><?php esc_html_e( 'OAuth2 (Generic)', 'authorizenter' ); ?></option>
+								<option value="oidc"><?php esc_html_e( 'OIDC (Generic OpenID Connect)', 'authorizenter' ); ?></option>
 							</select>
 							<p class="description"><?php esc_html_e( 'Fill ID and Type, then Save Changes to reveal configuration fields for this new provider.', 'authorizenter' ); ?></p>
 						</td>

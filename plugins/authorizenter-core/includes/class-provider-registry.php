@@ -8,6 +8,7 @@
 namespace Authorizenter\Core;
 
 use Authorizenter\Core\Providers\OIDC;
+use Authorizenter\Core\Providers\OAuth2;
 use Authorizenter\Core\Providers\Google;
 use Authorizenter\Core\Providers\Line;
 use Authorizenter\Core\Providers\Facebook;
@@ -46,6 +47,7 @@ class Provider_Registry {
 			'line'     => Line::class,
 			'facebook' => Facebook::class,
 			'oidc'     => OIDC::class,
+			'oauth2'   => OAuth2::class,
 		);
 
 		/**
