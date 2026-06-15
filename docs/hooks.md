@@ -53,3 +53,7 @@ These actions fire at various stages of the login and logout lifecycle.
 - **`authorizenter_provider_classes`** (Filter): Register custom identity provider classes.
 - **`authorizenter_oidc_client`** (Filter): Intercept the `Oidc_Client` instance to adjust underlying OpenID Connect configurations.
 - **`authorizenter_sso_logout`** (Filter): Enable or disable Single Logout (RP-Initiated Logout) for specific providers.
+
+## 6. Data Retrieval
+
+- **`authorizenter_get_provider_data`** (Filter): Retrieve raw identity data obtained from the provider (e.g. Google, Facebook) for a specific user. Use `apply_filters( 'authorizenter_get_provider_data', null, $user_id, $provider_id )`.
