@@ -134,6 +134,9 @@ add_filter( 'authorizenter_allowed_domains', function ( $domains ) {
     $domains[] = 'alumni.psu.ac.th';
     return $domains;
 } );
+
+// Retrieve raw provider identity data for a user
+$data = apply_filters( 'authorizenter_get_provider_data', null, $user_id, 'google' );
 ```
 
 REST endpoints (namespace `authorizenter/v1`): `GET /providers`, `GET /authorize/{provider}`, `GET /callback`, `GET /questions`, `POST /answers`.
