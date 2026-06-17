@@ -129,7 +129,7 @@ class OAuth2 extends Provider_Base {
 			array(
 				'sub'            => $sub,
 				'email'          => $email,
-				'email_verified' => false, // Plain OAuth2 providers typically do not assert email verification
+				'email_verified' => false, // Plain OAuth2 providers typically do not assert email verification.
 				'name'           => $name,
 				'first_name'     => $first,
 				'last_name'      => $last,
