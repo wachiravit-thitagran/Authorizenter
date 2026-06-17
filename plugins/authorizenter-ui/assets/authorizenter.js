@@ -4,7 +4,7 @@
 ( function () {
 	'use strict';
 
-	document.addEventListener( 'DOMContentLoaded', function () {
+	function initQuestionsForm() {
 		var form = document.getElementById( 'authorizenter-questions-form' );
 		if ( ! form || typeof window.AuthorizenterUI === 'undefined' ) {
 			return;
@@ -82,7 +82,13 @@
 					setMessage( 'Network error. Please try again.', 'error' );
 				} );
 		} );
-	} );
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', initQuestionsForm );
+	} else {
+		initQuestionsForm();
+	}
 } )();
 
 /**
@@ -91,7 +97,7 @@
 ( function () {
 	'use strict';
 
-	document.addEventListener( 'DOMContentLoaded', function () {
+	function initLoginForm() {
 		var form = document.getElementById( 'authorizenter-login-form' );
 		if ( ! form ) {
 			return;
@@ -166,5 +172,11 @@
 					setError( 'Network error. Please try again.' );
 				} );
 		} );
-	} );
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', initLoginForm );
+	} else {
+		initLoginForm();
+	}
 } )();
