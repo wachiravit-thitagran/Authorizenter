@@ -91,9 +91,10 @@ class OAuth_Engine {
 	 * @param string $provider_id   Provider id.
 	 * @param string $return_to     Where to send the user after success (relative or same-host URL).
 	 * @param string $context_id    Login context id (e.g. "default", "admin").
+	 * @param array  $extra_data    Optional injected form data.
 	 * @return string|\WP_Error
 	 */
-	public function begin( $provider_id, $return_to = '', $context_id = 'default' ) {
+	public function begin( $provider_id, $return_to = '', $context_id = 'default', $extra_data = array() ) {
 		$provider = $this->providers->get( $provider_id );
 		if ( ! $provider || ! $provider->is_enabled() ) {
 			return new \WP_Error( 'authorizenter_provider_disabled', __( 'This sign-in method is not available.', 'authorizenter' ), array( 'status' => 400 ) );
@@ -109,7 +110,7 @@ class OAuth_Engine {
 
 		// OIDC providers (Google, LINE, generic) are driven by jumbojett.
 		if ( $provider->is_oidc() ) {
-			return $this->begin_oidc( $provider, $context, $return_to );
+			return $this->begin_oidc( $provider, $context, $return_to, $extra_data );
 		}
 
 		// Legacy OAuth2 path (e.g. Facebook): our own state/nonce/PKCE + transient.
@@ -124,6 +125,7 @@ class OAuth_Engine {
 			'nonce'         => $nonce,
 			'code_verifier' => $code_verifier,
 			'return_to'     => $return_to,
+			'extra_data'    => $extra_data,
 			'created'       => time(),
 		);
 
@@ -150,18 +152,20 @@ class OAuth_Engine {
 	/**
 	 * Begin an OIDC login via jumbojett (redirects + exits on success).
 	 *
-	 * @param Provider_Base $provider  OIDC provider.
-	 * @param array         $context   Resolved context.
-	 * @param string        $return_to Sanitized post-login destination.
+	 * @param Provider_Base $provider   OIDC provider.
+	 * @param array         $context    Resolved context.
+	 * @param string        $return_to  Sanitized post-login destination.
+	 * @param array         $extra_data Optional injected form data.
 	 * @return \WP_Error Returns only on failure.
 	 */
-	private function begin_oidc( Provider_Base $provider, array $context, $return_to ) {
+	private function begin_oidc( Provider_Base $provider, array $context, $return_to, $extra_data = array() ) {
 		$this->maybe_start_session();
 		$_SESSION[ self::SESSION_KEY ] = array(
-			'provider'  => $provider->id(),
-			'context'   => $context['id'],
-			'return_to' => $return_to,
-			'created'   => time(),
+			'provider'   => $provider->id(),
+			'context'    => $context['id'],
+			'return_to'  => $return_to,
+			'extra_data' => $extra_data,
+			'created'    => time(),
 		);
 
 		// start() redirects the browser to the IdP and exits on success.
@@ -248,8 +252,9 @@ class OAuth_Engine {
 			)
 		);
 
-		$return_to = isset( $flow['return_to'] ) ? $flow['return_to'] : '';
-		return $this->finish_login( $identity, $context, $provider, $return_to );
+		$return_to  = isset( $flow['return_to'] ) ? $flow['return_to'] : '';
+		$extra_data = isset( $flow['extra_data'] ) ? $flow['extra_data'] : array();
+		return $this->finish_login( $identity, $context, $provider, $return_to, $extra_data );
 	}
 
 	/**
@@ -313,21 +318,23 @@ class OAuth_Engine {
 			)
 		);
 
-		$return_to = isset( $session['return_to'] ) ? $session['return_to'] : '';
-		return $this->finish_login( $identity, $context, $provider, $return_to );
+		$return_to  = isset( $session['return_to'] ) ? $session['return_to'] : '';
+		$extra_data = isset( $session['extra_data'] ) ? $session['extra_data'] : array();
+		return $this->finish_login( $identity, $context, $provider, $return_to, $extra_data );
 	}
 
 	/**
 	 * Shared post-identity pipeline: identity filter, policy, provisioning, the
 	 * per-context capability gate, then sign the user in.
 	 *
-	 * @param Identity      $identity  Normalized identity.
-	 * @param array         $context   Resolved login context.
-	 * @param Provider_Base $provider  Provider that produced the identity.
-	 * @param string        $return_to Post-login destination.
+	 * @param Identity      $identity   Normalized identity.
+	 * @param array         $context    Resolved login context.
+	 * @param Provider_Base $provider   Provider that produced the identity.
+	 * @param string        $return_to  Post-login destination.
+	 * @param array         $extra_data Optional injected form data.
 	 * @return array|\WP_Error
 	 */
-	private function finish_login( Identity $identity, array $context, Provider_Base $provider, $return_to ) {
+	private function finish_login( Identity $identity, array $context, Provider_Base $provider, $return_to, $extra_data = array() ) {
 		/**
 		 * Filter the initial post-login return destination.
 		 *
@@ -417,12 +424,13 @@ class OAuth_Engine {
 		/**
 		 * Fires immediately before a user is signed into WordPress.
 		 *
-		 * @param \WP_User $user     WP_User object.
-		 * @param string   $provider Provider id.
-		 * @param Identity $identity The identity used.
-		 * @param array    $context  Resolved context.
+		 * @param \WP_User $user       WP_User object.
+		 * @param string   $provider   Provider id.
+		 * @param Identity $identity   The identity used.
+		 * @param array    $context    Resolved context.
+		 * @param array    $extra_data Injected form data from the login page.
 		 */
-		do_action( 'authorizenter_before_login', $user, $provider->id(), $identity, $context );
+		do_action( 'authorizenter_before_login', $user, $provider->id(), $identity, $context, $extra_data );
 
 		wp_set_current_user( $user->ID );
 		wp_set_auth_cookie( $user->ID, true );
@@ -441,12 +449,13 @@ class OAuth_Engine {
 		/**
 		 * Fires after a successful Authorizenter login.
 		 *
-		 * @param \WP_User $user     The logged-in user.
-		 * @param string   $provider Provider id.
-		 * @param Identity $identity The identity used.
-		 * @param array    $context  Resolved login context.
+		 * @param \WP_User $user       The logged-in user.
+		 * @param string   $provider   Provider id.
+		 * @param Identity $identity   The identity used.
+		 * @param array    $context    Resolved login context.
+		 * @param array    $extra_data Injected form data from the login page.
 		 */
-		do_action( 'authorizenter_login_success', $user, $provider->id(), $identity, $context );
+		do_action( 'authorizenter_login_success', $user, $provider->id(), $identity, $context, $extra_data );
 
 		// Context redirect wins over return_to when configured.
 		$destination = '' !== $context['redirect'] ? $context['redirect'] : (string) $return_to;

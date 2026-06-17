@@ -111,6 +111,21 @@ class Rest_Api {
 
 		register_rest_route(
 			$ns,
+			'/authorize',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'authorize' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'provider'  => array( 'sanitize_callback' => 'sanitize_key' ),
+					'return_to' => array( 'sanitize_callback' => 'esc_url_raw' ),
+					'context'   => array( 'sanitize_callback' => 'sanitize_key' ),
+				),
+			)
+		);
+
+		register_rest_route(
+			$ns,
 			'/callback',
 			array(
 				'methods'             => 'GET',
@@ -260,6 +275,13 @@ class Rest_Api {
 		$provider  = $request->get_param( 'provider' );
 		$return_to = (string) $request->get_param( 'return_to' );
 
+		// Allow other plugins to validate injected login form fields.
+		$errors = new \WP_Error();
+		do_action_ref_array( 'authorizenter_authorize_validation', array( &$errors, $request ) );
+		if ( $errors->has_errors() ) {
+			return $this->error_response( $errors );
+		}
+
 		if ( '' === $return_to && isset( $_COOKIE['authorizenter_redirect'] ) ) {
 			$return_to = wp_validate_redirect( esc_url_raw( wp_unslash( $_COOKIE['authorizenter_redirect'] ) ), '' );
 			setcookie( 'authorizenter_redirect', '', time() - 3600, '/' );
@@ -268,7 +290,10 @@ class Rest_Api {
 		$context = (string) $request->get_param( 'context' );
 		$context = '' !== $context ? $context : 'default';
 
-		$url = $this->engine->begin( $provider, $return_to, $context );
+		$extra_data = $request->get_params();
+		unset( $extra_data['provider'], $extra_data['return_to'], $extra_data['context'] );
+
+		$url = $this->engine->begin( $provider, $return_to, $context, $extra_data );
 		if ( is_wp_error( $url ) ) {
 			return $this->error_response( $url );
 		}
@@ -282,6 +307,11 @@ class Rest_Api {
 					array( 'status' => 500 )
 				)
 			);
+		}
+
+		// If this is an AJAX/POST request from our login form, return the URL as JSON.
+		if ( 'POST' === $request->get_method() ) {
+			return new \WP_REST_Response( array( 'url' => $url ), 200 );
 		}
 
 		// External IdP URL by design.
