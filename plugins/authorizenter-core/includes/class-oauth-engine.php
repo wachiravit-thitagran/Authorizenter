@@ -394,7 +394,7 @@ class OAuth_Engine {
 
 		// Remember which provider/context this user last used (for SSO logout).
 		update_user_meta( $user->ID, 'authorizenter_last_provider', $provider->id() );
-		
+
 		// Store the raw provider data in user meta.
 		if ( ! empty( $identity->raw ) ) {
 			update_user_meta( $user->ID, 'authorizenter_provider_data_' . $provider->id(), $identity->raw );

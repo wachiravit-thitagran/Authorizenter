@@ -105,8 +105,8 @@ class Admin_Settings {
 
 		// Providers.
 		$posted_providers = isset( $_POST['providers'] ) && is_array( $_POST['providers'] ) ? wp_unslash( $_POST['providers'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		
-		// Handle "Add New Provider"
+
+		// Handle "Add New Provider".
 		if ( ! empty( $_POST['new_provider_id'] ) ) {
 			$new_id   = sanitize_key( wp_unslash( $_POST['new_provider_id'] ) );
 			$new_type = isset( $_POST['new_provider_type'] ) ? sanitize_key( wp_unslash( $_POST['new_provider_type'] ) ) : 'oidc';
@@ -971,11 +971,11 @@ class Admin_Settings {
 						<p><?php esc_html_e( 'Install and activate the Authorizenter UI plugin to customize the button label and icon. Core handles authentication only and does not render the SSO button, so these display settings are hidden until the UI plugin is active.', 'authorizenter' ); ?></p>
 					</div>
 				<?php endif; ?>
-				<?php 
+				<?php
 				$all_provider_ids = array_unique( array_merge( array_keys( $classes ), array_keys( $all['providers'] ) ) );
-				foreach ( $all_provider_ids as $id ) : 
-					$p          = isset( $all['providers'][ $id ] ) ? $all['providers'][ $id ] : array();
-					$type       = isset( $p['type'] ) ? $p['type'] : $id;
+				foreach ( $all_provider_ids as $id ) :
+					$p    = isset( $all['providers'][ $id ] ) ? $all['providers'][ $id ] : array();
+					$type = isset( $p['type'] ) ? $p['type'] : $id;
 					if ( ! isset( $classes[ $type ] ) ) {
 						continue;
 					}
@@ -1046,7 +1046,7 @@ class Admin_Settings {
 							</td>
 						</tr>
 						<?php endif; ?>
-						<?php if ( $is_generic ) : ?>
+							<?php if ( $is_generic ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Issuer URL', 'authorizenter' ); ?></th>
 							<td>
@@ -1100,7 +1100,7 @@ class Admin_Settings {
 								<p class="description"><?php esc_html_e( 'Stored encrypted. Leave blank to keep the existing key.', 'authorizenter' ); ?></p>
 							</td>
 						</tr>
-						<?php if ( $is_generic ) : ?>
+							<?php if ( $is_generic ) : ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Require verified email', 'authorizenter' ); ?></th>
 							<td><label><input type="checkbox" name="providers[<?php echo esc_attr( $id ); ?>][oidc_require_verified_email]" value="1" <?php checked( ! empty( $p['oidc_require_verified_email'] ) ); ?> /> <?php esc_html_e( 'User must have a verified email address (email_verified claim) to sign in.', 'authorizenter' ); ?></label></td>

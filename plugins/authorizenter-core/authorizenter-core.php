@@ -177,14 +177,22 @@ if ( ! function_exists( __NAMESPACE__ . '\authorizenter_get_provider_data' ) ) {
  * Usage:
  * $data = apply_filters( 'authorizenter_get_provider_data', null, $user_id, $provider_id );
  */
-add_filter( 'authorizenter_get_provider_data', function( $data, $user_id, $provider_id = '' ) {
-	$provider_data = authorizenter_get_provider_data( $user_id, $provider_id );
-	return false !== $provider_data ? $provider_data : $data;
-}, 10, 3 );
+add_filter(
+	'authorizenter_get_provider_data',
+	function ( $data, $user_id, $provider_id = '' ) {
+		$provider_data = authorizenter_get_provider_data( $user_id, $provider_id );
+		return false !== $provider_data ? $provider_data : $data;
+	},
+	10,
+	3
+);
 
-add_action( 'plugins_loaded', function() {
-	authorizenter_core();
-} );
+add_action(
+	'plugins_loaded',
+	function () {
+		authorizenter_core();
+	}
+);
 
 // Lifecycle hooks.
 register_activation_hook( __FILE__, array( Plugin::class, 'activate' ) );

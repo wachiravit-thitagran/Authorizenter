@@ -66,8 +66,8 @@ class Provider_Registry {
 	 */
 	public function get( $id ) {
 		$all = $this->settings->get( 'providers' );
-		
-		// Ensure the provider is at least configured in settings
+
+		// Ensure the provider is at least configured in settings.
 		if ( ! isset( $all[ $id ] ) || ! is_array( $all[ $id ] ) ) {
 			// For backward compatibility: if a built-in provider isn't strictly in settings yet
 			// but matches a built-in type, we can return a blank configuration.
@@ -101,10 +101,10 @@ class Provider_Registry {
 	public function enabled() {
 		$out = array();
 		$all = $this->settings->get( 'providers' );
-		
-		// Standard built-in ids are always checked, plus any custom ids found in settings
+
+		// Standard built-in ids are always checked, plus any custom ids found in settings.
 		$ids = array_unique( array_merge( array_keys( $this->classes() ), array_keys( $all ) ) );
-		
+
 		foreach ( $ids as $id ) {
 			$provider = $this->get( $id );
 			if ( $provider && $provider->is_enabled() ) {
