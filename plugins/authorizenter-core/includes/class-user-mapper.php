@@ -116,7 +116,7 @@ class User_Mapper {
 		$email = $identity->email;
 		if ( '' === $email ) {
 			// Some providers (e.g. LINE without email permission) yield no email.
-			$email = $identity->provider . '_' . substr( md5( $identity->sub ), 0, 12 ) . '@users.noreply.invalid';
+			$email = 'user_' . substr( md5( $identity->sub ), 0, 12 ) . '@users.noreply.invalid';
 		}
 
 		$base     = $this->username_from( $identity, $email );
@@ -574,7 +574,7 @@ class User_Mapper {
 	 */
 	private function username_from( Identity $identity, $email ) {
 		$local = strstr( $email, '@', true );
-		$base  = sanitize_user( $local ? $local : ( $identity->provider . '_' . $identity->sub ), true );
+		$base  = sanitize_user( $local ? $local : ( 'user_' . $identity->sub ), true );
 		$base  = $base ? $base : 'user_' . substr( md5( $identity->sub . $identity->provider ), 0, 8 );
 
 		/**
