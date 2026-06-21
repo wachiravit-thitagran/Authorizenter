@@ -1,0 +1,84 @@
+name: WP Integration
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  integration:
+    name: "WP Integration (PHP ${{ matrix.php-version }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['8.0', '8.1', '8.2', '8.3', '8.4']
+      fail-fast: false
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        extensions: mysqli, curl, dom, xml, mbstring
+        tools: wp-cli, composer
+        coverage: none
+
+    - name: Get Composer Cache Directory
+      id: composer-cache
+      run: |
+        echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache Composer Dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-composer-
+
+    - name: Install Plugin Dependencies
+      run: composer install --prefer-dist --no-interaction --no-progress --no-dev
+
+    - name: Install WordPress Core
+      run: |
+        mkdir -p /tmp/wordpress
+        cd /tmp/wordpress
+        wp core download --allow-root
+        wp config create --dbname=wordpress --dbuser=root --dbpass=root --dbhost=127.0.0.1 --allow-root
+        wp core install --url=http://localhost --title="Test Site" --admin_user=admin --admin_password=admin --admin_email=admin@example.com --allow-root
+
+    - name: Symlink Plugin
+      run: |
+        # Link the current repository to the WordPress plugins directory
+        ln -s $GITHUB_WORKSPACE /tmp/wordpress/wp-content/plugins/autorizenter
+
+    - name: Activate Plugin
+      run: |
+        cd /tmp/wordpress
+        wp plugin activate autorizenter --allow-root
+
+    - name: Lifecycle Test - Deactivate & Reactivate
+      run: |
+        cd /tmp/wordpress
+        wp plugin deactivate autorizenter --allow-root
+        wp eval 'echo "Deactivation successful!";' --allow-root
+        wp plugin activate autorizenter --allow-root
+        wp eval 'echo "Reactivation successful!";' --allow-root
