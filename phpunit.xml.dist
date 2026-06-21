@@ -11,4 +11,14 @@
             <directory suffix="Test.php">tests</directory>
         </testsuite>
     </testsuites>
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">plugins/authorizenter-core</directory>
+            <directory suffix=".php">plugins/authorizenter-ui</directory>
+        </include>
+        <exclude>
+            <directory suffix=".php">tests</directory>
+            <directory suffix=".php">vendor</directory>
+        </exclude>
+    </coverage>
 </phpunit>

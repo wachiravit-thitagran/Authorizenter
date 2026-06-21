@@ -43,6 +43,7 @@ require $inc . 'class-login-throttle.php';
 require $inc . 'class-private-site.php';
 require $inc . 'class-admin-settings.php';
 require $inc . 'class-shortcodes.php';
+require $inc . 'class-rest-api.php';
 
 $ui_inc = dirname( __DIR__ ) . '/plugins/authorizenter-ui/includes/';
 if ( ! defined( 'AUTHORIZENTER_UI_URL' ) ) {
@@ -51,7 +52,11 @@ if ( ! defined( 'AUTHORIZENTER_UI_URL' ) ) {
 if ( ! defined( 'AUTHORIZENTER_UI_DIR' ) ) {
 	define( 'AUTHORIZENTER_UI_DIR', __DIR__ . '/fixtures/' );
 }
+if ( ! defined( 'AUTHORIZENTER_UI_VERSION' ) ) {
+	define( 'AUTHORIZENTER_UI_VERSION', '1.0.0' );
+}
 require $ui_inc . 'class-logos.php';
 require $ui_inc . 'class-page-installer.php';
 require $ui_inc . 'class-frontend.php';
+require $ui_inc . 'class-blocks.php';
 require __DIR__ . '/core-namespace-stub.php';

@@ -110,6 +110,7 @@ class WP_Error {
 	public function get_error_message() { return $this->message; }
 	public function get_error_data() { return $this->data; }
 	public function add_data( $data ) { $this->data = $data; }
+	public function has_errors() { return ! empty( $this->code ); }
 }
 
 class WP_User {
@@ -149,6 +150,18 @@ function set_transient( $key, $value, $ttl = 0 ) {
 function delete_transient( $key ) {
 	unset( $GLOBALS['__transients'][ $key ] );
 	return true;
+}
+
+// --- HTTP -------------------------------------------------------------
+
+function wp_remote_get( $url, $args = array() ) {
+	if ( isset( $GLOBALS['__mock_wp_remote_get'][ $url ] ) ) {
+		return $GLOBALS['__mock_wp_remote_get'][ $url ];
+	}
+	return new WP_Error( 'http_request_failed', 'A valid URL was not provided.' );
+}
+function wp_remote_retrieve_body( $response ) {
+	return isset( $response['body'] ) ? $response['body'] : '';
 }
 
 // --- User meta --------------------------------------------------------------
@@ -324,8 +337,50 @@ function do_action( $tag, ...$args ) {
 		call_user_func_array( $GLOBALS['__mock_actions'][ $tag ], $args );
 	}
 }
+function do_action_ref_array( $tag, $args ) {
+	if ( isset( $GLOBALS['__mock_actions'][ $tag ] ) ) {
+		call_user_func_array( $GLOBALS['__mock_actions'][ $tag ], $args );
+	}
+}
 function add_filter() { return true; }
 function add_action() { return true; }
+function add_shortcode( $tag, $callback ) { return true; }
+function do_shortcode( $content ) { return 'MOCK_SHORTCODE: ' . $content; }
+function wp_register_script( ...$args ) { return true; }
+function wp_set_script_translations( ...$args ) { return true; }
+function register_block_type( $name, $args = array() ) {
+	$GLOBALS['__mock_blocks'][ $name ] = $args;
+	return true;
+}
+
+class WP_REST_Request {
+	private $params = array();
+	private $method = 'GET';
+	public function __construct( $method = 'GET' ) { $this->method = $method; }
+	public function set_param( $key, $value ) { $this->params[ $key ] = $value; }
+	public function get_param( $key ) { return isset( $this->params[ $key ] ) ? $this->params[ $key ] : null; }
+	public function get_params() { return $this->params; }
+	public function get_method() { return $this->method; }
+}
+
+class WP_REST_Response {
+	public $data;
+	public $status;
+	public function __construct( $data = null, $status = 200 ) {
+		$this->data   = $data;
+		$this->status = $status;
+	}
+}
+
+function register_rest_route( $namespace, $route, $args = array(), $override = false ) {
+	$GLOBALS['__mock_rest_routes'][] = compact( 'namespace', 'route', 'args' );
+}
+
+function wp_create_nonce( $action = -1 ) { return 'mock-nonce'; }
+
+function nocache_headers() {}
+function wp_safe_redirect( $location, $status = 302 ) {}
+function wp_redirect( $location, $status = 302 ) {}
 
 function get_current_user_id() { return 0; }
 function wp_logout() {}
