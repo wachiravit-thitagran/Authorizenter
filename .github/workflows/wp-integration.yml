@@ -82,3 +82,37 @@ jobs:
         wp eval 'echo "Deactivation successful!";' --allow-root
         wp plugin activate autorizenter --allow-root
         wp eval 'echo "Reactivation successful!";' --allow-root
+
+    - name: Smoke Test - Render Shortcodes
+      run: |
+        cd /tmp/wordpress
+        wp eval '
+        $shortcodes = array(
+          "[authorizenter_login]",
+          "[authorizenter_button]",
+          "[authorizenter_url]"
+        );
+        foreach ($shortcodes as $shortcode) {
+          $output = do_shortcode($shortcode);
+          if ($output === $shortcode) {
+             echo "Failed to render $shortcode\n";
+             exit(1);
+          }
+        }
+        echo "Shortcode rendering tests passed!\n";
+        ' --allow-root
+
+    - name: Smoke Test - Settings API
+      run: |
+        cd /tmp/wordpress
+        wp eval '
+        $option_key = \Authorizenter\Core\Settings::OPTION;
+        $test_data = array("client_id" => "test_client_id_123");
+        update_option($option_key, $test_data);
+        $saved = get_option($option_key);
+        if (empty($saved["client_id"]) || $saved["client_id"] !== "test_client_id_123") {
+           echo "Failed to save settings.\n";
+           exit(1);
+        }
+        echo "Settings API test passed!\n";
+        ' --allow-root
