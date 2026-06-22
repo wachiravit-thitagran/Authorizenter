@@ -99,6 +99,10 @@ class RestApiTest extends TestCase {
 		$this->assertEquals( 'https://accounts.google.com/o/oauth2/v2/auth', $response->data['url'] );
 	}
 
+	/**
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 */
 	public function test_authorize_returns_error_if_engine_fails() {
 		$request = new \WP_REST_Request( 'GET' );
 		$request->set_param( 'provider', 'invalid' );
@@ -106,12 +110,16 @@ class RestApiTest extends TestCase {
 		$this->engine->method( 'begin' )
 			->willReturn( new WP_Error( 'invalid_provider', 'Invalid.' ) );
 			
-		ob_start();
+		$level = ob_get_level();
 		$response = $this->api->authorize( $request );
 		
 		$this->assertInstanceOf( \WP_REST_Response::class, $response );
 		$this->assertEquals( 400, $response->status );
 		$this->assertEquals( 'invalid_provider', $response->data['error'] );
+		
+		while ( ob_get_level() < $level ) {
+			ob_start();
+		}
 	}
 	
 	public function test_get_questions() {
