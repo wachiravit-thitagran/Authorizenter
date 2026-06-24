@@ -68,19 +68,20 @@ jobs:
     - name: Symlink Plugin
       run: |
         # Link the current repository to the WordPress plugins directory
-        ln -s $GITHUB_WORKSPACE /tmp/wordpress/wp-content/plugins/autorizenter
+        ln -s $GITHUB_WORKSPACE/plugins/authorizenter-core /tmp/wordpress/wp-content/plugins/authorizenter-core
+        ln -s $GITHUB_WORKSPACE/plugins/authorizenter-ui /tmp/wordpress/wp-content/plugins/authorizenter-ui
 
     - name: Activate Plugin
       run: |
         cd /tmp/wordpress
-        wp plugin activate autorizenter --allow-root
+        wp plugin activate authorizenter-core authorizenter-ui --allow-root
 
     - name: Lifecycle Test - Deactivate & Reactivate
       run: |
         cd /tmp/wordpress
-        wp plugin deactivate autorizenter --allow-root
+        wp plugin deactivate authorizenter-core authorizenter-ui --allow-root
         wp eval 'echo "Deactivation successful!";' --allow-root
-        wp plugin activate autorizenter --allow-root
+        wp plugin activate authorizenter-core authorizenter-ui --allow-root
         wp eval 'echo "Reactivation successful!";' --allow-root
 
     - name: Smoke Test - Render Shortcodes
