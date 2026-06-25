@@ -87,77 +87,19 @@ jobs:
     - name: Smoke Test - Render Shortcodes
       run: |
         cd /tmp/wordpress
-        wp eval '
-        $shortcodes = array(
-          "[authorizenter_login]",
-          "[authorizenter_button]",
-          "[authorizenter_url]"
-        );
-        foreach ($shortcodes as $shortcode) {
-          $output = do_shortcode($shortcode);
-          if ($output === $shortcode) {
-             echo "Failed to render $shortcode\n";
-             exit(1);
-          }
-        }
-        echo "Shortcode rendering tests passed!\n";
-        ' --allow-root
+        wp eval-file $GITHUB_WORKSPACE/tests/wp-integration-scripts/test-render-shortcodes.php --allow-root
 
     - name: Smoke Test - Settings API
       run: |
         cd /tmp/wordpress
-        wp eval '
-        $option_key = \Authorizenter\Core\Settings::OPTION;
-        $test_data = array("client_id" => "test_client_id_123");
-        update_option($option_key, $test_data);
-        $saved = get_option($option_key);
-        if (empty($saved["client_id"]) || $saved["client_id"] !== "test_client_id_123") {
-           echo "Failed to save settings.\n";
-           exit(1);
-        }
-        echo "Settings API test passed!\n";
-        ' --allow-root
+        wp eval-file $GITHUB_WORKSPACE/tests/wp-integration-scripts/test-settings-api.php --allow-root
 
     - name: Smoke Test - Private Site Redirect
       run: |
         cd /tmp/wordpress
-        wp eval '
-        $option_key = \Authorizenter\Core\Settings::OPTION;
-        $test_data = array("private_site" => array("enabled" => true));
-        update_option($option_key, $test_data);
-        
-        $private_site = new \Authorizenter\Core\Private_Site(new \Authorizenter\Core\Settings());
-        if (!$private_site->is_enabled()) {
-           echo "Failed to enable private site.\n";
-           exit(1);
-        }
-        
-        // Simulate an unauthenticated request to a frontend page
-        $should_block = $private_site->should_block(false, false, false);
-        if (!$should_block) {
-           echo "Failed to block unauthenticated request.\n";
-           exit(1);
-        }
-        
-        echo "Private Site test passed!\n";
-        ' --allow-root
+        wp eval-file $GITHUB_WORKSPACE/tests/wp-integration-scripts/test-private-site-redirect.php --allow-root
 
     - name: Smoke Test - REST API Endpoints
       run: |
         cd /tmp/wordpress
-        wp eval '
-        $request = new WP_REST_Request("GET", "/authorizenter/v1/providers");
-        $response = rest_do_request($request);
-        
-        if ($response->is_error()) {
-           echo "REST API returned an error.\n";
-           exit(1);
-        }
-        
-        if ($response->get_status() !== 200) {
-           echo "REST API returned non-200 status: " . $response->get_status() . "\n";
-           exit(1);
-        }
-        
-        echo "REST API test passed!\n";
-        ' --allow-root
+        wp eval-file $GITHUB_WORKSPACE/tests/wp-integration-scripts/test-rest-api.php --allow-root
