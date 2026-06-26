@@ -277,4 +277,34 @@ class RoleMapTest extends TestCase {
 		$this->assertSame( 'editor', $this->mapper->resolve_role( $id_editor, $cfg ) );
 		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $id_none, $cfg ) );
 	}
+
+	public function test_complex_dynamic_raw_claims(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array(
+				array( 'match' => '"email_regex:^[0-9]{10}@psu\.ac\.th$" && fac_id:09', 'role' => 'student' ),
+				array( 'match' => '(fac_id:10 || campus:HatYai) && !department:IT', 'role' => 'staff' ),
+			),
+		);
+
+		// Case 1: Matches first rule (student)
+		$id_student = new Identity( 'oidc', array( 'email' => '1234567890@psu.ac.th', 'raw' => array( 'fac_id' => '09' ) ) );
+		$this->assertSame( 'student', $this->mapper->resolve_role( $id_student, $cfg ) );
+
+		// Case 2: Matches second rule (staff) because campus is HatYai and department is not IT
+		$id_staff_1 = new Identity( 'oidc', array( 'email' => 'admin@psu.ac.th', 'raw' => array( 'campus' => 'HatYai', 'department' => 'HR' ) ) );
+		$this->assertSame( 'staff', $this->mapper->resolve_role( $id_staff_1, $cfg ) );
+
+		// Case 3: Matches second rule (staff) because fac_id is 10 and department is missing (so not IT)
+		$id_staff_2 = new Identity( 'oidc', array( 'email' => 'admin2@psu.ac.th', 'raw' => array( 'fac_id' => '10' ) ) );
+		$this->assertSame( 'staff', $this->mapper->resolve_role( $id_staff_2, $cfg ) );
+
+		// Case 4: Fails second rule because although fac_id is 10, department IS IT (negation fails)
+		$id_fail_1 = new Identity( 'oidc', array( 'email' => 'it@psu.ac.th', 'raw' => array( 'fac_id' => '10', 'department' => 'IT' ) ) );
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $id_fail_1, $cfg ) );
+
+		// Case 5: Fails first rule because email does not match regex (only 9 digits)
+		$id_fail_2 = new Identity( 'oidc', array( 'email' => '123456789@psu.ac.th', 'raw' => array( 'fac_id' => '09' ) ) );
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $id_fail_2, $cfg ) );
+	}
 }
