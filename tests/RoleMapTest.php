@@ -259,4 +259,22 @@ class RoleMapTest extends TestCase {
 		);
 		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $this->id( 'google', 'a@b.com' ), $cfg ) );
 	}
+
+	public function test_dynamic_raw_claim_matcher(): void {
+		$cfg = array(
+			'default_role' => 'subscriber',
+			'role_map'     => array(
+				array( 'match' => 'fac_id:09', 'role' => 'student' ),
+				array( 'match' => 'Department:IT', 'role' => 'editor' ),
+			),
+		);
+
+		$id_student = new Identity( 'oidc', array( 'email' => 'a@psu.ac.th', 'raw' => array( 'fac_id' => '09' ) ) );
+		$id_editor  = new Identity( 'oidc', array( 'email' => 'b@psu.ac.th', 'raw' => array( 'department' => 'IT' ) ) );
+		$id_none    = new Identity( 'oidc', array( 'email' => 'c@psu.ac.th', 'raw' => array( 'fac_id' => '10' ) ) );
+
+		$this->assertSame( 'student', $this->mapper->resolve_role( $id_student, $cfg ) );
+		$this->assertSame( 'editor', $this->mapper->resolve_role( $id_editor, $cfg ) );
+		$this->assertSame( 'subscriber', $this->mapper->resolve_role( $id_none, $cfg ) );
+	}
 }

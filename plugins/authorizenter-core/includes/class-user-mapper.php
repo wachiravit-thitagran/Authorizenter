@@ -493,6 +493,13 @@ class User_Mapper {
 			case 'local':
 				return $this->regex_match( $value, (string) $local );
 			default:
+				// Fallback: check case-insensitively against raw claims.
+				foreach ( $identity->raw as $key => $raw_value ) {
+					if ( strtolower( $key ) === $type ) {
+						return $value === (string) $raw_value;
+					}
+				}
+
 				/**
 				 * Allow custom role matchers (e.g. custom_type:value)
 				 *
