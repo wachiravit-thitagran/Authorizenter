@@ -66,6 +66,7 @@ class Oidc_Client {
 			// request (storing state/nonce/PKCE in the session) and redirects.
 			$client->authenticate();
 		} catch ( \Throwable $e ) {
+			authorizenter_log( 'OIDC start failed', array( 'message' => $e->getMessage() ) );
 			return new \WP_Error( 'authorizenter_oidc_start_failed', $e->getMessage(), array( 'status' => 502 ) );
 		}
 
@@ -108,6 +109,7 @@ class Oidc_Client {
 
 			return $claims;
 		} catch ( \Throwable $e ) {
+			authorizenter_log( 'OIDC authentication error', array( 'message' => $e->getMessage() ) );
 			return new \WP_Error( 'authorizenter_oidc_error', $e->getMessage(), array( 'status' => 502 ) );
 		}
 	}

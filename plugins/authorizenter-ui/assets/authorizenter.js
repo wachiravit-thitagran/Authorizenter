@@ -78,7 +78,8 @@
 					setMessage( 'Saved. Redirecting…', 'ok' );
 					window.location.href = returnTo || '/';
 				} )
-				.catch( function () {
+				.catch( function (error) {
+					console.error( 'Authorizenter auth network error:', error );
 					setMessage( 'Network error. Please try again.', 'error' );
 				} );
 		} );
@@ -168,7 +169,8 @@
 						setError( 'Received invalid response from server.' );
 					}
 				} )
-				.catch( function () {
+				.catch( function (error) {
+					console.error( 'Authorizenter SSO redirect network error:', error );
 					setError( 'Network error. Please try again.' );
 				} );
 		} );

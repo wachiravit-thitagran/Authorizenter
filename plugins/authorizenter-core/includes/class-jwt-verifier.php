@@ -50,6 +50,7 @@ class JWT_Verifier {
 			JWT::$leeway = 60;
 			$decoded     = (array) JWT::decode( $id_token, $keys );
 		} catch ( \Exception $e ) {
+			authorizenter_log( 'JWT verification failed', array( 'message' => $e->getMessage() ) );
 			return new \WP_Error( 'authorizenter_jwt_invalid', __( 'Invalid ID token signature.', 'authorizenter' ), array( 'status' => 401 ) );
 		}
 

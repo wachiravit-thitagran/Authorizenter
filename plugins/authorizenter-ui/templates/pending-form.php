@@ -138,7 +138,8 @@ defined( 'ABSPATH' ) || exit;
 				window.location.href = redirectTo;
 			}
 		} )
-		.catch( function () {
+		.catch( function (error) {
+			console.error( 'Authorizenter pending form network error:', error );
 			setMessage( '<?php echo esc_js( __( 'Network error. Please try again.', 'authorizenter' ) ); ?>', 'error' );
 		} );
 	} );
