@@ -32,6 +32,8 @@ class Frontend {
 		add_shortcode( 'authorizenter_pending_form', array( $this, 'render_pending_form' ) );
 
 		add_action( 'wp_enqueue_scripts', array( $this, 'assets' ) );
+		add_action( 'login_enqueue_scripts', array( $this, 'assets' ) );
+		add_filter( 'login_message', array( $this, 'render_wp_login_buttons' ) );
 
 		// Tell Core where the questions page lives, so it can redirect there.
 		add_filter( 'authorizenter_questions_url', array( $this, 'questions_url' ) );
@@ -181,6 +183,18 @@ class Frontend {
 			wp_safe_redirect( add_query_arg( 'return_to', rawurlencode( $this->current_url() ), $url ) );
 			exit;
 		}
+	}
+
+	/**
+	 * Render login buttons into wp-login.php via login_message filter.
+	 *
+	 * @param string $message Existing message.
+	 * @return string
+	 */
+	public function render_wp_login_buttons( $message ) {
+		// wp-login.php is the 'default' context.
+		$buttons = $this->render_login( array( 'context' => 'default' ) );
+		return $message . $buttons;
 	}
 
 	/**
