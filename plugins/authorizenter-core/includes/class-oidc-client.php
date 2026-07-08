@@ -138,7 +138,60 @@ class Oidc_Client {
 		$client_id     = isset( $config['client_id'] ) ? (string) $config['client_id'] : '';
 		$client_secret = $this->settings->decrypt( isset( $config['client_secret'] ) ? $config['client_secret'] : '' );
 
-		$client = new \Jumbojett\OpenIDConnectClient( $provider_url, $client_id, $client_secret );
+		$client = new class( $provider_url, $client_id, $client_secret ) extends \Jumbojett\OpenIDConnectClient {
+			protected function fetchURL( string $url, string $post_body = null, array $headers = [] ) {
+				$args = array(
+					'timeout'    => isset( $this->timeOut ) ? $this->timeOut : 15,
+					'user-agent' => $this->getUserAgent(),
+					'headers'    => array(),
+				);
+
+				foreach ( $headers as $header ) {
+					$parts = explode( ':', $header, 2 );
+					if ( count( $parts ) === 2 ) {
+						$args['headers'][ trim( $parts[0] ) ] = trim( $parts[1] );
+					}
+				}
+
+				if ( null !== $post_body ) {
+					$args['method'] = 'POST';
+					$args['body']   = $post_body;
+
+					$content_type = 'application/x-www-form-urlencoded';
+					if ( is_object( json_decode( $post_body, false ) ) ) {
+						$content_type = 'application/json';
+					}
+					$args['headers']['Content-Type'] = $content_type;
+				}
+
+				if ( isset( $this->verifyPeer ) && ! $this->verifyPeer ) {
+					$args['sslverify'] = false;
+				}
+
+				$response = wp_remote_request( $url, $args );
+
+				if ( is_wp_error( $response ) ) {
+					throw new \Jumbojett\OpenIDConnectClientException( 'WP HTTP error: ' . $response->get_error_message() );
+				}
+
+				$this->responseCode        = wp_remote_retrieve_response_code( $response );
+				$this->responseContentType = wp_remote_retrieve_header( $response, 'content-type' );
+				$output                    = wp_remote_retrieve_body( $response );
+
+				if ( false !== strpos( $url, 'jwks' ) ) {
+					$decoded = json_decode( $output, false );
+					if ( null === $decoded && function_exists( 'authorizenter_log' ) ) {
+						authorizenter_log( 'JWKS fetch error: Non-JSON response', array(
+							'url'    => $url,
+							'status' => $this->responseCode,
+							'body'   => substr( $output, 0, 500 ),
+						) );
+					}
+				}
+
+				return $output;
+			}
+		};
 		$client->setRedirectURL( $redirect_uri );
 		$client->setCodeChallengeMethod( 'S256' );
 
