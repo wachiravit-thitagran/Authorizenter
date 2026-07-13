@@ -139,9 +139,19 @@ class Oidc_Client {
 		$client_secret = $this->settings->decrypt( isset( $config['client_secret'] ) ? $config['client_secret'] : '' );
 
 		$client = new class( $provider_url, $client_id, $client_secret ) extends \Jumbojett\OpenIDConnectClient {
-			protected function fetchURL( string $url, string $post_body = null, array $headers = [] ) {
+			/**
+			 * Route the library's HTTP requests through the WordPress HTTP API.
+			 *
+			 * @param string      $url       Request URL.
+			 * @param string|null $post_body POST body, or null for a GET request.
+			 * @param array       $headers   Extra headers as "Name: value" strings.
+			 * @return string Response body.
+			 * @throws \Jumbojett\OpenIDConnectClientException On transport failure.
+			 */
+			protected function fetchURL( string $url, string $post_body = null, array $headers = array() ) {
+				// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- camelCase properties are inherited from the jumbojett library.
 				$args = array(
-					'timeout'    => isset( $this->timeOut ) ? $this->timeOut : 15,
+					'timeout'    => $this->timeOut,
 					'user-agent' => $this->getUserAgent(),
 					'headers'    => array(),
 				);
@@ -171,25 +181,31 @@ class Oidc_Client {
 				$response = wp_remote_request( $url, $args );
 
 				if ( is_wp_error( $response ) ) {
-					throw new \Jumbojett\OpenIDConnectClientException( 'WP HTTP error: ' . $response->get_error_message() );
+					throw new \Jumbojett\OpenIDConnectClientException( 'WP HTTP error: ' . esc_html( $response->get_error_message() ) );
 				}
 
-				$this->responseCode        = wp_remote_retrieve_response_code( $response );
-				$this->responseContentType = wp_remote_retrieve_header( $response, 'content-type' );
-				$output                    = wp_remote_retrieve_body( $response );
+				// Note: the parent's $responseContentType is private, so it cannot
+				// be mirrored from a subclass (JWT/JARM content-type detection in
+				// the parent is therefore unavailable with this transport).
+				$this->responseCode = wp_remote_retrieve_response_code( $response );
+				$output             = wp_remote_retrieve_body( $response );
 
 				if ( false !== strpos( $url, 'jwks' ) ) {
 					$decoded = json_decode( $output, false );
 					if ( null === $decoded && function_exists( 'authorizenter_log' ) ) {
-						authorizenter_log( 'JWKS fetch error: Non-JSON response', array(
-							'url'    => $url,
-							'status' => $this->responseCode,
-							'body'   => substr( $output, 0, 500 ),
-						) );
+						authorizenter_log(
+							'JWKS fetch error: Non-JSON response',
+							array(
+								'url'    => $url,
+								'status' => $this->responseCode,
+								'body'   => substr( $output, 0, 500 ),
+							)
+						);
 					}
 				}
 
 				return $output;
+				// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 			}
 		};
 		$client->setRedirectURL( $redirect_uri );
