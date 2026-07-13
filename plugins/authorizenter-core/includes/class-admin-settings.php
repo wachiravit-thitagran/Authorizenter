@@ -271,7 +271,7 @@ class Admin_Settings {
 					'page'    => 'authorizenter',
 					'updated' => '1',
 				),
-				admin_url( 'options-general.php' )
+				admin_url( 'admin.php' )
 			)
 		);
 		exit;
