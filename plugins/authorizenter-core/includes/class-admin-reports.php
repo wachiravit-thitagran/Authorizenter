@@ -176,7 +176,7 @@ class Admin_Reports {
 			$heading .= ' = ' . esc_html( $value );
 		}
 		?>
-		<p><a href="<?php echo esc_url( admin_url( 'options-general.php?page=authorizenter-report' ) ); ?>">&larr; <?php esc_html_e( 'Back to summary', 'authorizenter' ); ?></a></p>
+		<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=authorizenter-report' ) ); ?>">&larr; <?php esc_html_e( 'Back to summary', 'authorizenter' ); ?></a></p>
 		<h2><?php echo wp_kses_post( $heading ); ?> <span class="count">(<?php echo (int) count( $people ); ?>)</span></h2>
 		<table class="widefat striped">
 			<thead>
@@ -262,7 +262,7 @@ class Admin_Reports {
 		if ( '' !== $value ) {
 			$args['value'] = $value;
 		}
-		return add_query_arg( $args, admin_url( 'options-general.php' ) );
+		return add_query_arg( $args, admin_url( 'admin.php' ) );
 	}
 
 	/**
