@@ -320,6 +320,34 @@ class FrontendTest extends TestCase {
 		$GLOBALS['__mock_locate_template'] = '';
 	}
 
+	// --- UI [authorizenter_questions] ----------------------------------------
+
+	public function test_render_questions_passes_return_to_correctly(): void {
+		$this->make_core();
+		$GLOBALS['__logged_in'] = true;
+
+		$_GET['return_to'] = 'https://example.test/after-quiz';
+
+		$html = $this->frontend->render_questions( array() );
+
+		$this->assertStringContainsString( 'data-return-to="https://example.test/after-quiz"', $html );
+
+		unset( $_GET['return_to'] );
+	}
+
+	public function test_render_questions_shortcode_redirect_wins(): void {
+		$this->make_core();
+		$GLOBALS['__logged_in'] = true;
+
+		$_GET['return_to'] = 'https://example.test/after-quiz';
+
+		$html = $this->frontend->render_questions( array( 'redirect' => 'https://example.test/shortcode-win' ) );
+
+		$this->assertStringContainsString( 'data-return-to="https://example.test/shortcode-win"', $html );
+
+		unset( $_GET['return_to'] );
+	}
+
 	// --- is_login_page -------------------------------------------------------
 
 	public function test_is_login_page_detects_wp_login_by_pagenow(): void {
