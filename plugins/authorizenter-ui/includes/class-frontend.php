@@ -425,7 +425,7 @@ class Frontend {
 			array(
 				'questions'    => $questions,
 				'done_message' => $done_message,
-				'redirect'     => $return_to,
+				'return_to'    => $return_to,
 			)
 		);
 		return ob_get_clean();

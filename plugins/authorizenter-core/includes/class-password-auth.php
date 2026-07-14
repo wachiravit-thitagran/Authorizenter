@@ -17,8 +17,12 @@ defined( 'ABSPATH' ) || exit;
  * a password, so a misconfigured or unreachable IdP cannot lock everyone out. This
  * bypass can be turned off once SSO is confirmed working.
  *
- * Only interactive password attempts are affected — cookie auth, application
- * passwords, and the SSO flow itself use different code paths and are untouched.
+ * Any authentication that submits a username and password is affected — this
+ * includes interactive wp-login.php sign-ins as well as password-based API auth
+ * (REST/XML-RPC and application passwords), all of which run through the
+ * `authenticate` filter. Cookie auth and the SSO flow itself use different code
+ * paths and are untouched. The administrator bypass below still applies, so
+ * admins can continue to use passwords (including application passwords).
  */
 class Password_Auth {
 
@@ -116,7 +120,7 @@ class Password_Auth {
 	 * @return null|\WP_User|\WP_Error
 	 */
 	public function maybe_block( $user, $username, $password ) {
-		// Not an interactive password attempt — leave untouched.
+		// No credentials submitted (e.g. cookie auth) — leave untouched.
 		if ( '' === (string) $username || '' === (string) $password ) {
 			return $user;
 		}
