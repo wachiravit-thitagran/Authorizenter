@@ -85,6 +85,7 @@ class Plugin {
 
 		add_action( 'init', array( $this, 'load_textdomain' ) );
 		add_action( 'rest_api_init', array( $this->rest, 'register_routes' ) );
+		add_filter( 'logout_url', array( $this->rest, 'filter_logout_url' ), 10, 2 );
 
 		( new Password_Auth( $this->settings ) )->hooks();
 		( new Login_Throttle( $this->settings ) )->hooks();

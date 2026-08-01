@@ -46,6 +46,8 @@ class RestApiTest extends TestCase {
 		);
 		
 		$GLOBALS['__mock_rest_routes'] = array();
+		$GLOBALS['__mock_filters']     = array();
+		unset( $GLOBALS['__logged_in'], $GLOBALS['__mock_verify_nonce'] );
 	}
 
 	public function test_register_routes() {
@@ -130,9 +132,120 @@ class RestApiTest extends TestCase {
 			->willReturn( array( array( 'id' => 'q1', 'label' => 'Q1' ) ) );
 			
 		$response = $this->api->get_questions();
-		
+
 		$this->assertInstanceOf( \WP_REST_Response::class, $response );
 		$this->assertEquals( 200, $response->status );
 		$this->assertCount( 1, $response->data['questions'] );
+	}
+
+	/**
+	 * The /logout route must exist and be gated by can_logout(), not left open.
+	 */
+	public function test_logout_route_is_registered_and_gated() {
+		$this->api->register_routes();
+
+		$logout = null;
+		foreach ( $GLOBALS['__mock_rest_routes'] as $registered ) {
+			if ( '/logout' === $registered['route'] ) {
+				$logout = $registered['args'];
+			}
+		}
+
+		$this->assertNotNull( $logout, '/logout route is not registered.' );
+		$this->assertEquals( 'GET', $logout['methods'] );
+		$this->assertEquals( array( $this->api, 'can_logout' ), $logout['permission_callback'] );
+		$this->assertArrayHasKey( 'return_to', $logout['args'] );
+		$this->assertArrayHasKey( '_wpnonce', $logout['args'] );
+	}
+
+	/**
+	 * wp_logout_url() must be pointed away from wp-login.php, which hardened
+	 * servers commonly block — that would leave users unable to log out at all.
+	 */
+	public function test_filter_logout_url_targets_the_rest_route() {
+		$url = $this->api->filter_logout_url( 'https://example.test/wp-login.php?action=logout&_wpnonce=abc' );
+
+		$this->assertStringNotContainsString( 'wp-login.php', $url );
+		$this->assertStringContainsString( 'wp-json/authorizenter/v1/logout', $url );
+		$this->assertStringContainsString( '_wpnonce=mock-nonce', $url );
+		$this->assertStringNotContainsString( 'return_to', $url );
+	}
+
+	public function test_filter_logout_url_carries_the_redirect_target() {
+		$url = $this->api->filter_logout_url(
+			'https://example.test/wp-login.php?action=logout',
+			'https://example.test/dashboard/'
+		);
+
+		$this->assertStringContainsString( 'wp-json/authorizenter/v1/logout', $url );
+
+		// The destination survives a round trip through the query string.
+		$query = array();
+		parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $query );
+		$this->assertSame( 'https://example.test/dashboard/', rawurldecode( $query['return_to'] ) );
+	}
+
+	public function test_filter_logout_url_can_be_disabled() {
+		$GLOBALS['__mock_filters']['authorizenter_rest_logout'] = function ( $enabled, $redirect = '' ) {
+			return false;
+		};
+
+		$original = 'https://example.test/wp-login.php?action=logout&_wpnonce=abc';
+		$this->assertSame( $original, $this->api->filter_logout_url( $original ) );
+
+		unset( $GLOBALS['__mock_filters']['authorizenter_rest_logout'] );
+	}
+
+	/**
+	 * Logout CSRF: a live session must not be destroyed without a valid nonce.
+	 */
+	public function test_can_logout_rejects_a_logged_in_request_without_a_nonce() {
+		$GLOBALS['__logged_in'] = true;
+
+		$result = $this->api->can_logout( new \WP_REST_Request( 'GET' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'authorizenter_invalid_nonce', $result->get_error_code() );
+		$this->assertEquals( 403, $result->get_error_data()['status'] );
+	}
+
+	public function test_can_logout_rejects_a_stale_nonce() {
+		$GLOBALS['__logged_in'] = true;
+
+		$request = new \WP_REST_Request( 'GET' );
+		$request->set_param( '_wpnonce', 'expired-nonce' );
+
+		$this->assertInstanceOf( WP_Error::class, $this->api->can_logout( $request ) );
+	}
+
+	public function test_can_logout_accepts_a_valid_nonce() {
+		$GLOBALS['__logged_in'] = true;
+
+		$request = new \WP_REST_Request( 'GET' );
+		$request->set_param( '_wpnonce', wp_create_nonce( 'wp_rest' ) );
+
+		$this->assertTrue( $this->api->can_logout( $request ) );
+	}
+
+	/**
+	 * JS clients send the nonce as a header rather than a query argument.
+	 */
+	public function test_can_logout_accepts_the_nonce_header() {
+		$GLOBALS['__logged_in'] = true;
+
+		$request = new \WP_REST_Request( 'GET' );
+		$request->set_header( 'X-WP-Nonce', wp_create_nonce( 'wp_rest' ) );
+
+		$this->assertTrue( $this->api->can_logout( $request ) );
+	}
+
+	/**
+	 * Nothing to protect when there is no session: the callback only redirects,
+	 * so a forged request stays harmless instead of erroring.
+	 */
+	public function test_can_logout_allows_requests_without_a_session() {
+		$GLOBALS['__logged_in'] = false;
+
+		$this->assertTrue( $this->api->can_logout( new \WP_REST_Request( 'GET' ) ) );
 	}
 }

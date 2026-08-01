@@ -63,7 +63,10 @@ the internet, sign-in will fail regardless of configuration.
 * Answer reporting: indexed per-question mirror meta, a Reports aggregator,
   Settings → Authorizenter Report (counts, drill-down, CSV export), and
   `GET /answers/report`.
-* Logout: `/logout` REST route and optional RP-initiated (single) logout at the IdP.
+* Logout: nonce-protected `/logout` REST route and optional RP-initiated (single)
+  logout at the IdP. `wp_logout_url()` is filtered to this route so logout keeps
+  working on sites whose web server blocks direct access to `wp-login.php`
+  (disable with the `authorizenter_rest_logout` filter).
 * Self-hosted updates from GitHub Releases via `Github_Updater`, configurable with
   `AUTHORIZENTER_GITHUB_REPO` / `authorizenter_github_repo`. The plugin details
   screen now shows this changelog and full description.

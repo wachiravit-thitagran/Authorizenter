@@ -6,6 +6,24 @@ All notable changes to Authorizenter are documented here. Format based on
 
 ## [Unreleased]
 
+### Fixed
+- **Logout works on sites that block `wp-login.php`.** Every logout link in
+  WordPress (theme templates, the admin bar, Tutor LMS, plugins) is built from
+  `wp_logout_url()`, which targets `wp-login.php`. Where a server-level hardening
+  rule blocks that file, users could not log out at all. `wp_logout_url()` is now
+  filtered to the `/logout` REST route; opt out with the
+  `authorizenter_rest_logout` filter. Routing through the endpoint also means the
+  REST cookie layer resolves the current user, so the session token is destroyed
+  and RP-initiated SSO logout can run.
+- `[authorizenter_logout]` and the logout block now build their link from
+  `wp_logout_url()` instead of hard-coding the REST URL, so they inherit the
+  nonce and any `logout_url` filtering.
+
+### Security
+- `/logout` now requires a valid `wp_rest` nonce when a session exists, closing a
+  logout CSRF hole (previously `permission_callback` was `__return_true`).
+  Unauthenticated requests are redirected without touching any session.
+
 ### Added
 - **Login contexts** — named login profiles (`[authorizenter_login context="…"]`)
   with per-context providers, capability gate, policy overrides, redirects, and

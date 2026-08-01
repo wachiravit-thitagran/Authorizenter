@@ -355,12 +355,18 @@ function register_block_type( $name, $args = array() ) {
 
 class WP_REST_Request {
 	private $params = array();
+	private $headers = array();
 	private $method = 'GET';
 	public function __construct( $method = 'GET' ) { $this->method = $method; }
 	public function set_param( $key, $value ) { $this->params[ $key ] = $value; }
 	public function get_param( $key ) { return isset( $this->params[ $key ] ) ? $this->params[ $key ] : null; }
 	public function get_params() { return $this->params; }
 	public function get_method() { return $this->method; }
+	public function set_header( $key, $value ) { $this->headers[ strtolower( str_replace( '-', '_', $key ) ) ] = $value; }
+	public function get_header( $key ) {
+		$key = strtolower( str_replace( '-', '_', $key ) );
+		return isset( $this->headers[ $key ] ) ? $this->headers[ $key ] : null;
+	}
 }
 
 class WP_REST_Response {
@@ -377,6 +383,17 @@ function register_rest_route( $namespace, $route, $args = array(), $override = f
 }
 
 function wp_create_nonce( $action = -1 ) { return 'mock-nonce'; }
+
+/**
+ * Mirrors wp_create_nonce() above: only the token it hands out verifies.
+ * Set $GLOBALS['__mock_verify_nonce'] to force a specific outcome.
+ */
+function wp_verify_nonce( $nonce, $action = -1 ) {
+	if ( isset( $GLOBALS['__mock_verify_nonce'] ) ) {
+		return $GLOBALS['__mock_verify_nonce'];
+	}
+	return 'mock-nonce' === (string) $nonce ? 1 : false;
+}
 
 function nocache_headers() {}
 function wp_safe_redirect( $location, $status = 302 ) {}
@@ -473,6 +490,14 @@ function wp_login_url( $redirect = '', $force_reauth = false ) {
 		return $GLOBALS['__mock_wp_login_url'] . ( $redirect ? '?redirect_to=' . urlencode( $redirect ) : '' );
 	}
 	return 'https://example.test/wp-login.php' . ( $redirect ? '?redirect_to=' . urlencode( $redirect ) : '' );
+}
+
+function wp_logout_url( $redirect = '' ) {
+	$url = 'https://example.test/wp-login.php?action=logout&_wpnonce=' . wp_create_nonce( 'log-out' );
+	if ( $redirect ) {
+		$url .= '&redirect_to=' . urlencode( $redirect );
+	}
+	return apply_filters( 'logout_url', $url, $redirect );
 }
 
 function wp_mail( $to, $subject, $message, $headers = '', $attachments = array() ) {

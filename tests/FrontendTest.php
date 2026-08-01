@@ -396,4 +396,64 @@ class FrontendTest extends TestCase {
 
 		unset( $GLOBALS['__mock_is_page'] );
 	}
+
+	// --- UI [authorizenter_logout] -------------------------------------------
+
+	public function test_logout_returns_empty_when_not_logged_in(): void {
+		$this->make_core();
+		$GLOBALS['__logged_in'] = false;
+
+		$this->assertSame( '', $this->frontend->render_logout( array() ) );
+	}
+
+	/**
+	 * The link must come from wp_logout_url() so it carries Core's CSRF nonce —
+	 * a bare REST URL would be rejected by the endpoint's permission callback.
+	 */
+	public function test_logout_link_is_nonce_protected(): void {
+		$this->make_core();
+		$GLOBALS['__logged_in'] = true;
+
+		$html = $this->frontend->render_logout( array() );
+
+		$this->assertStringContainsString( '_wpnonce=', $html );
+		$this->assertStringContainsString( 'authorizenter-btn--logout', $html );
+	}
+
+	/**
+	 * The destination is handed to wp_logout_url(), which is what lets the
+	 * `logout_url` filter rewrite the whole URL (REST route + nonce).
+	 */
+	public function test_logout_link_passes_return_to_through_the_filter(): void {
+		$this->make_core();
+		$GLOBALS['__logged_in'] = true;
+
+		$GLOBALS['__mock_filters']['logout_url'] = function ( $url, $redirect = '' ) {
+			return 'https://example.test/filtered?to=' . rawurlencode( (string) $redirect );
+		};
+
+		$html = $this->frontend->render_logout( array( 'return_to' => 'https://example.test/courses/' ) );
+
+		$this->assertStringContainsString(
+			'https://example.test/filtered?to=' . rawurlencode( 'https://example.test/courses/' ),
+			$html
+		);
+
+		unset( $GLOBALS['__mock_filters']['logout_url'] );
+	}
+
+	public function test_logout_link_defaults_to_home(): void {
+		$this->make_core();
+		$GLOBALS['__logged_in'] = true;
+
+		$GLOBALS['__mock_filters']['logout_url'] = function ( $url, $redirect = '' ) {
+			return 'REDIRECT:' . (string) $redirect;
+		};
+
+		$html = $this->frontend->render_logout( array() );
+
+		$this->assertStringContainsString( 'REDIRECT:' . home_url( '/' ), $html );
+
+		unset( $GLOBALS['__mock_filters']['logout_url'] );
+	}
 }

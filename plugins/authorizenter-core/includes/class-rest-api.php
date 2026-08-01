@@ -16,6 +16,7 @@ defined( 'ABSPATH' ) || exit;
  *   GET  /providers          List enabled providers + their authorize URLs.
  *   GET  /authorize/{id}     302 redirect into the provider (browser entry point).
  *   GET  /callback           Provider redirect target; completes login.
+ *   GET  /logout             End the session (nonce-protected); wp_logout_url() target.
  *   GET  /questions          Pending questions for the current user.
  *   POST /answers            Submit answers (nonce-protected).
  */
@@ -140,9 +141,10 @@ class Rest_Api {
 			array(
 				'methods'             => 'GET',
 				'callback'            => array( $this, 'logout' ),
-				'permission_callback' => '__return_true',
+				'permission_callback' => array( $this, 'can_logout' ),
 				'args'                => array(
 					'return_to' => array( 'sanitize_callback' => 'esc_url_raw' ),
+					'_wpnonce'  => array( 'sanitize_callback' => 'sanitize_text_field' ),
 				),
 			)
 		);
@@ -376,6 +378,81 @@ class Rest_Api {
 	}
 
 	/**
+	 * Point `wp_logout_url()` at the REST logout route.
+	 *
+	 * WordPress builds every logout link (theme templates, the admin bar, Tutor
+	 * LMS, plugins) from `wp_logout_url()`, which targets `wp-login.php`. Sites
+	 * that block direct access to `wp-login.php` at the web-server level — a
+	 * common hardening rule — therefore leave users with no way to log out at
+	 * all. Routing the link through `/logout` keeps logout working there, and
+	 * lets RP-initiated (single) logout run for SSO sessions.
+	 *
+	 * The nonce is created for the `wp_rest` action so the REST cookie
+	 * authentication layer accepts the request and resolves the current user;
+	 * without it `wp_logout()` would clear the cookies but leave the session
+	 * token alive and the IdP session untouched.
+	 *
+	 * @param string $url      Logout URL built by WordPress.
+	 * @param string $redirect Where to send the browser afterwards.
+	 * @return string
+	 */
+	public function filter_logout_url( $url, $redirect = '' ) {
+		/**
+		 * Filter whether logout links are routed through the REST endpoint.
+		 *
+		 * @param bool   $enabled  Default true.
+		 * @param string $redirect Post-logout destination.
+		 */
+		if ( ! apply_filters( 'authorizenter_rest_logout', true, (string) $redirect ) ) {
+			return $url;
+		}
+
+		$args = array( '_wpnonce' => wp_create_nonce( 'wp_rest' ) );
+
+		// add_query_arg() does not encode values, so encode here (as core does).
+		$redirect = (string) $redirect;
+		if ( '' !== $redirect ) {
+			$args['return_to'] = rawurlencode( $redirect );
+		}
+
+		return add_query_arg( $args, rest_url( AUTHORIZENTER_REST_NAMESPACE . '/logout' ) );
+	}
+
+	/**
+	 * Permission gate for /logout: destroying a live session needs a valid
+	 * `wp_rest` nonce, which is the CSRF protection `wp_logout_url()` normally
+	 * provides. Without it a third-party page could force users to log out.
+	 *
+	 * A request with no authenticated user is allowed through: there is nothing
+	 * to destroy, so the callback just redirects. That is also what a forged
+	 * request looks like — the REST cookie layer discards the current user when
+	 * no nonce is supplied — which makes the attack a harmless no-op.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return true|\WP_Error
+	 */
+	public function can_logout( \WP_REST_Request $request ) {
+		if ( ! is_user_logged_in() ) {
+			return true;
+		}
+
+		$nonce = (string) $request->get_param( '_wpnonce' );
+		if ( '' === $nonce ) {
+			$nonce = (string) $request->get_header( 'x_wp_nonce' );
+		}
+
+		if ( wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+			return true;
+		}
+
+		return new \WP_Error(
+			'authorizenter_invalid_nonce',
+			__( 'The logout link has expired. Please reload the page and try again.', 'authorizenter' ),
+			array( 'status' => 403 )
+		);
+	}
+
+	/**
 	 * GET /logout — end the session, then redirect (optionally via the IdP).
 	 *
 	 * @param \WP_REST_Request $request Request.
@@ -383,7 +460,13 @@ class Rest_Api {
 	 */
 	public function logout( \WP_REST_Request $request ) {
 		$return_to = (string) $request->get_param( 'return_to' );
-		$url       = $this->engine->logout( $return_to );
+
+		if ( ! is_user_logged_in() ) {
+			$this->redirect_to( '' !== $return_to ? $return_to : home_url( '/' ), true );
+			return;
+		}
+
+		$url = $this->engine->logout( $return_to );
 		if ( ! is_string( $url ) || '' === $url ) {
 			$url = home_url( '/' );
 		}

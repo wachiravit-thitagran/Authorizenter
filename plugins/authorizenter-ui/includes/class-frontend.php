@@ -371,12 +371,10 @@ class Frontend {
 
 		wp_enqueue_style( 'authorizenter-ui' );
 
+		// wp_logout_url() is the single source of truth: Core adds the CSRF nonce
+		// and Authorizenter's `logout_url` filter points it at the REST route.
 		$return_to = '' !== $atts['return_to'] ? $atts['return_to'] : home_url( '/' );
-		$url       = add_query_arg(
-			'return_to',
-			rawurlencode( $return_to ),
-			rest_url( 'authorizenter/v1/logout' )
-		);
+		$url       = wp_logout_url( $return_to );
 
 		return '<a class="authorizenter-btn authorizenter-btn--logout" href="' . esc_url( $url ) . '">' .
 			esc_html( $atts['label'] ) . '</a>';

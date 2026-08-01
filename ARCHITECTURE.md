@@ -277,7 +277,7 @@ Core registers routes in the `authorizenter/v1` namespace.
 | `GET` | `/providers?context=` | Public | Lists enabled providers available in a context and their authorize URLs. |
 | `GET` | `/authorize/{provider}?context=&return_to=` | Public | Starts the OAuth flow and redirects to the provider. |
 | `GET` | `/callback` | Public | Completes provider callback, logs the user in, and redirects. |
-| `GET` | `/logout?return_to=` | Public | Logs out locally and optionally redirects through an OIDC end-session endpoint. |
+| `GET` | `/logout?return_to=` | Nonce (`wp_rest`) when a session exists | Logs out locally and optionally redirects through an OIDC end-session endpoint. `wp_logout_url()` is filtered to this route, so every logout link on the site keeps working where `wp-login.php` is blocked by the web server. Requests without cookie authentication are redirected without destroying anything, which makes a forged request a no-op. |
 | `GET` | `/questions` | Logged-in | Returns pending questions and a REST nonce. |
 | `POST` | `/answers` | Logged-in, nonce | Validates and saves answers for the current user. |
 | `GET` | `/answers/report` | `list_users` | Returns aggregate question-answer reports. |

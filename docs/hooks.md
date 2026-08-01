@@ -53,6 +53,7 @@ These actions fire at various stages of the login and logout lifecycle.
 - **`authorizenter_provider_classes`** (Filter): Register custom identity provider classes.
 - **`authorizenter_oidc_client`** (Filter): Intercept the `Oidc_Client` instance to adjust underlying OpenID Connect configurations.
 - **`authorizenter_sso_logout`** (Filter): Enable or disable Single Logout (RP-Initiated Logout) for specific providers.
+- **`authorizenter_rest_logout`** (Filter): Whether `wp_logout_url()` is rewritten to the `/logout` REST route. Defaults to `true`, which keeps logout working on sites whose web server blocks `wp-login.php`. Return `false` to restore the stock WordPress logout URL.
 
 ## 6. Data Retrieval
 
