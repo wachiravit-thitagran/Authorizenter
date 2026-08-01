@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Authorizenter Core
- * Plugin URI:        https://github.com/authorizenter/authorizenter
+ * Plugin URI:        https://github.com/wachiravit-thitagran/Authorizenter
  * Description:       Flexible OAuth2/OIDC Single Sign-On engine for WordPress with organization restriction and customizable post-login questions. Provides the REST API and hooks; pair with Authorizenter UI or build your own front-end.
  * Version:           0.1.0
  * Requires at least: 6.0
@@ -30,7 +30,7 @@ define( 'AUTHORIZENTER_CORE_FILE', __FILE__ );
  * workflow in .github/workflows/release.yml).
  */
 if ( ! defined( 'AUTHORIZENTER_GITHUB_REPO' ) ) {
-	define( 'AUTHORIZENTER_GITHUB_REPO', 'wachiravit-thitagarn/authorizenter' );
+	define( 'AUTHORIZENTER_GITHUB_REPO', 'wachiravit-thitagran/Authorizenter' );
 }
 define( 'AUTHORIZENTER_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AUTHORIZENTER_CORE_URL', plugin_dir_url( __FILE__ ) );

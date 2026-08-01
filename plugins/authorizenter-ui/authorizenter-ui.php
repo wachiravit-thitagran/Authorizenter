@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Authorizenter UI
- * Plugin URI:        https://github.com/authorizenter/authorizenter
+ * Plugin URI:        https://github.com/wachiravit-thitagran/Authorizenter
  * Description:       Front-end for Authorizenter Core: login buttons, question form, shortcodes, and an auto-created login page. Requires Authorizenter Core.
  * Version:           0.1.0
  * Requires at least: 6.0

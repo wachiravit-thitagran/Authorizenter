@@ -33,6 +33,35 @@ class GithubUpdaterTest extends TestCase {
 		set_transient( 'authorizenter_gh_' . md5( self::REPO ), $release );
 	}
 
+	/**
+	 * The shipped default repository is what every install checks for releases,
+	 * and a typo there fails silently — the GitHub API just 404s and no update is
+	 * ever offered. Pin it to the `Plugin URI` of both plugins so the two cannot
+	 * drift apart unnoticed.
+	 */
+	public function test_default_github_repo_matches_the_plugin_uri(): void {
+		$core = dirname( __DIR__ ) . '/plugins/authorizenter-core/authorizenter-core.php';
+		$ui   = dirname( __DIR__ ) . '/plugins/authorizenter-ui/authorizenter-ui.php';
+
+		preg_match( "/define\(\s*'AUTHORIZENTER_GITHUB_REPO',\s*'([^']*)'/", (string) file_get_contents( $core ), $m );
+		$slug = isset( $m[1] ) ? $m[1] : '';
+
+		$this->assertMatchesRegularExpression(
+			'#^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+$#',
+			$slug,
+			'AUTHORIZENTER_GITHUB_REPO must be a valid "owner/repo" slug.'
+		);
+
+		foreach ( array( 'core' => $core, 'ui' => $ui ) as $label => $path ) {
+			preg_match( '#Plugin URI:\s*https://github\.com/(\S+?)/?\s*$#m', (string) file_get_contents( $path ), $u );
+			$this->assertSame(
+				strtolower( $slug ),
+				strtolower( isset( $u[1] ) ? $u[1] : '' ),
+				"The {$label} plugin's Plugin URI must point at the release repository."
+			);
+		}
+	}
+
 	public function test_normalize_strips_v_prefix(): void {
 		$u = $this->updater( '0.1.0' );
 		$this->assertSame( '1.2.3', $this->invoke( $u, 'normalize', array( 'v1.2.3' ) ) );
