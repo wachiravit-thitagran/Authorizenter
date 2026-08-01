@@ -461,9 +461,9 @@ class Rest_Api {
 	public function logout( \WP_REST_Request $request ) {
 		$return_to = (string) $request->get_param( 'return_to' );
 
+		// Nothing to destroy — redirect_to() ends the request.
 		if ( ! is_user_logged_in() ) {
 			$this->redirect_to( '' !== $return_to ? $return_to : home_url( '/' ), true );
-			return;
 		}
 
 		$url = $this->engine->logout( $return_to );
