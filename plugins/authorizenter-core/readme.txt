@@ -57,8 +57,12 @@ the internet, sign-in will fail regardless of configuration.
 * Access control parity with Authorizer: approved/blocked/pending access lists
   (per email or domain), role mapping (`domain:` / `provider:` / `email:` / `*`),
   failed-login throttling with progressive lockout, and private-site mode.
-* Option to disable WordPress username/password sign-in (force SSO), with an
-  administrator bypass to prevent lockout and a login-form notice.
+* Option to disable WordPress username/password sign-in (force SSO). An optional
+  administrator bypass prevents lockout, and it is scoped to one unlinked URL —
+  `wp-login.php?external=wordpress` — so an administrator password is refused on
+  every other login form, REST, XML-RPC and application passwords. Elsewhere a
+  blocked attempt answers identically whether the password was right, wrong or the
+  account is unknown, so nothing confirms a credential.
 * HTTPS enforcement for generic OIDC discovery URLs.
 * Answer reporting: indexed per-question mirror meta, a Reports aggregator,
   Settings → Authorizenter Report (counts, drill-down, CSV export), and

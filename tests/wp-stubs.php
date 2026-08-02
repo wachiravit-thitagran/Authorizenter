@@ -513,6 +513,10 @@ function rest_url( $path = '' ) {
 	return 'https://example.test/wp-json/' . ltrim( (string) $path, '/' );
 }
 
+function site_url( $path = '', $scheme = null ) {
+	return 'https://example.test/' . ltrim( (string) $path, '/' );
+}
+
 function wp_validate_redirect( $location, $fallback = '' ) {
 	$location = trim( (string) $location );
 	if ( '' === $location ) {

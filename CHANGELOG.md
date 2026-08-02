@@ -23,6 +23,19 @@ All notable changes to Authorizenter are documented here. Format based on
 - `/logout` now requires a valid `wp_rest` nonce when a session exists, closing a
   logout CSRF hole (previously `permission_callback` was `__return_true`).
   Unauthenticated requests are redirected without touching any session.
+- **The administrator password bypass is scoped to `wp-login.php?external=wordpress`.**
+  It used to be a capability check alone, so with password sign-in disabled an
+  administrator password still worked on *any* form that submits credentials — a
+  theme's or an LMS plugin's login form, REST, XML-RPC, application passwords —
+  which quietly left the site's strongest account reachable by password from
+  several public endpoints. The marker is now carried through the form POST as a
+  hidden field and verified together with `$GLOBALS['pagenow']`, so a third-party
+  form cannot smuggle it in.
+- Away from that URL, a blocked login answers identically whether the password was
+  correct, wrong, or the account does not exist. Previously a correct non-admin
+  password produced a distinct "password sign-in is disabled" message, which
+  confirmed valid credentials to anyone replaying a stolen list. On the escape
+  hatch an administrator still gets WordPress's real verdict.
 
 ### Added
 - **Login contexts** — named login profiles (`[authorizenter_login context="…"]`)

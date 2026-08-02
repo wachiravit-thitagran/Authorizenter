@@ -14,15 +14,27 @@ defined( 'ABSPATH' ) || exit;
  * through a configured provider.
  *
  * A safety valve keeps administrators (the `manage_options` capability) able to use
- * a password, so a misconfigured or unreachable IdP cannot lock everyone out. This
- * bypass can be turned off once SSO is confirmed working.
+ * a password, so a misconfigured or unreachable IdP cannot lock everyone out. That
+ * door is deliberately narrow: it opens only on `wp-login.php?external=wordpress`.
+ * An administrator password is therefore useless everywhere else — a themed or
+ * plugin-supplied login form, REST, XML-RPC, application passwords — because the
+ * bypass is scoped to the request, not just to the capability. Turn the bypass off
+ * once SSO is confirmed working and no password opens any door at all.
  *
- * Any authentication that submits a username and password is affected — this
- * includes interactive wp-login.php sign-ins as well as password-based API auth
- * (REST/XML-RPC and application passwords), all of which run through the
- * `authenticate` filter. Cookie auth and the SSO flow itself use different code
- * paths and are untouched. The administrator bypass below still applies, so
- * admins can continue to use passwords (including application passwords).
+ * Any authentication that submits a username and password runs through the
+ * `authenticate` filter, which is what this class hooks. Cookie auth and the SSO
+ * flow use different code paths and are untouched.
+ *
+ * Away from that one URL every rejection is identical, whether the password was
+ * right, wrong, or the account does not exist. A distinguishable "password is
+ * disabled for you" answer would confirm valid credentials to anyone replaying a
+ * stolen list, so the block deliberately gives nothing away.
+ *
+ * This is self-contained: it needs no cooperation from the theme. Note that a
+ * theme or plugin which redirects `wp-login.php` to its own branded page will also
+ * redirect this URL — that is the theme's redirect to exempt, and Authorizenter
+ * does not fight it, because silently cancelling another extension's login
+ * redirect would break sites that rely on it.
  */
 class Password_Auth {
 
@@ -51,21 +63,79 @@ class Password_Auth {
 		// Run after WP's own username/password checks (priority 20).
 		add_filter( 'authenticate', array( $this, 'maybe_block' ), 30, 3 );
 		add_action( 'login_head', array( $this, 'maybe_hide_form' ) );
+		// wp-login.php posts to itself without the query string, so carry the
+		// escape-hatch marker through the submission as a hidden field.
+		add_action( 'login_form', array( $this, 'print_escape_hatch_field' ) );
 	}
 
 	/**
-	 * Whether the WordPress credential form should be revealed even though
-	 * password sign-in is disabled.
+	 * Whether this request is the administrator escape hatch.
 	 *
-	 * Uses the Authorizer-style escape hatch: append ?external=wordpress to the
-	 * login URL. Lets an administrator reach the password form for the bypass even
-	 * when the form is otherwise hidden.
+	 * Authorizer-style: append `?external=wordpress` to the login URL. Two things
+	 * must both hold — the marker is present, and we really are on `wp-login.php`.
+	 * The second half matters: the marker is read from `$_REQUEST` so it survives
+	 * the form POST, and without the page check any third-party login form could
+	 * smuggle `external=wordpress` into its own submission and reopen the bypass.
+	 *
+	 * `$GLOBALS['pagenow']` is set by WordPress for both the GET and the POST of
+	 * wp-login.php, which is why it is used instead of inspecting the request URI.
 	 *
 	 * @return bool
 	 */
-	private function form_revealed() {
+	private function is_escape_hatch() {
+		if ( ! isset( $GLOBALS['pagenow'] ) || 'wp-login.php' !== $GLOBALS['pagenow'] ) {
+			return false;
+		}
+
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		return isset( $_GET['external'] ) && 'wordpress' === $_GET['external'];
+		$marker = isset( $_REQUEST['external'] ) ? sanitize_key( wp_unslash( $_REQUEST['external'] ) ) : '';
+
+		return 'wordpress' === $marker;
+	}
+
+	/**
+	 * Keep the escape-hatch marker on the credential form so it is still present
+	 * when the browser POSTs back to wp-login.php.
+	 *
+	 * @return void
+	 */
+	public function print_escape_hatch_field() {
+		if ( ! $this->is_disabled() || ! $this->is_escape_hatch() ) {
+			return;
+		}
+
+		echo '<input type="hidden" name="external" value="wordpress" />';
+	}
+
+	/**
+	 * Whether the administrator safety valve is switched on.
+	 *
+	 * @return bool
+	 */
+	private function bypass_enabled() {
+		$adv = $this->settings->get( 'advanced' );
+
+		return ! empty( $adv['password_auth_admin_bypass'] );
+	}
+
+	/**
+	 * Whether a submitted login/email belongs to an administrator.
+	 *
+	 * Resolved from the submitted name rather than from the authentication result,
+	 * so a wrong password on the escape hatch can still be reported honestly to an
+	 * administrator while everyone else gets the indistinguishable answer.
+	 *
+	 * @param string $username Submitted username or email.
+	 * @return bool
+	 */
+	private function username_is_admin( $username ) {
+		$user = get_user_by( 'login', $username );
+
+		if ( ! $user && false !== strpos( $username, '@' ) ) {
+			$user = get_user_by( 'email', $username );
+		}
+
+		return $user instanceof \WP_User && user_can( $user, 'manage_options' );
 	}
 
 	/**
@@ -76,7 +146,7 @@ class Password_Auth {
 	 * @return void
 	 */
 	public function maybe_hide_form() {
-		if ( ! $this->is_disabled() || $this->form_revealed() ) {
+		if ( ! $this->is_disabled() || $this->is_escape_hatch() ) {
 			return;
 		}
 		?>
@@ -124,17 +194,19 @@ class Password_Auth {
 		if ( '' === (string) $username || '' === (string) $password ) {
 			return $user;
 		}
-		// Already failing, or password auth is allowed.
-		if ( is_wp_error( $user ) || ! $this->is_disabled() ) {
+		// Password auth is allowed for everyone.
+		if ( ! $this->is_disabled() ) {
 			return $user;
 		}
 
-		// Safety valve: let administrators keep using a password.
-		$adv = $this->settings->get( 'advanced' );
-		if ( ! empty( $adv['password_auth_admin_bypass'] ) && $user instanceof \WP_User && user_can( $user, 'manage_options' ) ) {
+		// Safety valve, scoped to the escape-hatch URL: an administrator signing in
+		// there gets WordPress's own verdict, including a truthful "wrong password".
+		if ( $this->is_escape_hatch() && $this->bypass_enabled() && $this->username_is_admin( $username ) ) {
 			return $user;
 		}
 
+		// One answer for every other case — correct password, wrong password, or no
+		// such account — so nothing here confirms a credential or an account.
 		return new \WP_Error(
 			'authorizenter_password_disabled',
 			__( 'Password sign-in is disabled for this site. Please sign in with single sign-on.', 'authorizenter' )

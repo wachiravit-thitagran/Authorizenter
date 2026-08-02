@@ -103,13 +103,34 @@ is refused even though the page is public. See [`docs/hooks.md`](docs/hooks.md).
 
 ### Example: Admin Password Bypass
 
-If you have disabled password login but need to sign in as an administrator using a password (e.g. if the SSO provider is down), you can bypass the hidden login form by appending `?external=wordpress` to the login URL:
+With password sign-in disabled, one URL still accepts a password — and only for
+administrators:
 
 ```
 https://your-site.example/wp-login.php?external=wordpress
 ```
 
-*Note: This bypass only works if the **"Administrator bypass"** option is enabled in the advanced settings. Normal users cannot bypass the restriction this way.*
+Nothing on the site links to it; you reach it by typing it. The marker travels
+through the form submission as a hidden field, so the bypass survives the POST.
+
+The scope is deliberately tight. An administrator password is refused everywhere
+else — a theme's or plugin's own login form (Tutor LMS, WooCommerce, …), REST,
+XML-RPC, application passwords — because the safety valve is scoped to the
+request, not just to the capability. Away from that URL every rejection is
+identical whether the password was right, wrong, or the account does not exist,
+so nothing there confirms a credential or an account. On the URL itself an
+administrator gets WordPress's real verdict, including a truthful "wrong
+password".
+
+Requires the **"Administrator bypass"** option in the advanced settings; turn it
+off once SSO is proven and no password opens any door. Brute force is limited by
+the login throttle (`advanced.throttle`, 5 attempts / 15 min per IP by default),
+and the page is public, so give administrators long unique passwords — ideally
+with two-factor — or restrict `wp-login.php` by IP at the web server.
+
+If your theme redirects `wp-login.php` to a branded login page, exempt
+`external=wordpress` from that redirect, or the escape hatch never renders.
+Authorizenter does not cancel another extension's redirect for you.
 
 ## Redirect / Callback URL
 

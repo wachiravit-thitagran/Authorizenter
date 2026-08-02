@@ -1343,6 +1343,17 @@ class Admin_Settings {
 						<th scope="row"><?php esc_html_e( 'Administrator bypass', 'authorizenter' ); ?></th>
 						<td>
 							<label><input type="checkbox" name="password_auth_admin_bypass" value="1" <?php checked( ! empty( $advanced['password_auth_admin_bypass'] ) ); ?> /> <?php esc_html_e( 'Allow administrators to still use a password (recommended — prevents lockout if SSO breaks).', 'authorizenter' ); ?></label>
+							<p class="description">
+								<?php
+								printf(
+									/* translators: %s: the escape-hatch login URL. */
+									esc_html__( 'The password only works at %s — never on another login form, REST, XML-RPC or an application password. Nothing links to that URL; reach it by typing it.', 'authorizenter' ),
+									// Not wp_login_url(): a theme may filter that to a branded
+									// page, while the escape hatch is always wp-login.php.
+									'<code>' . esc_html( add_query_arg( 'external', 'wordpress', site_url( 'wp-login.php', 'login' ) ) ) . '</code>'
+								);
+								?>
+							</p>
 						</td>
 					</tr>
 					<tr>
