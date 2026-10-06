@@ -38,7 +38,7 @@ final class MCP {
 			'authorizenter',
 			array(
 				'label'       => 'Authorizenter',
-				'description' => 'Authentication providers, identity diagnostics and reports.',
+				'description' => 'Authentication provider information, linked identity data, and authentication-related reports.',
 			)
 		);
 	}
@@ -53,7 +53,7 @@ final class MCP {
 			'authorizenter/list-providers',
 			array(
 				'label'               => 'List Authorizenter Providers',
-				'description'         => 'List enabled Authorizenter providers for a context.',
+				'description'         => 'Lists authentication providers available for the requested context.',
 				'category'            => 'authorizenter',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -76,7 +76,7 @@ final class MCP {
 			'authorizenter/get-provider-data',
 			array(
 				'label'               => 'Get Authorizenter Provider Data',
-				'description'         => 'Return stored identity data for a WordPress user.',
+				'description'         => 'Retrieves stored identity information associated with a WordPress user, optionally limited to one provider.',
 				'category'            => 'authorizenter',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -101,7 +101,7 @@ final class MCP {
 			'authorizenter/get-answer-report',
 			array(
 				'label'               => 'Get Authorizenter Answer Report',
-				'description'         => 'Return aggregate post-login question answers.',
+				'description'         => 'Retrieves aggregate reporting data for answers collected from post-login questions.',
 				'category'            => 'authorizenter',
 				'input_schema'        => array(
 					'type'       => 'object',
