@@ -26,6 +26,13 @@ class JwtVerifierTest extends TestCase {
 		$GLOBALS['__mock_wp_remote_get'] = array();
 	}
 
+	public function test_verify_rejects_insecure_jwks_url() {
+		$result = $this->verifier->verify( 'header.payload.signature', 'http://127.0.0.1/jwks', 'issuer', 'audience' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'authorizenter_jwks_unsafe_url', $result->get_error_code() );
+	}
+
 	public function test_verify_fails_if_jwks_fetch_fails() {
 		$GLOBALS['__mock_wp_remote_get']['https://example.com/jwks'] = new WP_Error( 'http_error', 'Error' );
 		
