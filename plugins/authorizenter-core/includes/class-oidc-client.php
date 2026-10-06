@@ -149,6 +149,17 @@ class Oidc_Client {
 			 * @throws \Jumbojett\OpenIDConnectClientException On transport failure.
 			 */
 			protected function fetchURL( string $url, string $post_body = null, array $headers = array() ) {
+				$scheme = wp_parse_url( $url, PHP_URL_SCHEME );
+				$host   = wp_parse_url( $url, PHP_URL_HOST );
+				$local_dev = defined( 'WP_ENVIRONMENT_TYPE' )
+					&& 'local' === WP_ENVIRONMENT_TYPE
+					&& in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true );
+
+				if ( ( 'https' !== $scheme && ! $local_dev )
+					|| ( ! $local_dev && function_exists( 'wp_http_validate_url' ) && false === wp_http_validate_url( $url ) ) ) {
+					throw new \Jumbojett\OpenIDConnectClientException( 'Unsafe OIDC endpoint URL.' );
+				}
+
 				// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- camelCase properties are inherited from the jumbojett library.
 				$args = array(
 					'timeout'    => $this->timeOut,
@@ -178,7 +189,7 @@ class Oidc_Client {
 					$args['sslverify'] = false;
 				}
 
-				$response = wp_remote_request( $url, $args );
+				$response = wp_safe_remote_request( $url, $args );
 
 				if ( is_wp_error( $response ) ) {
 					throw new \Jumbojett\OpenIDConnectClientException( 'WP HTTP error: ' . esc_html( $response->get_error_message() ) );
