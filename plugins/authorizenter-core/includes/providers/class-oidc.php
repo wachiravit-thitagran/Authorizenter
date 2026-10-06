@@ -89,13 +89,22 @@ class OIDC extends Provider_Base {
 			return $cached;
 		}
 
-		$response = wp_remote_get( $url, array( 'timeout' => 15 ) );
+		$response = wp_safe_remote_get( $url, array( 'timeout' => 15 ) );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
 		$doc = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( ! is_array( $doc ) || empty( $doc['authorization_endpoint'] ) || empty( $doc['token_endpoint'] ) ) {
 			return new \WP_Error( 'authorizenter_oidc_bad_discovery', __( 'Invalid OIDC discovery document.', 'authorizenter' ) );
+		}
+
+		foreach ( array( 'authorization_endpoint', 'token_endpoint', 'jwks_uri', 'userinfo_endpoint', 'end_session_endpoint' ) as $endpoint_key ) {
+			if ( ! empty( $doc[ $endpoint_key ] ) && ! $this->is_secure_url( (string) $doc[ $endpoint_key ] ) ) {
+				return new \WP_Error(
+					'authorizenter_oidc_unsafe_endpoint',
+					__( 'OIDC discovery returned an unsafe endpoint URL.', 'authorizenter' )
+				);
+			}
 		}
 
 		set_transient( $cache_key, $doc, HOUR_IN_SECONDS );
@@ -230,8 +239,8 @@ class OIDC extends Provider_Base {
 		}
 		return add_query_arg(
 			array(
-				'post_logout_redirect_uri' => rawurlencode( $post_logout_redirect ),
-				'client_id'                => rawurlencode( $this->client_id() ),
+				'post_logout_redirect_uri' => $post_logout_redirect,
+				'client_id'                => $this->client_id(),
 			),
 			$endpoint
 		);
@@ -407,7 +416,7 @@ class OIDC extends Provider_Base {
 	 * @return array|\WP_Error
 	 */
 	protected function request_token_with_args( $endpoint, array $args ) {
-		$response = wp_remote_post( $endpoint, array_merge( array( 'timeout' => 15 ), $args ) );
+		$response = wp_safe_remote_post( $endpoint, array_merge( array( 'timeout' => 15 ), $args ) );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
