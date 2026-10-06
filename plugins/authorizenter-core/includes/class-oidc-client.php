@@ -149,8 +149,8 @@ class Oidc_Client {
 			 * @throws \Jumbojett\OpenIDConnectClientException On transport failure.
 			 */
 			protected function fetchURL( string $url, string $post_body = null, array $headers = array() ) {
-				$scheme = wp_parse_url( $url, PHP_URL_SCHEME );
-				$host   = wp_parse_url( $url, PHP_URL_HOST );
+				$scheme    = wp_parse_url( $url, PHP_URL_SCHEME );
+				$host      = wp_parse_url( $url, PHP_URL_HOST );
 				$local_dev = defined( 'WP_ENVIRONMENT_TYPE' )
 					&& 'local' === WP_ENVIRONMENT_TYPE
 					&& in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true );
@@ -208,9 +208,9 @@ class Oidc_Client {
 							if ( empty( $discovery[ $endpoint_key ] ) ) {
 								continue;
 							}
-							$endpoint = (string) $discovery[ $endpoint_key ];
-							$endpoint_scheme = wp_parse_url( $endpoint, PHP_URL_SCHEME );
-							$endpoint_host   = wp_parse_url( $endpoint, PHP_URL_HOST );
+							$endpoint           = (string) $discovery[ $endpoint_key ];
+							$endpoint_scheme    = wp_parse_url( $endpoint, PHP_URL_SCHEME );
+							$endpoint_host      = wp_parse_url( $endpoint, PHP_URL_HOST );
 							$endpoint_local_dev = defined( 'WP_ENVIRONMENT_TYPE' )
 								&& 'local' === WP_ENVIRONMENT_TYPE
 								&& in_array( $endpoint_host, array( 'localhost', '127.0.0.1', '::1' ), true );
