@@ -201,6 +201,27 @@ class Oidc_Client {
 				$this->responseCode = wp_remote_retrieve_response_code( $response );
 				$output             = wp_remote_retrieve_body( $response );
 
+				if ( false !== strpos( $url, '/.well-known/openid-configuration' ) ) {
+					$discovery = json_decode( $output, true );
+					if ( is_array( $discovery ) ) {
+						foreach ( array( 'authorization_endpoint', 'token_endpoint', 'jwks_uri', 'userinfo_endpoint', 'end_session_endpoint' ) as $endpoint_key ) {
+							if ( empty( $discovery[ $endpoint_key ] ) ) {
+								continue;
+							}
+							$endpoint = (string) $discovery[ $endpoint_key ];
+							$endpoint_scheme = wp_parse_url( $endpoint, PHP_URL_SCHEME );
+							$endpoint_host   = wp_parse_url( $endpoint, PHP_URL_HOST );
+							$endpoint_local_dev = defined( 'WP_ENVIRONMENT_TYPE' )
+								&& 'local' === WP_ENVIRONMENT_TYPE
+								&& in_array( $endpoint_host, array( 'localhost', '127.0.0.1', '::1' ), true );
+							if ( ( 'https' !== $endpoint_scheme && ! $endpoint_local_dev )
+								|| ( ! $endpoint_local_dev && function_exists( 'wp_http_validate_url' ) && false === wp_http_validate_url( $endpoint ) ) ) {
+								throw new \Jumbojett\OpenIDConnectClientException( 'OIDC discovery returned an unsafe endpoint URL.' );
+							}
+						}
+					}
+				}
+
 				if ( false !== strpos( $url, 'jwks' ) ) {
 					$decoded = json_decode( $output, false );
 					if ( null === $decoded && function_exists( 'authorizenter_log' ) ) {
