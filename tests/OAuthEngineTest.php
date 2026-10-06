@@ -152,6 +152,25 @@ class OAuthEngineTest extends TestCase {
 		$this->assertStringContainsString( 'abc123', $data['redirect'] );
 	}
 
+	public function test_pending_redirect_query_values_are_encoded_once(): void {
+		$context = array(
+			'id'               => 'default',
+			'deny_redirect'    => '',
+			'pending_redirect' => 'https://example.test/waiting/',
+		);
+		$error = new \WP_Error(
+			'authorizenter_not_approved',
+			'Awaiting approval.',
+			array( 'status' => 403, 'pending_token' => 'abc/123+' )
+		);
+
+		$result = $this->invoke( $this->engine(), 'attach_deny_redirect', array( $error, $context, '/dashboard?x=1' ) );
+		$url    = $result->get_error_data()['redirect'];
+
+		$this->assertStringContainsString( 'abc%2F123%2B', $url );
+		$this->assertStringNotContainsString( '%252F', $url );
+	}
+
 	public function test_flow_ttl_filter_applied(): void {
 		update_option( Settings::OPTION, array( 'providers' => array( 'facebook' => array( 'enabled' => true, 'client_id' => 'f' ) ) ) );
 		

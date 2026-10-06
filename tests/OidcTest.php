@@ -195,6 +195,26 @@ class OidcTest extends TestCase {
 		$this->assertArrayNotHasKey( 'client_assertion', $result['body'] );
 	}
 
+	public function test_discovery_rejects_unsafe_endpoint_urls(): void {
+		$url = 'https://idp.example.org/.well-known/openid-configuration';
+		$GLOBALS['__mock_wp_remote_get'][ $url ] = array(
+			'body' => wp_json_encode(
+				array(
+					'authorization_endpoint' => 'https://idp.example.org/authorize',
+					'token_endpoint'         => 'http://127.0.0.1/token',
+				)
+			),
+		);
+
+		$oidc = $this->make_oidc( array( 'discovery_url' => $url ) );
+		$method = new \ReflectionMethod( $oidc, 'discovery' );
+		$method->setAccessible( true );
+		$result = $method->invoke( $oidc );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'authorizenter_oidc_unsafe_endpoint', $result->get_error_code() );
+	}
+
 	// --- Issuer URL override --------------------------------------------------
 
 	public function test_issuer_url_override_takes_precedence(): void {

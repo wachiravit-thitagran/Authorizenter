@@ -195,7 +195,7 @@ abstract class Provider_Base {
 		 */
 		$args = apply_filters( 'authorizenter_authorization_args', $args, $this->id() );
 
-		return add_query_arg( array_map( 'rawurlencode', $args ), $this->authorization_endpoint() );
+		return add_query_arg( $args, $this->authorization_endpoint() );
 	}
 
 	/**
@@ -205,7 +205,7 @@ abstract class Provider_Base {
 	 * @return array|\WP_Error Decoded token response.
 	 */
 	protected function request_token( array $body ) {
-		$response = wp_remote_post(
+		$response = wp_safe_remote_post(
 			$this->token_endpoint(),
 			array(
 				'timeout' => 15,
@@ -254,11 +254,21 @@ abstract class Provider_Base {
 	 */
 	protected function is_secure_url( $url ) {
 		$scheme = wp_parse_url( $url, PHP_URL_SCHEME );
-		if ( 'https' === $scheme ) {
-			return true;
+		$host   = wp_parse_url( $url, PHP_URL_HOST );
+
+		$local_dev = defined( 'WP_ENVIRONMENT_TYPE' )
+			&& 'local' === WP_ENVIRONMENT_TYPE
+			&& in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true );
+
+		if ( 'https' !== $scheme && ! $local_dev ) {
+			return false;
 		}
-		$host = wp_parse_url( $url, PHP_URL_HOST );
-		return in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true );
+
+		if ( ! $local_dev && function_exists( 'wp_http_validate_url' ) && false === wp_http_validate_url( $url ) ) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -269,7 +279,7 @@ abstract class Provider_Base {
 	 * @return array|\WP_Error
 	 */
 	protected function request_userinfo( $url, $access_token ) {
-		$response = wp_remote_get(
+		$response = wp_safe_remote_get(
 			$url,
 			array(
 				'timeout' => 15,

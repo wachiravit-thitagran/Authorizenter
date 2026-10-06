@@ -77,13 +77,18 @@ class JWT_Verifier {
 	 * @return array|\WP_Error
 	 */
 	private function fetch_jwks( $jwks_uri ) {
+		$scheme = wp_parse_url( $jwks_uri, PHP_URL_SCHEME );
+		if ( 'https' !== $scheme || ( function_exists( 'wp_http_validate_url' ) && false === wp_http_validate_url( $jwks_uri ) ) ) {
+			return new \WP_Error( 'authorizenter_jwks_unsafe_url', __( 'Provider signing-key URL is not safe to request.', 'authorizenter' ), array( 'status' => 502 ) );
+		}
+
 		$cache_key = 'authorizenter_jwks_' . md5( $jwks_uri );
 		$cached    = get_transient( $cache_key );
 		if ( is_array( $cached ) ) {
 			return $cached;
 		}
 
-		$response = wp_remote_get( $jwks_uri, array( 'timeout' => 15 ) );
+		$response = wp_safe_remote_get( $jwks_uri, array( 'timeout' => 15 ) );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}

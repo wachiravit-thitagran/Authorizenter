@@ -160,6 +160,19 @@ function wp_remote_get( $url, $args = array() ) {
 	}
 	return new WP_Error( 'http_request_failed', 'A valid URL was not provided.' );
 }
+function wp_safe_remote_get( $url, $args = array() ) { return wp_remote_get( $url, $args ); }
+function wp_safe_remote_post( $url, $args = array() ) {
+	if ( function_exists( 'wp_remote_post' ) ) {
+		return wp_remote_post( $url, $args );
+	}
+	return wp_remote_get( $url, $args );
+}
+function wp_safe_remote_request( $url, $args = array() ) {
+	if ( function_exists( 'wp_remote_request' ) ) {
+		return wp_remote_request( $url, $args );
+	}
+	return wp_remote_get( $url, $args );
+}
 function wp_remote_retrieve_body( $response ) {
 	return isset( $response['body'] ) ? $response['body'] : '';
 }

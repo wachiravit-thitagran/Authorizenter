@@ -614,10 +614,10 @@ class OAuth_Engine {
 				$token = isset( $data['pending_token'] ) ? (string) $data['pending_token'] : '';
 				$args  = array();
 				if ( '' !== $token ) {
-					$args['azr_pending_token'] = rawurlencode( $token );
+					$args['azr_pending_token'] = $token;
 				}
 				if ( '' !== $return_to ) {
-					$args['return_to'] = rawurlencode( $return_to );
+					$args['return_to'] = $return_to;
 				}
 
 				$url              = ! empty( $args ) ? add_query_arg( $args, $pending ) : $pending;
@@ -637,9 +637,9 @@ class OAuth_Engine {
 			 * @param string $context_id Context id.
 			 */
 			$login = apply_filters( 'authorizenter_context_login_url', wp_login_url(), $context['id'] );
-			$args  = array( 'authorizenter_error' => rawurlencode( $error->get_error_code() ) );
+			$args  = array( 'authorizenter_error' => $error->get_error_code() );
 			if ( '' !== $return_to ) {
-				$args['return_to'] = rawurlencode( $return_to );
+				$args['return_to'] = $return_to;
 			}
 			$target = add_query_arg( $args, $login );
 		}
