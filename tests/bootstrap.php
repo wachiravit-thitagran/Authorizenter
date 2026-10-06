@@ -44,6 +44,7 @@ require $inc . 'class-private-site.php';
 require $inc . 'class-admin-settings.php';
 require $inc . 'class-shortcodes.php';
 require $inc . 'class-rest-api.php';
+require $inc . 'class-mcp.php';
 
 $ui_inc = dirname( __DIR__ ) . '/plugins/authorizenter-ui/includes/';
 if ( ! defined( 'AUTHORIZENTER_UI_URL' ) ) {
