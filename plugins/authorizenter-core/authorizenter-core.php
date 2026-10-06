@@ -191,6 +191,7 @@ add_action(
 	'plugins_loaded',
 	function () {
 		authorizenter_core();
+		MCP::register();
 	}
 );
 
