@@ -96,8 +96,8 @@ class ProvidersTest extends TestCase {
 	public function test_secure_url_guard(): void {
 		$oidc = $this->oidc();
 		$this->assertTrue( $this->invoke( $oidc, 'is_secure_url', array( 'https://idp.example.org/x' ) ) );
-		$this->assertTrue( $this->invoke( $oidc, 'is_secure_url', array( 'http://localhost/x' ) ) );
-		$this->assertTrue( $this->invoke( $oidc, 'is_secure_url', array( 'http://127.0.0.1/x' ) ) );
+		$this->assertFalse( $this->invoke( $oidc, 'is_secure_url', array( 'http://localhost/x' ) ) );
+		$this->assertFalse( $this->invoke( $oidc, 'is_secure_url', array( 'http://127.0.0.1/x' ) ) );
 		$this->assertFalse( $this->invoke( $oidc, 'is_secure_url', array( 'http://evil.example.org/x' ) ) );
 	}
 
