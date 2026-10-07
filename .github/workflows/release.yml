@@ -22,6 +22,19 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - name: Resolve release SHA
@@ -85,7 +98,7 @@ jobs:
         with:
           php-version: '8.2'
           coverage: none
-          tools: composer
+          tools: composer, wp-cli
 
       - name: Install production dependencies
         if: steps.changes.outputs.proceed == 'true'
@@ -157,6 +170,40 @@ jobs:
             echo "Development files leaked into UI ZIP" >&2
             exit 1
           fi
+
+      - name: Validate packaged plugins in clean WordPress
+        if: steps.changes.outputs.proceed == 'true'
+        env:
+          NEXT: ${{ steps.ver.outputs.next }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/release-wp
+          mkdir -p /tmp/release-wp
+          cd /tmp/release-wp
+
+          wp core download --allow-root
+          wp config create --dbname=wordpress --dbuser=root --dbpass=root --dbhost=127.0.0.1 --allow-root
+          wp core install --url=http://localhost --title="Release Validation" --admin_user=admin --admin_password=admin --admin_email=admin@example.test --skip-email --allow-root
+
+          wp plugin install "$GITHUB_WORKSPACE/dist/authorizenter-core.zip" --activate --force --allow-root
+          wp plugin install "$GITHUB_WORKSPACE/dist/authorizenter-ui.zip" --activate --force --allow-root
+
+          wp plugin is-active authorizenter-core --allow-root
+          wp plugin is-active authorizenter-ui --allow-root
+
+          test "$(wp plugin get authorizenter-core --field=version --allow-root)" = "$NEXT"
+          test "$(wp plugin get authorizenter-ui --field=version --allow-root)" = "$NEXT"
+
+          wp plugin deactivate authorizenter-ui authorizenter-core --allow-root
+          wp plugin activate authorizenter-core authorizenter-ui --allow-root
+
+          wp eval '
+          if ( ! shortcode_exists( "authorizenter_login" ) ) {
+              fwrite( STDERR, "Authorizenter login shortcode missing after ZIP install.\n" );
+              exit( 1 );
+          }
+          echo "Packaged Authorizenter plugins loaded successfully.\n";
+          ' --allow-root
 
       - name: Publish GitHub Release with assets
         if: steps.changes.outputs.proceed == 'true'
