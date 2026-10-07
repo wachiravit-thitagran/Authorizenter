@@ -46,6 +46,153 @@ jobs:
           ref: ${{ steps.target.outputs.sha }}
           fetch-depth: 0
 
+      - name: Check for releasable changes
+        id: changes
+        run: |
+          set -euo pipefail
+          latest_tag=$(git tag --list 'v*' --sort=-v:refname | grep -oE '^v[0-9]+\.[0-9]+\.[0-9]+
+      - name: Compute next version
+        if: steps.changes.outputs.proceed == 'true'
+        id: ver
+        run: |
+          set -euo pipefail
+          current=$(grep -iE '^[[:space:]]*\*?[[:space:]]*Version:' plugins/authorizenter-core/authorizenter-core.php | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+          latest_tag=$(git tag --list 'v*' --sort=-v:refname | grep -oE '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 | sed 's/^v//' || true)
+          echo "header=${current:-none} latest_tag=${latest_tag:-none}"
+
+          if [ -z "${latest_tag}" ]; then
+            next="${current:-0.1.0}"
+          else
+            higher=$(printf '%s\n%s\n' "$current" "$latest_tag" | sort -V | tail -1)
+            if [ -n "$current" ] && [ "$higher" = "$current" ] && [ "$current" != "$latest_tag" ]; then
+              next="$current"
+            else
+              IFS=. read -r MA MI PA <<< "$latest_tag"
+              next="${MA}.${MI}.$((PA + 1))"
+            fi
+          fi
+
+          if ! printf '%s' "$next" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Computed version '$next' is not valid semver" >&2
+            exit 1
+          fi
+
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=v$next" >> "$GITHUB_OUTPUT"
+
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        if: steps.changes.outputs.proceed == 'true'
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer
+
+      - name: Install production dependencies
+        if: steps.changes.outputs.proceed == 'true'
+        run: composer install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction --no-progress
+
+      - name: Bundle vendor into Core plugin
+        if: steps.changes.outputs.proceed == 'true'
+        run: |
+          set -euo pipefail
+          rm -rf plugins/authorizenter-core/vendor
+          cp -R vendor plugins/authorizenter-core/vendor
+          test -f plugins/authorizenter-core/vendor/autoload.php
+
+      - name: Stamp version into both plugins
+        if: steps.changes.outputs.proceed == 'true'
+        env:
+          NEXT: ${{ steps.ver.outputs.next }}
+        run: |
+          set -euo pipefail
+          sed -i -E "s/^([[:space:]]*\*[[:space:]]*Version:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-core/authorizenter-core.php
+          sed -i -E "s/^([[:space:]]*\*[[:space:]]*Version:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-ui/authorizenter-ui.php
+          sed -i -E "s/(AUTHORIZENTER_CORE_VERSION', ')[0-9.]+(')/\1${NEXT}\2/" plugins/authorizenter-core/authorizenter-core.php
+          sed -i -E "s/(AUTHORIZENTER_UI_VERSION', ')[0-9.]+(')/\1${NEXT}\2/" plugins/authorizenter-ui/authorizenter-ui.php
+          sed -i -E "s/^(Stable tag:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-core/readme.txt
+          sed -i -E "s/^(Stable tag:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-ui/readme.txt
+
+          grep -REn 'Version:|_VERSION|Stable tag:' \
+            plugins/authorizenter-core/authorizenter-core.php \
+            plugins/authorizenter-ui/authorizenter-ui.php \
+            plugins/authorizenter-core/readme.txt \
+            plugins/authorizenter-ui/readme.txt | grep -F "${NEXT}"
+
+      - name: Build plugin ZIPs
+        if: steps.changes.outputs.proceed == 'true'
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist
+          cd plugins
+          zip -rq ../dist/authorizenter-core.zip authorizenter-core \
+            -x '*/.git/*' '*/node_modules/*' '*/tests/*'
+          zip -rq ../dist/authorizenter-ui.zip authorizenter-ui \
+            -x '*/.git/*' '*/node_modules/*' '*/tests/*'
+          cd ..
+
+      - name: Validate release packages
+        if: steps.changes.outputs.proceed == 'true'
+        env:
+          NEXT: ${{ steps.ver.outputs.next }}
+        run: |
+          set -euo pipefail
+          unzip -t dist/authorizenter-core.zip >/dev/null
+          unzip -t dist/authorizenter-ui.zip >/dev/null
+
+          unzip -l dist/authorizenter-core.zip | grep -q 'authorizenter-core/authorizenter-core.php'
+          unzip -l dist/authorizenter-core.zip | grep -q 'authorizenter-core/vendor/autoload.php'
+          unzip -l dist/authorizenter-ui.zip | grep -q 'authorizenter-ui/authorizenter-ui.php'
+
+          unzip -p dist/authorizenter-core.zip authorizenter-core/authorizenter-core.php | grep -qE "Version:[[:space:]]*${NEXT}"
+          unzip -p dist/authorizenter-ui.zip authorizenter-ui/authorizenter-ui.php | grep -qE "Version:[[:space:]]*${NEXT}"
+          unzip -p dist/authorizenter-core.zip authorizenter-core/readme.txt | grep -qE "^Stable tag:[[:space:]]*${NEXT}$"
+          unzip -p dist/authorizenter-ui.zip authorizenter-ui/readme.txt | grep -qE "^Stable tag:[[:space:]]*${NEXT}$"
+
+          if unzip -l dist/authorizenter-core.zip | grep -Eq 'authorizenter-core/(tests|\.github|node_modules)/'; then
+            echo "Development files leaked into Core ZIP" >&2
+            exit 1
+          fi
+          if unzip -l dist/authorizenter-ui.zip | grep -Eq 'authorizenter-ui/(tests|\.github|node_modules)/'; then
+            echo "Development files leaked into UI ZIP" >&2
+            exit 1
+          fi
+
+      - name: Publish GitHub Release with assets
+        if: steps.changes.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" dist/authorizenter-core.zip dist/authorizenter-ui.zip \
+            --target "$TARGET_SHA" \
+            --title "$TAG" \
+            --generate-notes
+ | head -1 || true)
+
+          if [ -z "$latest_tag" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed=$(git diff --name-only "$latest_tag"..HEAD -- \
+            . \
+            ':(exclude).github/**' \
+            ':(exclude)docs/**' \
+            ':(exclude)tests/**' \
+            ':(exclude)**/*.md')
+
+          if [ -n "$changed" ]; then
+            echo "Releasable changes since $latest_tag:"
+            printf '%s\n' "$changed"
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Only tests/docs/workflows changed since $latest_tag; no release needed."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Compute next version
         id: ver
         run: |
