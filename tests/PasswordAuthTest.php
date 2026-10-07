@@ -80,6 +80,22 @@ class PasswordAuthTest extends TestCase {
 		$this->assertSame( $admin, $auth->maybe_block( $admin, $admin->user_login, 'secret' ) );
 	}
 
+	public function test_admin_bypass_can_be_forced_by_policy_filter(): void {
+		$auth  = $this->auth( array( 'disable_password_auth' => true, 'password_auth_admin_bypass' => false ) );
+		$admin = azr_test_make_user( 39, array( 'manage_options' => true, 'read' => true ) );
+
+		add_filter(
+			'authorizenter_password_auth_admin_bypass',
+			static function () {
+				return true;
+			}
+		);
+
+		$this->on_escape_hatch();
+
+		$this->assertSame( $admin, $auth->maybe_block( $admin, $admin->user_login, 'secret' ) );
+	}
+
 	public function test_admin_may_sign_in_with_the_email_address(): void {
 		$auth  = $this->auth( array( 'disable_password_auth' => true, 'password_auth_admin_bypass' => true ) );
 		$admin = azr_test_make_user( 32, array( 'manage_options' => true, 'read' => true ) );
