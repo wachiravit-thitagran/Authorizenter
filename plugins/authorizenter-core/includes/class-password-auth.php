@@ -113,9 +113,18 @@ class Password_Auth {
 	 * @return bool
 	 */
 	private function bypass_enabled() {
-		$adv = $this->settings->get( 'advanced' );
+		$adv     = $this->settings->get( 'advanced' );
+		$enabled = ! empty( $adv['password_auth_admin_bypass'] );
 
-		return ! empty( $adv['password_auth_admin_bypass'] );
+		/**
+		 * Filter whether the administrator password escape hatch is enabled.
+		 *
+		 * The bypass remains scoped to wp-login.php?external=wordpress and still
+		 * requires the submitted account to have manage_options.
+		 *
+		 * @param bool $enabled Current setting.
+		 */
+		return (bool) apply_filters( 'authorizenter_password_auth_admin_bypass', $enabled );
 	}
 
 	/**
