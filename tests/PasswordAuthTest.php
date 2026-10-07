@@ -84,12 +84,9 @@ class PasswordAuthTest extends TestCase {
 		$auth  = $this->auth( array( 'disable_password_auth' => true, 'password_auth_admin_bypass' => false ) );
 		$admin = azr_test_make_user( 39, array( 'manage_options' => true, 'read' => true ) );
 
-		add_filter(
-			'authorizenter_password_auth_admin_bypass',
-			static function () {
-				return true;
-			}
-		);
+		$GLOBALS['__mock_filters']['authorizenter_password_auth_admin_bypass'] = static function () {
+			return true;
+		};
 
 		$this->on_escape_hatch();
 
