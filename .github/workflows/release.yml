@@ -1,28 +1,15 @@
 name: Release
 
-# Auto-release on every push to main (BIA-Learn-WPTheme style). The dev workflow
-# is: edit code, push. This job computes the next version, stamps it into both
-# plugins, builds authorizenter-core.zip / authorizenter-ui.zip and publishes a
-# GitHub Release. The plugins' self-updater then offers that release to sites.
-#
-# Versioning: the PATCH number is auto-bumped from the latest git tag. To release
-# a new MAJOR/MINOR, bump the Version header in
-# plugins/authorizenter-core/authorizenter-core.php manually and push — the
-# workflow honors the higher header value and resets patch. Both plugins share one
-# version. The repo files are not committed back; the git tag + release are the
-# source of truth, and the version is stamped only into the packaged ZIPs.
-
+# Publish only after the consolidated CI workflow succeeds on main.
+# workflow_dispatch remains available for an explicit/manual release.
 on:
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.github/**'
+  workflow_run:
+    workflows: [ "CI" ]
+    types: [ completed ]
+  workflow_dispatch:
 
-# Serialize runs so each sees the previous release's tag (keeps versions unique).
 concurrency:
-  group: release
+  group: release-authorizenter
   cancel-in-progress: false
 
 permissions:
@@ -30,91 +17,143 @@ permissions:
 
 jobs:
   release:
-    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
+
     steps:
+      - name: Resolve release SHA
+        id: target
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            target="$WORKFLOW_SHA"
+          else
+            target="$DISPATCH_SHA"
+          fi
+          test -n "$target"
+          echo "sha=$target" >> "$GITHUB_OUTPUT"
+          echo "Release target: $target"
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          fetch-depth: 0  # full history + tags to compute the next version
+          ref: ${{ steps.target.outputs.sha }}
+          fetch-depth: 0
 
       - name: Compute next version
         id: ver
         run: |
           set -euo pipefail
-          # Strict semver token from the Core plugin Version header. grep -oE only
-          # yields digits/dots, so a malformed header cannot leak shell metachars.
           current=$(grep -iE '^[[:space:]]*\*?[[:space:]]*Version:' plugins/authorizenter-core/authorizenter-core.php | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
           latest_tag=$(git tag --list 'v*' --sort=-v:refname | grep -oE '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 | sed 's/^v//' || true)
-          echo "header=${current:-none}  latest_tag=${latest_tag:-none}"
+          echo "header=${current:-none} latest_tag=${latest_tag:-none}"
 
           if [ -z "${latest_tag}" ]; then
-            next="${current:-0.1.0}"                       # first release: use the header as-is
+            next="${current:-0.1.0}"
           else
             higher=$(printf '%s\n%s\n' "$current" "$latest_tag" | sort -V | tail -1)
             if [ -n "$current" ] && [ "$higher" = "$current" ] && [ "$current" != "$latest_tag" ]; then
-              next="$current"                              # dev manually bumped minor/major
+              next="$current"
             else
-              IFS=. read -r MA MI PA <<< "$latest_tag"     # otherwise auto patch-bump
+              IFS=. read -r MA MI PA <<< "$latest_tag"
               next="${MA}.${MI}.$((PA + 1))"
             fi
           fi
 
-          # Defence in depth: refuse anything that is not strict semver.
           if ! printf '%s' "$next" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "Computed version '$next' is not valid semver; aborting." >&2
+            echo "Computed version '$next' is not valid semver" >&2
             exit 1
           fi
 
           echo "next=$next" >> "$GITHUB_OUTPUT"
           echo "tag=v$next" >> "$GITHUB_OUTPUT"
-          echo "Next version: $next (tag v$next)"
 
       - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
         with:
           php-version: '8.2'
           coverage: none
+          tools: composer
 
-      - name: Install runtime dependencies (no dev)
-        run: composer install --no-dev --optimize-autoloader --no-interaction
+      - name: Install production dependencies
+        run: composer install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction --no-progress
 
       - name: Bundle vendor into Core plugin
         run: |
+          set -euo pipefail
           rm -rf plugins/authorizenter-core/vendor
           cp -R vendor plugins/authorizenter-core/vendor
+          test -f plugins/authorizenter-core/vendor/autoload.php
 
       - name: Stamp version into both plugins
         env:
-          NEXT: ${{ steps.ver.outputs.next }}   # validated semver, read via env (never inlined)
+          NEXT: ${{ steps.ver.outputs.next }}
         run: |
           set -euo pipefail
-          # Plugin headers.
           sed -i -E "s/^([[:space:]]*\*[[:space:]]*Version:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-core/authorizenter-core.php
           sed -i -E "s/^([[:space:]]*\*[[:space:]]*Version:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-ui/authorizenter-ui.php
-          # Version constants.
           sed -i -E "s/(AUTHORIZENTER_CORE_VERSION', ')[0-9.]+(')/\1${NEXT}\2/" plugins/authorizenter-core/authorizenter-core.php
           sed -i -E "s/(AUTHORIZENTER_UI_VERSION', ')[0-9.]+(')/\1${NEXT}\2/" plugins/authorizenter-ui/authorizenter-ui.php
-          # readme.txt Stable tag.
           sed -i -E "s/^(Stable tag:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-core/readme.txt
           sed -i -E "s/^(Stable tag:[[:space:]]*).*/\1${NEXT}/" plugins/authorizenter-ui/readme.txt
-          echo "Stamped ${NEXT}:"
-          grep -REn 'Version:|_VERSION|Stable tag:' plugins/authorizenter-core/authorizenter-core.php plugins/authorizenter-ui/authorizenter-ui.php plugins/authorizenter-core/readme.txt plugins/authorizenter-ui/readme.txt | grep -F "${NEXT}"
+
+          grep -REn 'Version:|_VERSION|Stable tag:' \
+            plugins/authorizenter-core/authorizenter-core.php \
+            plugins/authorizenter-ui/authorizenter-ui.php \
+            plugins/authorizenter-core/readme.txt \
+            plugins/authorizenter-ui/readme.txt | grep -F "${NEXT}"
 
       - name: Build plugin ZIPs
         run: |
+          set -euo pipefail
+          rm -rf dist
           mkdir -p dist
           cd plugins
-          zip -rq ../dist/authorizenter-core.zip authorizenter-core -x '*/.git/*' '*/node_modules/*'
-          zip -rq ../dist/authorizenter-ui.zip authorizenter-ui -x '*/.git/*' '*/node_modules/*'
+          zip -rq ../dist/authorizenter-core.zip authorizenter-core \
+            -x '*/.git/*' '*/node_modules/*' '*/tests/*'
+          zip -rq ../dist/authorizenter-ui.zip authorizenter-ui \
+            -x '*/.git/*' '*/node_modules/*' '*/tests/*'
           cd ..
-          ls -la dist
+
+      - name: Validate release packages
+        env:
+          NEXT: ${{ steps.ver.outputs.next }}
+        run: |
+          set -euo pipefail
+          unzip -t dist/authorizenter-core.zip >/dev/null
+          unzip -t dist/authorizenter-ui.zip >/dev/null
+
+          unzip -l dist/authorizenter-core.zip | grep -q 'authorizenter-core/authorizenter-core.php'
+          unzip -l dist/authorizenter-core.zip | grep -q 'authorizenter-core/vendor/autoload.php'
+          unzip -l dist/authorizenter-ui.zip | grep -q 'authorizenter-ui/authorizenter-ui.php'
+
+          unzip -p dist/authorizenter-core.zip authorizenter-core/authorizenter-core.php | grep -qE "Version:[[:space:]]*${NEXT}"
+          unzip -p dist/authorizenter-ui.zip authorizenter-ui/authorizenter-ui.php | grep -qE "Version:[[:space:]]*${NEXT}"
+          unzip -p dist/authorizenter-core.zip authorizenter-core/readme.txt | grep -qE "^Stable tag:[[:space:]]*${NEXT}$"
+          unzip -p dist/authorizenter-ui.zip authorizenter-ui/readme.txt | grep -qE "^Stable tag:[[:space:]]*${NEXT}$"
+
+          if unzip -l dist/authorizenter-core.zip | grep -Eq 'authorizenter-core/(tests|\.github|node_modules)/'; then
+            echo "Development files leaked into Core ZIP" >&2
+            exit 1
+          fi
+          if unzip -l dist/authorizenter-ui.zip | grep -Eq 'authorizenter-ui/(tests|\.github|node_modules)/'; then
+            echo "Development files leaked into UI ZIP" >&2
+            exit 1
+          fi
 
       - name: Publish GitHub Release with assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.ver.outputs.tag }}    # validated semver tag, read via env
+          TAG: ${{ steps.ver.outputs.tag }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
         run: |
           set -euo pipefail
           gh release create "$TAG" dist/authorizenter-core.zip dist/authorizenter-ui.zip \
-            --target "$GITHUB_SHA" \
+            --target "$TARGET_SHA" \
             --title "$TAG" \
             --generate-notes
