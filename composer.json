@@ -31,6 +31,8 @@
         "lint:fix": "phpcbf --standard=phpcs.xml.dist plugins/",
         "analyze": "phpstan analyze --memory-limit=1G",
         "test": "phpunit",
-        "syntax": "find plugins tests -name '*.php' -print0 | xargs -0 -n1 -P4 php -l"
+        "syntax": "find plugins tests -name '*.php' -print0 | xargs -0 -n1 -P4 php -l",
+        "post-install-cmd": ["@php scripts/patch-oidc-php85.php"],
+        "post-update-cmd": ["@php scripts/patch-oidc-php85.php"]
     }
 }
