@@ -148,7 +148,7 @@ class Oidc_Client {
 			 * @return string Response body.
 			 * @throws \Jumbojett\OpenIDConnectClientException On transport failure.
 			 */
-			protected function fetchURL( string $url, string $post_body = null, array $headers = array() ) {
+			protected function fetchURL( string $url, ?string $post_body = null, array $headers = array() ) {
 				$scheme    = wp_parse_url( $url, PHP_URL_SCHEME );
 				$host      = wp_parse_url( $url, PHP_URL_HOST );
 				$local_dev = defined( 'WP_ENVIRONMENT_TYPE' )

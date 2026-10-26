@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: [ '8.0', '8.1', '8.2', '8.3', '8.4' ]
+        php: [ '8.0', '8.1', '8.2', '8.3', '8.4', '8.5' ]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
@@ -103,10 +103,25 @@ jobs:
       - name: Run PHPUnit
         run: composer test
 
+  php85-oidc-compat:
+    name: "OIDC deprecations (PHP 8.5)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer
+      - name: Install patched production dependencies
+        run: composer install --no-dev --no-interaction --prefer-dist --no-progress
+      - name: Fail on OIDC deprecations
+        run: php -d error_reporting=-1 -d display_errors=1 tests/php85-oidc-compat.php
+
   wp-integration:
     name: "WordPress integration (PHP ${{ matrix.php }})"
     runs-on: ubuntu-latest
-    needs: [ syntax, coding-standards, static-analysis, unit ]
+    needs: [ syntax, coding-standards, static-analysis, unit, php85-oidc-compat ]
     strategy:
       fail-fast: false
       matrix:
