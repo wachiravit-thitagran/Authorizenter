@@ -311,9 +311,17 @@ class Rest_Api {
 			);
 		}
 
-		// If this is an AJAX/POST request from our login form, return the URL as JSON.
+		// Native login forms navigate for every provider. OIDC starts already
+		// redirect through the library; plain OAuth2 follows the same contract.
 		if ( 'POST' === $request->get_method() ) {
-			return new \WP_REST_Response( array( 'url' => $url ), 200 );
+			return new \WP_REST_Response(
+				null,
+				303,
+				array(
+					'Location'      => $url,
+					'Cache-Control' => 'no-store',
+				)
+			);
 		}
 
 		// External IdP URL by design.
@@ -565,7 +573,7 @@ class Rest_Api {
 	 * @return never
 	 */
 	private function redirect_to( $url, $safe = false ) {
-		$url = (string) $url;
+		$url = $safe ? wp_validate_redirect( (string) $url, home_url( '/' ) ) : (string) $url;
 
 		// Throw away buffered output so it cannot flush and "send" the headers,
 		// which would block the Location header (and any auth cookie set earlier).

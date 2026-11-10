@@ -48,6 +48,7 @@ class Frontend {
 		add_filter( 'authorizenter_pending_redirect', array( $this, 'pending_redirect_url' ), 10, 3 );
 
 		// Expose the login page id so Core's private-site mode can allow it.
+		add_filter( 'authorizenter_private_allow', array( $this, 'allow_public_workflow' ) );
 		add_filter( 'authorizenter_login_page_id', array( $this, 'login_page_id' ) );
 
 		// Keep a login page in sync with each configured context.
@@ -140,6 +141,31 @@ class Frontend {
 			return (string) $configured;
 		}
 		return '' !== $form_url ? $form_url : (string) $configured;
+	}
+
+	/**
+	 * Allow only configured login pages and a pending form with a valid token.
+	 *
+	 * @param bool $allowed Existing allow decision.
+	 * @return bool
+	 */
+	public function allow_public_workflow( $allowed ) {
+		if ( $allowed ) {
+			return true;
+		}
+		$pages = get_option( Page_Installer::OPT_CONTEXT_PAGES, array() );
+		foreach ( (array) $pages as $page_id ) {
+			if ( (int) $page_id > 0 && is_page( (int) $page_id ) ) {
+				return true;
+			}
+		}
+		$pending = (int) get_option( Page_Installer::OPT_PENDING_PAGE, 0 );
+		$core    = \Authorizenter\Core\authorizenter_core();
+		if ( $core && $pending > 0 && is_page( $pending ) ) {
+			$token = isset( $_GET['azr_pending_token'] ) ? sanitize_text_field( wp_unslash( $_GET['azr_pending_token'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Validated one-time token.
+			return '' !== ( new \Authorizenter\Core\Access_List( $core->settings ) )->pending_provider( $token );
+		}
+		return false;
 	}
 
 	/**
@@ -415,6 +441,7 @@ class Frontend {
 		if ( '' !== $atts['redirect'] ) {
 			$return_to = esc_url_raw( $atts['redirect'] );
 		}
+		$return_to    = wp_validate_redirect( $return_to, home_url( '/' ) );
 		$done_message = (string) $atts['message'];
 
 		ob_start();
@@ -608,7 +635,11 @@ class Frontend {
 			$redirect = isset( $ctx['pending_redirect'] ) ? (string) $ctx['pending_redirect'] : '';
 		}
 
-		$provider  = ( new \Authorizenter\Core\Access_List( $core->settings ) )->pending_provider( $token );
+		$provider = ( new \Authorizenter\Core\Access_List( $core->settings ) )->pending_provider( $token );
+		if ( '' === $provider ) {
+			return '<div class="authorizenter-pending-form">' . esc_html__( 'Invalid or expired access token.', 'authorizenter' ) . '</div>';
+		}
+		$redirect  = '' !== $redirect ? wp_validate_redirect( $redirect, home_url( '/' ) ) : '';
 		$questions = $core->questions->for_provider( $provider );
 
 		if ( empty( $questions ) ) {

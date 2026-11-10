@@ -16,10 +16,10 @@ delete_option( 'authorizenter_settings' );
 
 // User meta: provider links + answers.
 $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-	"DELETE FROM {$wpdb->usermeta} WHERE meta_key IN ( 'authorizenter_answers', 'authorizenter_last_provider' ) OR meta_key LIKE 'authorizenter_link_%' OR meta_key LIKE 'authorizenter_answer_%'"
+	"DELETE FROM {$wpdb->usermeta} WHERE meta_key IN ( 'authorizenter_answers', 'authorizenter_last_provider' ) OR meta_key LIKE 'authorizenter_link_%' OR meta_key LIKE 'authorizenter_answer_%' OR meta_key LIKE 'authorizenter_provider_data_%'"
 );
 
 // Transients (flow state, JWKS, discovery caches).
 $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-	"DELETE FROM {$wpdb->options} WHERE option_name LIKE '\_transient\_authorizenter\_%' OR option_name LIKE '\_transient\_timeout\_authorizenter\_%'"
+	"DELETE FROM {$wpdb->options} WHERE option_name LIKE '\_transient\_authorizenter\_%' OR option_name LIKE '\_transient\_timeout\_authorizenter\_%' OR option_name LIKE '\_transient\_azr\_pending\_%' OR option_name LIKE '\_transient\_timeout\_azr\_pending\_%'"
 );

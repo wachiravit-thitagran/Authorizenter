@@ -148,18 +148,21 @@ class Admin_Settings {
 				$entry['client_secret'] = '';
 			}
 
-			// OIDC-only extended fields.
-			if ( 'oidc' === $type ) {
-				$entry['issuer_url']                  = isset( $p['issuer_url'] ) ? esc_url_raw( $p['issuer_url'] ) : '';
-				$entry['attr_username']               = isset( $p['attr_username'] ) ? sanitize_key( $p['attr_username'] ) : '';
-				$entry['attr_email']                  = isset( $p['attr_email'] ) ? sanitize_key( $p['attr_email'] ) : '';
-				$entry['attr_first_name']             = isset( $p['attr_first_name'] ) ? sanitize_key( $p['attr_first_name'] ) : '';
-				$entry['attr_last_name']              = isset( $p['attr_last_name'] ) ? sanitize_key( $p['attr_last_name'] ) : '';
-				$entry['name_update']                 = isset( $p['name_update'] ) && in_array( $p['name_update'], array( 'none', 'always', 'if_empty' ), true ) ? $p['name_update'] : 'none';
-				$entry['auth_method']                 = isset( $p['auth_method'] ) && in_array( $p['auth_method'], array( 'auto', 'post', 'basic', 'secret_jwt', 'private_key_jwt' ), true ) ? $p['auth_method'] : 'auto';
-				$entry['oidc_require_verified_email'] = ! empty( $p['oidc_require_verified_email'] );
-				$entry['trust_email']                 = ! empty( $p['trust_email'] );
-				$entry['link_by_username']            = ! empty( $p['link_by_username'] );
+			if ( 'oauth2' === $type ) {
+				foreach ( array( 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint' ) as $field ) {
+					$entry[ $field ] = isset( $p[ $field ] ) ? esc_url_raw( $p[ $field ] ) : ( $cur[ $field ] ?? '' );
+				}
+			}
+
+			// These controls are rendered for both generic provider types.
+			if ( in_array( $type, array( 'oidc', 'oauth2' ), true ) ) {
+				foreach ( array( 'attr_username', 'attr_email', 'attr_first_name', 'attr_last_name' ) as $field ) {
+					$entry[ $field ] = isset( $p[ $field ] ) ? sanitize_key( $p[ $field ] ) : ( $cur[ $field ] ?? '' );
+				}
+				$entry['name_update']      = isset( $p['name_update'] ) && in_array( $p['name_update'], array( 'none', 'always', 'if_empty' ), true ) ? $p['name_update'] : 'none';
+				$entry['auth_method']      = isset( $p['auth_method'] ) && in_array( $p['auth_method'], array( 'auto', 'post', 'basic', 'secret_jwt', 'private_key_jwt' ), true ) ? $p['auth_method'] : 'auto';
+				$entry['trust_email']      = ! empty( $p['trust_email'] );
+				$entry['link_by_username'] = ! empty( $p['link_by_username'] );
 
 				if ( isset( $p['private_key'] ) && '' !== trim( $p['private_key'] ) ) {
 					$entry['private_key'] = $this->settings->encrypt( sanitize_textarea_field( $p['private_key'] ) );
@@ -168,6 +171,10 @@ class Admin_Settings {
 				} else {
 					$entry['private_key'] = '';
 				}
+			}
+			if ( 'oidc' === $type ) {
+				$entry['issuer_url']                  = isset( $p['issuer_url'] ) ? esc_url_raw( $p['issuer_url'] ) : '';
+				$entry['oidc_require_verified_email'] = ! empty( $p['oidc_require_verified_email'] );
 			}
 
 			$all['providers'][ $id ] = $entry;

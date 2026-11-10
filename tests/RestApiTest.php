@@ -81,24 +81,24 @@ class RestApiTest extends TestCase {
 		$this->assertEquals( 'Google', $response->data['providers'][0]['label'] );
 	}
 
-	public function test_authorize_redirects_to_url() {
-		$request = new \WP_REST_Request( 'GET' );
-		$request->set_param( 'provider', 'google' );
-		
-		$this->engine->method( 'begin' )
-			->willReturn( 'https://accounts.google.com/o/oauth2/v2/auth' );
-			
-		// Since redirect_to calls exit, we must catch the exception or output.
-		// We expect nocache_headers() to be called and an exit. We'll use output buffering.
-		// Wait, phpunit process isolation or catching exit is tricky.
-		// We can test if it's an ajax request, it returns JSON!
-		
+	/** @dataProvider navigation_providers */
+	public function test_authorize_post_navigates_with_custom_fields( $provider ) {
+		$url = 'https://idp.example.test/authorize';
+		$this->engine->expects( $this->once() )->method( 'begin' )
+			->with( $provider, '/courses', 'default', array( 'terms' => 'accepted' ) )
+			->willReturn( $url );
 		$post_request = new \WP_REST_Request( 'POST' );
-		$post_request->set_param( 'provider', 'google' );
+		$post_request->set_param( 'provider', $provider );
+		$post_request->set_param( 'return_to', '/courses' );
+		$post_request->set_param( 'terms', 'accepted' );
 		$response = $this->api->authorize( $post_request );
-		
 		$this->assertInstanceOf( \WP_REST_Response::class, $response );
-		$this->assertEquals( 'https://accounts.google.com/o/oauth2/v2/auth', $response->data['url'] );
+		$this->assertSame( 303, $response->status );
+		$this->assertSame( $url, $response->headers['Location'] );
+	}
+
+	public static function navigation_providers(): array {
+		return array( array( 'google' ), array( 'oidc' ), array( 'facebook' ), array( 'custom_oauth2' ) );
 	}
 
 	/**

@@ -72,6 +72,9 @@ class User_Mapper {
 
 		// 1. Existing link by provider + subject id.
 		$user = $this->find_by_link( $identity->provider, $identity->sub );
+		if ( is_wp_error( $user ) ) {
+			return $user;
+		}
 		if ( $user ) {
 			$this->maybe_update_name( $user, $identity, $provider_cfg );
 			return $user;
@@ -81,7 +84,10 @@ class User_Mapper {
 		if ( ! empty( $provider_cfg['link_by_username'] ) && '' !== $identity->username ) {
 			$by_login = get_user_by( 'login', $identity->username );
 			if ( $by_login ) {
-				$this->store_link( $by_login->ID, $identity );
+				$linked = $this->store_link( $by_login->ID, $identity );
+				if ( is_wp_error( $linked ) ) {
+					return $linked;
+				}
 				$this->maybe_update_name( $by_login, $identity, $provider_cfg );
 				return $by_login;
 			}
@@ -91,7 +97,10 @@ class User_Mapper {
 		if ( ! empty( $cfg['link_by_email'] ) && '' !== $identity->email && $identity->email_verified ) {
 			$existing = get_user_by( 'email', $identity->email );
 			if ( $existing ) {
-				$this->store_link( $existing->ID, $identity );
+				$linked = $this->store_link( $existing->ID, $identity );
+				if ( is_wp_error( $linked ) ) {
+					return $linked;
+				}
 				$this->maybe_update_name( $existing, $identity, $provider_cfg );
 				return $existing;
 			}
@@ -153,8 +162,11 @@ class User_Mapper {
 			return $user_id;
 		}
 
-		$user = get_user_by( 'id', $user_id );
-		$this->store_link( $user_id, $identity );
+		$user   = get_user_by( 'id', $user_id );
+		$linked = $this->store_link( $user_id, $identity );
+		if ( is_wp_error( $linked ) ) {
+			return $linked;
+		}
 
 		if ( '' !== $identity->first_name || '' !== $identity->last_name ) {
 			wp_update_user(
@@ -533,7 +545,7 @@ class User_Mapper {
 	 *
 	 * @param string $provider Provider id.
 	 * @param string $sub      Subject id.
-	 * @return \WP_User|null
+	 * @return \WP_User|\WP_Error|null
 	 */
 	private function find_by_link( $provider, $sub ) {
 		if ( '' === $sub ) {
@@ -541,12 +553,16 @@ class User_Mapper {
 		}
 		$users = get_users(
 			array(
-				'meta_key'   => self::META_LINK_PREFIX . $provider, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
-				'meta_value' => $sub, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
-				'number'     => 1,
-				'fields'     => 'all',
+				'meta_key'      => self::META_LINK_PREFIX . $provider, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value'    => $sub, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'number'        => 2,
+				'cache_results' => false,
+				'fields'        => 'all',
 			)
 		);
+		if ( count( $users ) > 1 ) {
+			return new \WP_Error( 'authorizenter_link_conflict', __( 'This identity has conflicting account links. Please contact an administrator.', 'authorizenter' ) );
+		}
 		return $users ? $users[0] : null;
 	}
 
@@ -555,20 +571,76 @@ class User_Mapper {
 	 *
 	 * @param int      $user_id  User id.
 	 * @param Identity $identity Identity.
-	 * @return void
+	 * @return true|\WP_Error
 	 */
 	private function store_link( $user_id, Identity $identity ) {
-		$meta_key = self::META_LINK_PREFIX . $identity->provider;
-		$existing = get_user_meta( $user_id, $meta_key, true );
-		if ( $existing !== $identity->sub ) {
-			update_user_meta( $user_id, $meta_key, $identity->sub );
-			/**
-			 * Fires when a WordPress user is linked to a new provider identity.
-			 *
-			 * @param int      $user_id  WP_User ID.
-			 * @param Identity $identity Source identity.
-			 */
+		$existing = get_user_meta( $user_id, self::META_LINK_PREFIX . $identity->provider, true );
+		$result   = self::claim_link( $user_id, $identity->provider, $identity->sub );
+		if ( true === $result && $existing !== $identity->sub ) {
 			do_action( 'authorizenter_user_linked', $user_id, $identity );
+		}
+		return $result;
+	}
+
+	/**
+	 * Serialize ownership checks and persistence across Core and extension links.
+	 * MySQL connection-scoped locks release on disconnect; no timed lock stealing.
+	 * Provider IDs are the existing issuer/configuration namespace for link meta.
+	 *
+	 * @param int    $user_id User ID.
+	 * @param string $provider Provider ID.
+	 * @param string $subject Verified subject.
+	 * @return true|\WP_Error
+	 */
+	public static function claim_link( $user_id, $provider, $subject ) {
+		global $wpdb;
+		if ( '' === $subject || $user_id <= 0 ) {
+			return new \WP_Error( 'authorizenter_link_invalid', __( 'A verified subject and user are required.', 'authorizenter' ) );
+		}
+		$keys = array(
+			'azr:' . hash( 'sha224', $wpdb->usermeta . ':subject:' . $provider . ':' . $subject ),
+			'azr:' . hash( 'sha224', $wpdb->usermeta . ':user:' . $provider . ':' . $user_id ),
+		);
+		sort( $keys );
+		$held = array();
+		try {
+			foreach ( $keys as $key ) {
+				if ( '1' !== (string) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', $key ) ) ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+					return new \WP_Error( 'authorizenter_link_busy', __( 'Account linking is busy. Please retry sign-in.', 'authorizenter' ) );
+				}
+				$held[] = $key;
+			}
+			wp_cache_delete( $user_id, 'user_meta' );
+			$meta_key = self::META_LINK_PREFIX . $provider;
+			$existing = (string) get_user_meta( $user_id, $meta_key, true );
+			if ( '' !== $existing && $existing !== $subject ) {
+				return new \WP_Error( 'authorizenter_link_conflict', __( 'This account is linked to a different identity.', 'authorizenter' ) );
+			}
+			$owners = get_users(
+				array(
+					'meta_key'      => $meta_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Canonical ownership must be rechecked under the DB claim.
+					'meta_value'    => $subject, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Match the exact subject during the locked ownership check.
+					'fields'        => 'ids',
+					'number'        => 2,
+					'cache_results' => false,
+				)
+			);
+			foreach ( $owners as $owner ) {
+				if ( (int) $owner !== (int) $user_id ) {
+					return new \WP_Error( 'authorizenter_link_taken', __( 'This identity is linked to another account.', 'authorizenter' ) );
+				}
+			}
+			if ( $existing === $subject ) {
+				return true;
+			}
+			if ( false === update_user_meta( $user_id, $meta_key, $subject ) ) {
+				return new \WP_Error( 'authorizenter_link_write_failed', __( 'The identity link could not be saved.', 'authorizenter' ) );
+			}
+			return true;
+		} finally {
+			foreach ( array_reverse( $held ) as $key ) {
+				$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $key ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			}
 		}
 	}
 

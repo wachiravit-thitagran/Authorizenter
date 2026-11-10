@@ -267,6 +267,7 @@ class FrontendTest extends TestCase {
 			return 'CUSTOM PENDING MESSAGE';
 		};
 		$_GET['azr_pending_token']                                  = 'fake_token';
+		set_transient( 'azr_pending_' . hash( 'sha256', 'fake_token' ), array( 'provider' => 'google' ), 300 );
 
 		// No questions registered, so it will fall back to the message block.
 		$output = $this->frontend->render_pending_form( array() );
@@ -297,6 +298,7 @@ class FrontendTest extends TestCase {
 		);
 		update_option( \Authorizenter\Core\Settings::OPTION, $opts );
 		$_GET['azr_pending_token'] = 'fake_token';
+		set_transient( 'azr_pending_' . hash( 'sha256', 'fake_token' ), array( 'provider' => 'google' ), 300 );
 		$_GET['return_to']         = 'https://login.page.test/'; // Should be ignored
 
 		// Update default context pending_redirect

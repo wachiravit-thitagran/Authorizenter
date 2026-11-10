@@ -101,7 +101,7 @@ class RoleMapTest extends TestCase {
 		$settings = new Settings();
 		$mapper   = new User_Mapper( $settings, new Org_Policy( $settings ) );
 
-		$user = $mapper->resolve( $this->id( 'google', 'new@psu.ac.th' ) );
+		$user = $mapper->resolve( new Identity( 'google', array( 'sub' => 'synthetic-role-subject', 'email' => 'new@psu.ac.th', 'email_verified' => true ) ) );
 		$this->assertInstanceOf( \WP_User::class, $user );
 		$this->assertSame( 'editor', $user->role );
 	}

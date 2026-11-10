@@ -66,6 +66,8 @@ $GLOBALS['__next_post_id']         = 1;
 
 /** Reset all in-memory state between tests. */
 function azr_test_reset() {
+	unset( $GLOBALS['__mock_db_get_var'], $GLOBALS['__mock_meta_write_failure'] );
+	$GLOBALS['__postmeta'] = array();
 	$GLOBALS['__options']    = array();
 	$GLOBALS['__usermeta']   = array();
 	$GLOBALS['__users']      = array();
@@ -168,11 +170,15 @@ function wp_safe_remote_post( $url, $args = array() ) {
 	return wp_remote_get( $url, $args );
 }
 function wp_safe_remote_request( $url, $args = array() ) {
+	if ( isset( $GLOBALS['__mock_http'] ) ) {
+		return ( $GLOBALS['__mock_http'] )( $url, $args );
+	}
 	if ( function_exists( 'wp_remote_request' ) ) {
 		return wp_remote_request( $url, $args );
 	}
 	return wp_remote_get( $url, $args );
 }
+function wp_remote_retrieve_response_code( $response ) { return $response['response']['code'] ?? 200; }
 function wp_remote_retrieve_body( $response ) {
 	return isset( $response['body'] ) ? $response['body'] : '';
 }
@@ -184,6 +190,7 @@ function get_user_meta( $uid, $key = '', $single = false ) {
 	return $single ? $m : ( '' === $m ? array() : array( $m ) );
 }
 function update_user_meta( $uid, $key, $value ) {
+	if ( ! empty( $GLOBALS['__mock_meta_write_failure'] ) && str_starts_with( $key, 'authorizenter_link_' ) ) { return false; }
 	$GLOBALS['__usermeta'][ $uid ][ $key ] = $value;
 	return true;
 }
@@ -301,6 +308,7 @@ function sanitize_user( $username, $strict = false ) {
 // --- $wpdb mock -------------------------------------------------------------
 
 class WPDB_Stub {
+	public function get_var( $query ) { return isset( $GLOBALS['__mock_db_get_var'] ) ? ( $GLOBALS['__mock_db_get_var'] )( $query ) : 1; }
 	public $usermeta = 'wp_usermeta';
 	public $users    = 'wp_users';
 	public $options  = 'wp_options';
@@ -385,9 +393,11 @@ class WP_REST_Request {
 class WP_REST_Response {
 	public $data;
 	public $status;
-	public function __construct( $data = null, $status = 200 ) {
+	public $headers;
+	public function __construct( $data = null, $status = 200, $headers = array() ) {
 		$this->data   = $data;
 		$this->status = $status;
+		$this->headers = $headers;
 	}
 }
 
@@ -443,6 +453,7 @@ function _azr_test_reset_filters() {
 // Let's just keep apply_filters as it was, but allow tests to inject hooks.
 
 function current_user_can( $cap ) { return true; }
+function check_admin_referer( $action ) { return true; }
 
 // --- i18n / escaping / sanitizers (passthrough-ish) -------------------------
 
@@ -531,6 +542,7 @@ function site_url( $path = '', $scheme = null ) {
 }
 
 function wp_validate_redirect( $location, $fallback = '' ) {
+	if ( str_starts_with( $location, '//' ) ) { $location = 'https:' . $location; }
 	$location = trim( (string) $location );
 	if ( '' === $location ) {
 		return $fallback;
@@ -655,3 +667,11 @@ function get_permalink( $post = 0, $leavename = false ) {
 }
 
 // phpcs:enable
+
+function wp_cache_delete( $key, $group = "" ) { return true; }
+
+function get_post_meta( $id, $key = '', $single = false ) { return $GLOBALS['__postmeta'][$id][$key] ?? ''; }
+function update_post_meta( $id, $key, $value ) { $GLOBALS['__postmeta'][$id][$key] = $value; return true; }
+function delete_post_meta( $id, $key ) { unset($GLOBALS['__postmeta'][$id][$key]); return true; }
+
+function wp_delete_post( $id, $force = false ) { unset( $GLOBALS['__mock_posts'][$id] ); return true; }
