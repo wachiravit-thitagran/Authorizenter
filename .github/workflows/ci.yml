@@ -45,6 +45,8 @@ jobs:
           tools: cs2pr
       - name: Validate composer metadata
         run: composer validate --no-check-publish --strict
+      - name: Audit locked dependencies
+        run: composer audit --locked
       - name: Cache Composer dependencies
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:

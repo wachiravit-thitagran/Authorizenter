@@ -618,13 +618,13 @@ class User_Mapper {
 			}
 			$owners = get_users(
 				array(
-					'meta_key'      => $meta_key,
-					'meta_value'    => $subject,
+					'meta_key'      => $meta_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Canonical ownership must be rechecked under the DB claim.
+					'meta_value'    => $subject, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Match the exact subject during the locked ownership check.
 					'fields'        => 'ids',
 					'number'        => 2,
 					'cache_results' => false,
 				)
-			); // phpcs:ignore WordPress.DB.SlowDBQuery
+			);
 			foreach ( $owners as $owner ) {
 				if ( (int) $owner !== (int) $user_id ) {
 					return new \WP_Error( 'authorizenter_link_taken', __( 'This identity is linked to another account.', 'authorizenter' ) );
