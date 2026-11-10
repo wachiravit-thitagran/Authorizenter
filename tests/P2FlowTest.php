@@ -20,6 +20,7 @@ class P2FlowTest extends TestCase {
  public static function subjectCases(): array {return array(array(array('sub'=>'token-subject','email'=>'same@example.test'),true),array(array('sub'=>'other','email'=>'other@example.test'),false),array(array('email'=>'missing@example.test'),false),array(null,true));}
  public function test_installer_marks_created_pages_and_uninstall_preserves_reused(): void {
   $m=new \ReflectionMethod(Page_Installer::class,'ensure_page');
+  if (PHP_VERSION_ID < 80100) $m->setAccessible(true);
   $m->invoke(null,'authorizenter_login_page_id','Login','login','[authorizenter_login]');
   $id=get_option('authorizenter_login_page_id');
   $this->assertSame('[authorizenter_login]',get_post_meta($id,'_authorizenter_created_content',true));
