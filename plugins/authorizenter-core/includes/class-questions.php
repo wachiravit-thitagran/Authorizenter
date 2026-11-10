@@ -68,7 +68,12 @@ class Questions {
 		$email        = strtolower( trim( $identity->email ) );
 
 		if ( isset( $pending_meta[ $email ]['answers'] ) && is_array( $pending_meta[ $email ]['answers'] ) ) {
-			$this->save_answers( $user->ID, $pending_meta[ $email ]['answers'] );
+			// Pending records may predate a change of provider/question scope.
+			$ids     = array_fill_keys( wp_list_pluck( $this->for_provider( $provider ), 'id' ), true );
+			$answers = array_intersect_key( $pending_meta[ $email ]['answers'], $ids );
+			if ( is_wp_error( $this->save_answers( $user->ID, $answers, $provider ) ) ) {
+				return;
+			}
 
 			// Clean up pending_meta now that it's migrated.
 			$all = $this->settings->all();
@@ -139,10 +144,11 @@ class Questions {
 	 * @return array[]
 	 */
 	public function pending_for_user( $user_id, $provider = '' ) {
-		$answers = $this->get_answers( $user_id );
-		$pending = array();
+		$provider = '' !== $provider ? $provider : (string) get_user_meta( $user_id, 'authorizenter_last_provider', true );
+		$answers  = $this->get_answers( $user_id );
+		$pending  = array();
 		foreach ( $this->for_provider( $provider ) as $q ) {
-			if ( ! array_key_exists( $q['id'], $answers ) ) {
+			if ( ! array_key_exists( $q['id'], $answers ) || ( ! empty( $q['required'] ) && $this->is_empty_answer( $this->sanitize_answer( $q, $answers[ $q['id'] ] ) ) ) ) {
 				$pending[] = $q;
 			}
 		}
@@ -179,24 +185,29 @@ class Questions {
 	/**
 	 * Validate and save submitted answers.
 	 *
-	 * @param int   $user_id User id.
-	 * @param array $input   Raw input id => value.
+	 * @param int    $user_id User id.
+	 * @param array  $input   Raw input id => value.
+	 * @param string $provider Trusted login provider during answer migration; otherwise resolved from user meta.
 	 * @return true|\WP_Error
 	 */
-	public function save_answers( $user_id, array $input ) {
+	public function save_answers( $user_id, array $input, $provider = '' ) {
+		$provider  = '' !== $provider ? $provider : (string) get_user_meta( $user_id, 'authorizenter_last_provider', true );
 		$questions = array();
-		foreach ( $this->all() as $q ) {
+		foreach ( $this->for_provider( $provider ) as $q ) {
 			$questions[ $q['id'] ] = $q;
+		}
+		if ( array_diff_key( $input, $questions ) ) {
+			return new \WP_Error( 'authorizenter_answer_out_of_scope', __( 'The submitted questions do not apply to this sign-in.', 'authorizenter' ), array( 'status' => 400 ) );
 		}
 
 		$stored = $this->get_answers( $user_id );
 
 		foreach ( $questions as $id => $q ) {
 			$has   = array_key_exists( $id, $input );
-			$value = $has ? $input[ $id ] : null;
+			$value = $has ? $input[ $id ] : ( $stored[ $id ] ?? null );
 			$clean = $this->sanitize_answer( $q, $value );
 
-			if ( ! empty( $q['required'] ) && $this->is_empty_answer( $clean ) && ! array_key_exists( $id, $stored ) ) {
+			if ( ! empty( $q['required'] ) && $this->is_empty_answer( $clean ) ) {
 				return new \WP_Error(
 					'authorizenter_answer_required',
 					/* translators: %s: question label */
@@ -229,7 +240,7 @@ class Questions {
 		 */
 		do_action( 'authorizenter_answers_saved', $user_id, $stored );
 
-		if ( ! $this->has_pending_required( $user_id ) ) {
+		if ( ! $this->has_pending_required( $user_id, $provider ) ) {
 			/**
 			 * Fires when a user has completed all required questions.
 			 *

@@ -26,6 +26,9 @@ class OAuth_Engine {
 	 */
 	const SESSION_KEY = 'authorizenter_oidc_flow';
 
+	/** Per-state browser secrets; separate slots allow concurrent OAuth2 tabs. */
+	const OAUTH2_SESSION_KEY = 'authorizenter_oauth2_flows';
+
 	/**
 	 * Settings store.
 	 *
@@ -114,7 +117,11 @@ class OAuth_Engine {
 		}
 
 		// Legacy OAuth2 path (e.g. Facebook): our own state/nonce/PKCE + transient.
+		if ( ! $this->maybe_start_session() ) {
+			return new \WP_Error( 'authorizenter_session_unavailable', __( 'Could not start a secure login session. Please try again.', 'authorizenter' ), array( 'status' => 500 ) );
+		}
 		$state          = $this->random( 24 );
+		$binding        = $this->random( 32 );
 		$nonce          = $this->random( 24 );
 		$code_verifier  = $this->random( 48 );
 		$code_challenge = $this->pkce_challenge( $code_verifier );
@@ -127,6 +134,7 @@ class OAuth_Engine {
 			'return_to'     => $return_to,
 			'extra_data'    => $extra_data,
 			'created'       => time(),
+			'browser_hash'  => hash( 'sha256', $binding ),
 		);
 
 		/**
@@ -134,7 +142,17 @@ class OAuth_Engine {
 		 *
 		 * @param int $ttl Default TTL (10 minutes).
 		 */
-		$ttl = apply_filters( 'authorizenter_flow_ttl', self::FLOW_TTL );
+		$ttl             = max( 1, (int) apply_filters( 'authorizenter_flow_ttl', self::FLOW_TTL ) );
+		$flow['expires'] = time() + $ttl;
+		foreach ( (array) ( $_SESSION[ self::OAUTH2_SESSION_KEY ] ?? array() ) as $key => $pending ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Server-written session records, expiry checked below.
+			if ( ! is_array( $pending ) || ( $pending['expires'] ?? 0 ) < time() ) {
+				unset( $_SESSION[ self::OAUTH2_SESSION_KEY ][ $key ] );
+			}
+		}
+		$_SESSION[ self::OAUTH2_SESSION_KEY ][ $state ] = array(
+			'secret'  => $binding,
+			'expires' => $flow['expires'],
+		);
 		set_transient( $this->flow_key( $state ), $flow, $ttl );
 
 		$url = $provider->authorization_url( $state, $this->redirect_uri(), $code_challenge, $nonce );
@@ -199,7 +217,8 @@ class OAuth_Engine {
 			)
 		);
 
-		if ( is_array( $session ) ) {
+		$flow = '' !== $state ? get_transient( $this->flow_key( $state ) ) : false;
+		if ( is_array( $session ) && ! is_array( $flow ) ) {
 			return $this->handle_callback_oidc( $session );
 		}
 
@@ -208,11 +227,15 @@ class OAuth_Engine {
 			return new \WP_Error( 'authorizenter_callback_missing', __( 'Missing authorization parameters.', 'authorizenter' ), array( 'status' => 400 ) );
 		}
 
-		$flow = get_transient( $this->flow_key( $state ) );
-		if ( ! is_array( $flow ) ) {
+		$binding = $_SESSION[ self::OAUTH2_SESSION_KEY ][ $state ] ?? null; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Server-written secret, compared by digest before use.
+		if ( ! is_array( $flow ) || ! is_array( $binding )
+			|| empty( $flow['browser_hash'] ) || empty( $binding['secret'] )
+			|| ( $flow['expires'] ?? 0 ) < time()
+			|| ! hash_equals( $flow['browser_hash'], hash( 'sha256', $binding['secret'] ) ) ) {
 			authorizenter_log( 'flow transient missing/expired for state' );
 			return new \WP_Error( 'authorizenter_state_invalid', __( 'Login session expired or invalid. Please try again.', 'authorizenter' ), array( 'status' => 400 ) );
 		}
+		unset( $_SESSION[ self::OAUTH2_SESSION_KEY ][ $state ] );
 		delete_transient( $this->flow_key( $state ) ); // single use.
 
 		$provider = $this->providers->get( $flow['provider'] );
@@ -399,6 +422,11 @@ class OAuth_Engine {
 			return $this->attach_deny_redirect( $cap_ok, $context, $return_to );
 		}
 
+		$user = apply_filters( 'authorizenter_pre_login_user', $user, $identity, $context );
+		if ( is_wp_error( $user ) ) {
+			return $this->attach_deny_redirect( $user, $context, $return_to );
+		}
+
 		// Remember which provider/context this user last used (for SSO logout).
 		update_user_meta( $user->ID, 'authorizenter_last_provider', $provider->id() );
 
@@ -493,15 +521,24 @@ class OAuth_Engine {
 	 * Jumbojett stores OIDC state/nonce/PKCE in the session across the authorize
 	 * and callback requests, so a session is required for the OIDC flow.
 	 *
-	 * @return void
+	 * @return bool Whether a session is available.
 	 */
 	private function maybe_start_session() {
 		if ( 'cli' === PHP_SAPI ) {
-			return; // No sessions under CLI/test runs.
+			return true; // Tests supply their own in-memory session.
 		}
 		if ( PHP_SESSION_NONE === session_status() && ! headers_sent() ) {
-			session_start();
+			session_start(
+				array(
+					'use_only_cookies' => true,
+					'use_strict_mode'  => true,
+					'cookie_httponly'  => true,
+					'cookie_secure'    => is_ssl(),
+					'cookie_samesite'  => 'Lax',
+				)
+			);
 		}
+		return PHP_SESSION_ACTIVE === session_status();
 	}
 
 	/**

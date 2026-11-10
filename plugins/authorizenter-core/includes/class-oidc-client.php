@@ -101,7 +101,10 @@ class Oidc_Client {
 			// (some IdPs keep these out of the id_token).
 			try {
 				$userinfo = (array) $client->requestUserInfo();
-				$claims   = array_merge( $userinfo, $claims );
+				if ( ! isset( $claims['sub'], $userinfo['sub'] ) || ! is_string( $claims['sub'] ) || ! is_string( $userinfo['sub'] ) || '' === $claims['sub'] || ! hash_equals( $claims['sub'], $userinfo['sub'] ) ) {
+					return new \WP_Error( 'authorizenter_oidc_userinfo_subject', __( 'OIDC UserInfo subject does not match the authenticated identity.', 'authorizenter' ), array( 'status' => 401 ) );
+				}
+				$claims = array_merge( $userinfo, $claims );
 			} catch ( \Throwable $e ) {
 				// userinfo is best-effort; the id_token claims are authoritative.
 				authorizenter_log( 'oidc userinfo unavailable', array( 'message' => $e->getMessage() ) );
@@ -138,7 +141,45 @@ class Oidc_Client {
 		$client_id     = isset( $config['client_id'] ) ? (string) $config['client_id'] : '';
 		$client_secret = $this->settings->decrypt( isset( $config['client_secret'] ) ? $config['client_secret'] : '' );
 
-		$client = new class( $provider_url, $client_id, $client_secret ) extends \Jumbojett\OpenIDConnectClient {
+		$client  = new class( $provider_url, $client_id, $client_secret ) extends \Jumbojett\OpenIDConnectClient {
+			/**
+			 * Configured token authentication method.
+			 *
+			 * @var string
+			 */
+			public $configured_auth_method = 'auto';
+
+			/**
+			 * Select exactly one supported method before the library builds the request.
+			 *
+			 * @param string $code Authorization code.
+			 * @param array  $headers Extra HTTP headers.
+			 * @return mixed
+			 * @throws \Jumbojett\OpenIDConnectClientException Unsupported method.
+			 */
+			protected function requestTokens( string $code, array $headers = array() ) {
+				$methods = (array) $this->getProviderConfigValue( 'token_endpoint_auth_methods_supported', array( 'client_secret_basic' ) );
+				$method  = $this->configured_auth_method;
+				if ( 'auto' === $method ) {
+					$method = in_array( 'client_secret_basic', $methods, true ) ? 'client_secret_basic' : 'client_secret_post';
+				}
+				if ( ! in_array( $method, $methods, true ) ) {
+					throw new \Jumbojett\OpenIDConnectClientException( 'Configured token authentication method is not supported by the provider.' );
+				}
+				$this->setTokenEndpointAuthMethodsSupported( array( $method ) );
+				return parent::requestTokens( $code, $headers );
+			}
+
+			/**
+			 * Short-lived client_secret_jwt assertion.
+			 *
+			 * @param string $aud Token endpoint URL.
+			 * @return string
+			 */
+			protected function getJWTClientAssertion( $aud ): string {
+				return Oidc_Client::client_assertion( $this->getClientID(), $aud, $this->getClientSecret(), 'HS256' );
+			}
+
 			/**
 			 * Route the library's HTTP requests through the WordPress HTTP API.
 			 *
@@ -149,6 +190,15 @@ class Oidc_Client {
 			 * @throws \Jumbojett\OpenIDConnectClientException On transport failure.
 			 */
 			protected function fetchURL( string $url, ?string $post_body = null, array $headers = array() ) {
+				// The library's private_key_jwt builder retains client_secret in
+				// its body. JWT authentication must use only the signed assertion.
+				if ( null !== $post_body ) {
+					parse_str( $post_body, $params );
+					if ( isset( $params['client_assertion'] ) ) {
+						unset( $params['client_secret'] );
+						$post_body = http_build_query( $params, '', '&', PHP_QUERY_RFC3986 );
+					}
+				}
 				$scheme    = wp_parse_url( $url, PHP_URL_SCHEME );
 				$host      = wp_parse_url( $url, PHP_URL_HOST );
 				$local_dev = defined( 'WP_ENVIRONMENT_TYPE' )
@@ -240,6 +290,34 @@ class Oidc_Client {
 				// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 			}
 		};
+		$methods = array(
+			'auto'            => 'auto',
+			'post'            => 'client_secret_post',
+			'basic'           => 'client_secret_basic',
+			'secret_jwt'      => 'client_secret_jwt',
+			'private_key_jwt' => 'private_key_jwt',
+		);
+		$method  = $config['auth_method'] ?? 'auto';
+		if ( ! isset( $methods[ $method ] ) ) {
+			return new \WP_Error( 'authorizenter_oidc_auth_method', __( 'Invalid token authentication method.', 'authorizenter' ), array( 'status' => 500 ) );
+		}
+		$client->configured_auth_method = $methods[ $method ];
+		if ( 'secret_jwt' === $method ) {
+			$client->providerConfigParam( array( 'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer' ) );
+		}
+		if ( 'private_key_jwt' === $method ) {
+			$private_key = $this->settings->decrypt( $config['private_key'] ?? '' );
+			$key         = openssl_pkey_get_private( $private_key );
+			$details     = false !== $key ? openssl_pkey_get_details( $key ) : false;
+			if ( ! $details || OPENSSL_KEYTYPE_RSA !== $details['type'] || $details['bits'] < 2048 ) {
+				return new \WP_Error( 'authorizenter_oidc_private_key', __( 'A valid RSA private key of at least 2048 bits is required.', 'authorizenter' ), array( 'status' => 500 ) );
+			}
+			$client->setPrivateKeyJwtGenerator(
+				static function ( $endpoint ) use ( $client_id, $private_key ) {
+					return Oidc_Client::client_assertion( $client_id, $endpoint, $private_key, 'RS256' );
+				}
+			);
+		}
 		$client->setRedirectURL( $redirect_uri );
 		$client->setCodeChallengeMethod( 'S256' );
 
@@ -261,5 +339,30 @@ class Oidc_Client {
 		 * @param array                          $config Provider config.
 		 */
 		return apply_filters( 'authorizenter_oidc_client', $client, $config );
+	}
+
+	/**
+	 * Sign a token-endpoint client assertion; no identity claims are accepted here.
+	 *
+	 * @param string $client_id Client identifier.
+	 * @param string $endpoint Token endpoint audience.
+	 * @param string $key Secret or PEM private key.
+	 * @param string $algorithm HS256 or RS256.
+	 * @return string
+	 */
+	public static function client_assertion( $client_id, $endpoint, $key, $algorithm ) {
+		$now = time();
+		return \Firebase\JWT\JWT::encode(
+			array(
+				'iss' => $client_id,
+				'sub' => $client_id,
+				'aud' => $endpoint,
+				'iat' => $now,
+				'exp' => $now + 60,
+				'jti' => bin2hex( random_bytes( 24 ) ),
+			),
+			$key,
+			$algorithm
+		);
 	}
 }

@@ -203,6 +203,18 @@ class Admin_Reports {
 	}
 
 	/**
+	 * Encode untrusted CSV cells as text, including negative numbers.
+	 * Original answers remain unchanged in storage.
+	 *
+	 * @param mixed $value Cell value.
+	 * @return string
+	 */
+	public static function csv_cell( $value ) {
+		$value = (string) $value;
+		return preg_match( '/^[\x00-\x20]*[=+@-]/', $value ) ? "'" . $value : $value;
+	}
+
+	/**
 	 * Stream a CSV of the full answer matrix.
 	 *
 	 * @return void
@@ -229,7 +241,7 @@ class Admin_Reports {
 		foreach ( $questions as $q ) {
 			$header[] = $q['id'];
 		}
-		fputcsv( $out, $header ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fputcsv
+		fputcsv( $out, array_map( array( self::class, 'csv_cell' ), $header ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fputcsv
 
 		foreach ( $matrix['rows'] as $row ) {
 			$line = array( $row['id'], $row['name'], $row['email'] );
@@ -240,7 +252,7 @@ class Admin_Reports {
 				}
 				$line[] = $val;
 			}
-			fputcsv( $out, $line ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fputcsv
+			fputcsv( $out, array_map( array( self::class, 'csv_cell' ), $line ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fputcsv
 		}
 
 		fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose

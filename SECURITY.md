@@ -80,3 +80,31 @@ to WordPress accounts. The security-critical surface lives entirely in
 - Always serve the WordPress site over HTTPS so auth cookies and redirects are safe.
 - Rotate WordPress salts carefully: doing so invalidates stored encrypted secrets,
   which must then be re-entered.
+
+### Link ownership and cleanup
+
+Verified-email linking remains supported. Automatic email/username matching can
+create an initial provider association, but cannot replace a different existing
+subject. Changing an established association requires an administrator to review
+and remove the old link; changing an issuer behind the same provider ID also
+requires an explicit migration. Provider IDs namespace the stored subjects.
+
+New associations use MySQL/MariaDB connection-scoped `GET_LOCK` locks for both the
+provider/subject and the user/provider slot. Core and compatible account-linking
+extensions must use `User_Mapper::claim_link()` rather than writing link meta.
+Unavailable/contended locks and failed writes reject the sign-in before issuing
+cookies. Database proxies must keep lock/check/write operations on the same
+primary connection. Existing duplicate subjects fail closed and need manual
+reconciliation; this update does not silently rewrite existing ownership.
+
+Uninstall removes stored provider claims, question answers, provider links and
+pending access tokens, as well as settings and authentication caches. User
+accounts remain. UI uninstall deletes only pages carrying explicit creation
+provenance whose content still matches the generated content; reused, legacy
+unmarked and subsequently customized pages remain. The pending page follows the
+same rule. Core user identity metadata is global to WordPress's user table;
+option/transient cleanup applies to the blog where uninstall runs. Network-wide
+retention/removal must be reviewed before multisite uninstall.
+
+CSV exports prefix formula-like cells with an apostrophe, including cells with
+leading control whitespace and negative numbers. Stored answers are unchanged.

@@ -181,6 +181,10 @@ class Page_Installer {
 				'post_type'    => 'page',
 			)
 		);
-		return ( $page_id && ! is_wp_error( $page_id ) ) ? (int) $page_id : 0;
+		if ( $page_id && ! is_wp_error( $page_id ) ) {
+			update_post_meta( $page_id, '_authorizenter_created_content', $content );
+			return (int) $page_id;
+		}
+		return 0;
 	}
 }
