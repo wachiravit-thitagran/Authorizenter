@@ -261,6 +261,23 @@ class FrontendTest extends TestCase {
 		$GLOBALS['__mock_locate_template'] = '';
 	}
 
+	public function test_missing_pending_token_offers_sign_in_recovery(): void {
+		unset( $_GET['azr_pending_token'] );
+		$html = $this->frontend->render_pending_form( array() );
+		$this->assertStringContainsString( 'Return to sign-in', $html );
+		$this->assertStringContainsString( 'href=', $html );
+		$this->assertStringNotContainsString( 'Invalid or missing access token.', $html );
+	}
+
+	public function test_expired_pending_token_offers_sign_in_recovery(): void {
+		$this->make_core();
+		$_GET['azr_pending_token'] = 'expired-token';
+		$html = $this->frontend->render_pending_form( array() );
+		$this->assertStringContainsString( 'Return to sign-in', $html );
+		$this->assertStringNotContainsString( 'expired-token', $html );
+		unset( $_GET['azr_pending_token'] );
+	}
+
 	public function test_pending_message_is_filterable(): void {
 		$this->make_core();
 		$GLOBALS['__mock_filters']['authorizenter_pending_message'] = function ( $message ) {

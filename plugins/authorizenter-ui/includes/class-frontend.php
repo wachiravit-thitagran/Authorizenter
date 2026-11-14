@@ -617,9 +617,7 @@ class Frontend {
 
 		$token = isset( $_GET['azr_pending_token'] ) ? sanitize_text_field( wp_unslash( $_GET['azr_pending_token'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( '' === $token ) {
-			return '<div class="authorizenter-pending-form">' .
-				esc_html__( 'Invalid or missing access token.', 'authorizenter' ) .
-				'</div>';
+			return $this->pending_link_recovery();
 		}
 
 		$done_message = (string) $atts['message'];
@@ -637,7 +635,7 @@ class Frontend {
 
 		$provider = ( new \Authorizenter\Core\Access_List( $core->settings ) )->pending_provider( $token );
 		if ( '' === $provider ) {
-			return '<div class="authorizenter-pending-form">' . esc_html__( 'Invalid or expired access token.', 'authorizenter' ) . '</div>';
+			return $this->pending_link_recovery();
 		}
 		$redirect  = '' !== $redirect ? wp_validate_redirect( $redirect, home_url( '/' ) ) : '';
 		$questions = $core->questions->for_provider( $provider );
@@ -664,6 +662,18 @@ class Frontend {
 		ob_start();
 		$this->load_template( 'pending-form.php', compact( 'questions', 'token', 'done_message', 'redirect' ) );
 		return ob_get_clean();
+	}
+
+	/**
+	 * Explain an unusable approval link without exposing internal token errors.
+	 *
+	 * @return string
+	 */
+	private function pending_link_recovery() {
+		return '<div class="authorizenter-pending-form" role="alert"><p>' .
+			esc_html__( 'This approval link is missing or expired. Please sign in again to continue.', 'authorizenter' ) .
+			'</p><a href="' . esc_url( wp_login_url() ) . '">' .
+			esc_html__( 'Return to sign-in', 'authorizenter' ) . '</a></div>';
 	}
 
 	/**
